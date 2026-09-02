@@ -600,11 +600,40 @@
       'Lainnya': { color: 'Silver', badgeClass: 'background:#f1f5f9; color:#475569;', borderHex: '#94a3b8' }
     };
 
-    function getStoredUsers() { return JSON.parse(localStorage.getItem('app_users_db') || '{}'); }
+    /* ===== Penyimpanan Persistent via Server (menggantikan localStorage) =====
+       Data diambil sekali dari server ke cache (syncedStore) saat halaman dibuka,
+       lalu setiap perubahan langsung dikirim ke server supaya tidak hilang. */
+    let syncedStore = {};
+
+    async function initSyncedStore() {
+      try {
+        const res = await fetch('/api/store');
+        const data = await res.json();
+        syncedStore = data.value || {};
+      } catch (err) {
+        console.error('Gagal memuat data tersimpan dari server:', err);
+        syncedStore = {};
+      }
+    }
+
+    function storeGet(key, fallback) {
+      return (key in syncedStore) ? syncedStore[key] : fallback;
+    }
+
+    function storeSet(key, val) {
+      syncedStore[key] = val;
+      fetch(`/api/store/${encodeURIComponent(key)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: val })
+      }).catch(err => console.error('Gagal menyimpan ke server:', err));
+    }
+
+    function getStoredUsers() { return storeGet('app_users_db', {}); }
     function saveUser(username, password) {
       const users = getStoredUsers();
       users[username] = password;
-      localStorage.setItem('app_users_db', JSON.stringify(users));
+      storeSet('app_users_db', users);
     }
 
     function toggleAuthMode() {
@@ -723,11 +752,11 @@
     }
 
     function getThermalResiStock(whId) {
-      return Number(localStorage.getItem(`thermal_stock_resi_${whId}`) || 0);
+      return Number(storeGet(`thermal_stock_resi_${whId}`, 0));
     }
 
     function setThermalResiStock(whId, val) {
-      localStorage.setItem(`thermal_stock_resi_${whId}`, val);
+      storeSet(`thermal_stock_resi_${whId}`, val);
     }
 
     function formatThermalDisplay(totalResi) {
@@ -755,11 +784,11 @@
     }
 
     function getPlasticStock(whId, courierKey) {
-      return Number(localStorage.getItem(`plastic_stock_${whId}_${courierKey}`) || 0);
+      return Number(storeGet(`plastic_stock_${whId}_${courierKey}`, 0));
     }
 
     function setPlasticStock(whId, courierKey, val) {
-      localStorage.setItem(`plastic_stock_${whId}_${courierKey}`, val);
+      storeSet(`plastic_stock_${whId}_${courierKey}`, val);
     }
 
     function addPlasticStock() {
@@ -861,11 +890,11 @@
 
     /* 14-DAY RETURN RESI MANAGEMENT */
     function getReturnResiList() {
-      return JSON.parse(localStorage.getItem('return_resi_db') || '[]');
+      return storeGet('return_resi_db', []);
     }
 
     function saveReturnResiList(list) {
-      localStorage.setItem('return_resi_db', JSON.stringify(list));
+      storeSet('return_resi_db', list);
     }
 
     function addReturnResi() {
@@ -1434,7 +1463,10 @@
       renderResultsTable();
     }
 
-    document.addEventListener('DOMContentLoaded', checkAuthStatus);
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initSyncedStore(); // ambil data tersimpan dari server dulu
+      checkAuthStatus();
+    });
   </script>
 </body>
 </html>
