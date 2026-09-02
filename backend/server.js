@@ -39,14 +39,29 @@ app.use(express.static(path.join(__dirname, '../public')));
 const BASE_URL = 'https://pdcgudang.et.r.appspot.com/v1';
 
 // Konfigurasi API Key Biteship
-const BITESHIP_API_KEY = 'biteship_live.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiam50IiwidXNlcklkIjoiNmExYmY4NzRkZDIyMDU1ODRmMDg4ZDk0IiwiaWF0IjoxNzgzOTE4ODQ2fQ.Bbx33UZxpcN4IjxWWOlpQDQaJlPy-wSOPFjy46DCGkY';
+const BITESHIP_API_KEY = process.env.BITESHIP_API_KEY;
 
 const WAREHOUSES = [
-  { id: 'pdc', name: 'PDC Warehouse', username: 'warehousepdc', password: 'Restuibu123', warehouse_id: '38' },
-  { id: 'febri', name: 'Febri Warehouse', username: 'febriwarehouse', password: 'Gudang02', warehouse_id: '67' },
-  { id: 'palem', name: 'Palem Warehouse', username: 'palemwarehouse', password: 'Kitabisa123', warehouse_id: '94' },
-  { id: 'cemara', name: 'Cemara Warehouse', username: 'odiiza', password: 'Disembodied38', warehouse_id: '96' }
+  { id: 'pdc',    name: 'PDC Warehouse',    username: process.env.WH_PDC_USER,    password: process.env.WH_PDC_PASS,    warehouse_id: '38' },
+  { id: 'febri',  name: 'Febri Warehouse',  username: process.env.WH_FEBRI_USER,  password: process.env.WH_FEBRI_PASS,  warehouse_id: '67' },
+  { id: 'palem',  name: 'Palem Warehouse',  username: process.env.WH_PALEM_USER,  password: process.env.WH_PALEM_PASS,  warehouse_id: '94' },
+  { id: 'cemara', name: 'Cemara Warehouse', username: process.env.WH_CEMARA_USER, password: process.env.WH_CEMARA_PASS, warehouse_id: '96' }
 ];
+
+// Berhenti lebih awal kalau ada env var yang belum terpasang, supaya tidak
+// gagal diam-diam saat request pertama.
+const WAJIB = [
+  'BITESHIP_API_KEY', 'SECURITY_PASSWORD',
+  'WH_PDC_USER', 'WH_PDC_PASS',
+  'WH_FEBRI_USER', 'WH_FEBRI_PASS',
+  'WH_PALEM_USER', 'WH_PALEM_PASS',
+  'WH_CEMARA_USER', 'WH_CEMARA_PASS'
+];
+const kurang = WAJIB.filter(k => !process.env[k]);
+if (kurang.length) {
+  console.error('Environment variable belum diisi:', kurang.join(', '));
+  process.exit(1);
+}
 
 const tokenCache = {};
 const dashboardCache = { inbound: null, outbound: null };
@@ -263,6 +278,12 @@ app.post('/api/store/:key', (req, res) => {
   kvStore[key] = value;
   saveStore(kvStore);
   res.json({ success: true });
+});
+
+// ===== VERIFIKASI SANDI KEAMANAN =====
+app.post('/api/verify-security', (req, res) => {
+  const { password } = req.body || {};
+  res.json({ valid: password === process.env.SECURITY_PASSWORD });
 });
 
 // ============================================================================
