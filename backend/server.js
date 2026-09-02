@@ -265,9 +265,32 @@ app.post('/api/store/:key', (req, res) => {
   res.json({ success: true });
 });
 
-// ===== FITUR BARU: BARANG BERMASALAH (STOCK OPNAME BALANCING DARI GOOGLE SHEETS) =====
+// ============================================================================
+// BLOK FINAL — STOCK OPNAME (TANPA API KEY)
+//
+// CARA PAKAI:
+//   Buka backend/server.js
+//   HAPUS baris 268 sampai 348 (dari komentar "===== FITUR BARU: BARANG
+//   BERMASALAH ..." sampai tepat SEBELUM komentar "// Fallback route")
+//   TEMPEL seluruh isi file ini di posisi itu.
+//
+// PENTING: blok ini harus berada DI ATAS "app.get(/.*/)" (fallback route).
+// Kalau ditaruh di bawahnya, semua request /api/opname/* akan dibalas
+// index.html, bukan JSON.
+//
+// Syarat: spreadsheet di-share "Anyone with the link - Viewer".
+// Tidak perlu API key, tidak perlu Google Cloud.
+// ============================================================================
+
 const Papa = require('papaparse');
 const OPNAME_SHEET_ID = process.env.GOOGLE_SHEET_ID || '1rEz_ZXSjjYaJolp62ilWd9LIdRey7Dszn5YSfHu69-M';
+
+const CEK_MUNDUR_BULAN = 24;              // cek 2 tahun ke belakang
+const CACHE_MS = 10 * 60 * 1000;          // cache daftar bulan 10 menit
+let cacheMonths = { data: null, waktu: 0 };
+
+
+// ---------------------------------------------------------------- helper ---
 
 function sumNumbersInText(text) {
   if (!text) return 0;
@@ -282,69 +305,151 @@ function toNumber(val) {
   return isNaN(n) ? 0 : n;
 }
 
-// Ambil daftar bulan (nama tab) yang tersedia di spreadsheet
+// Samakan nama kolom: buang spasi ganda, non-breaking space, beda kapital.
+function normKey(k) {
+  return String(k || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+// Ambil nilai kolom walau ejaan headernya sedikit beda.
+function pick(row, ...candidates) {
+  const keys = Object.keys(row);
+  for (const cand of candidates) {
+    const target = normKey(cand);
+    const hit = keys.find(k => normKey(k) === target);
+    if (hit !== undefined) return row[hit];
+  }
+  return '';
+}
+
+function gvizUrl(sheetName, range) {
+  return `https://docs.google.com/spreadsheets/d/${OPNAME_SHEET_ID}/gviz/tq`
+       + `?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`
+       + (range ? `&range=${range}` : '');
+}
+
+// gviz balas CSV kalau tab ada, balas halaman HTML error kalau tidak ada.
+async function tabAda(sheetName) {
+  try {
+    const res = await axios.get(gvizUrl(sheetName, 'A1:A1'), { timeout: 8000 });
+    return !String(res.data || '').trim().startsWith('<');
+  } catch (err) {
+    return false;
+  }
+}
+
+function kandidatBulan(jumlah) {
+  const hasil = [];
+  const now = new Date();
+  for (let i = 0; i < jumlah; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    hasil.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  return hasil;
+}
+
+
+// ----------------------------------------------------- daftar bulan (dropdown)
+
 app.get('/api/opname/months', async (req, res) => {
   try {
-    const feedUrl = `https://spreadsheets.google.com/feeds/worksheets/${OPNAME_SHEET_ID}/public/basic?alt=json`;
-    const response = await axios.get(feedUrl);
-    const entries = response.data?.feed?.entry || [];
-    const months = entries
-      .map(e => e.title?.$t || '')
-      .filter(title => /^SO \d{4}-\d{2}$/.test(title))
-      .map(title => ({ value: title.replace('SO ', ''), label: title }))
+    const paksa = req.query.refresh === '1';
+    if (!paksa && cacheMonths.data && (Date.now() - cacheMonths.waktu) < CACHE_MS) {
+      return res.json({ success: true, months: cacheMonths.data, _dariCache: true });
+    }
+
+    const kandidat = kandidatBulan(CEK_MUNDUR_BULAN);
+
+    const cek = await Promise.all(
+      kandidat.map(async (bulan) => ({ bulan, ada: await tabAda(`SO ${bulan}`) }))
+    );
+
+    const months = cek
+      .filter(c => c.ada)
+      .map(c => ({ value: c.bulan, label: `SO ${c.bulan}` }))
       .sort((a, b) => b.value.localeCompare(a.value));
-    res.json({ success: true, months });
+
+    cacheMonths = { data: months, waktu: Date.now() };
+
+    res.json({ success: true, months, _dicek: kandidat.length });
   } catch (err) {
-    console.error('Gagal mengambil daftar bulan opname:', err.message);
-    res.status(500).json({ success: false, message: 'Gagal mengambil daftar bulan dari Google Sheets. Pastikan spreadsheet bersifat publik (anyone with link can view).' });
+    console.error('Gagal menyusun daftar bulan opname:', err.message);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal membaca spreadsheet. Pastikan sheet di-share "Anyone with the link - Viewer".'
+    });
   }
 });
 
-// Ambil data barang bermasalah untuk 1 bulan tertentu, opsional difilter per tim (prefix SKU)
+
+// --------------------------------------------------- data barang bermasalah
+
 app.get('/api/opname/data', async (req, res) => {
   const { month, team } = req.query;
   if (!month) return res.status(400).json({ success: false, message: 'Parameter month wajib diisi.' });
 
   const sheetName = `SO ${month}`;
   try {
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${OPNAME_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&range=A5:U10000`;
-    const response = await axios.get(csvUrl);
-    const parsed = Papa.parse(response.data, { header: true, skipEmptyLines: true });
+    // Kolom sheet berakhir di T (Tgl Balancing), jadi range A5:T.
+    const response = await axios.get(gvizUrl(sheetName, 'A5:T10000'), { timeout: 15000 });
+    const body = String(response.data || '').trim();
+
+    if (body.startsWith('<')) {
+      return res.status(404).json({
+        success: false,
+        message: `Tab "${sheetName}" tidak bisa dibaca. Pastikan tab tersebut ada dan sheet bersifat publik.`
+      });
+    }
+
+    const parsed = Papa.parse(body, { header: true, skipEmptyLines: true });
 
     const allTeams = new Set();
-    let rows = parsed.data.map(row => {
-      const sku = (row['SKU'] || '').trim();
-      const teamCode = sku.split('-')[0] || '';
+    let semua = parsed.data.map(row => {
+      const sku = String(pick(row, 'SKU', 'Kode SKU') || '').trim();
+      // Pakai kolom Tim (D) langsung; prefix SKU cuma cadangan.
+      const teamCode = String(pick(row, 'Tim') || sku.split('-')[0] || '').trim();
       if (teamCode) allTeams.add(teamCode);
 
-      const selisihAwal = toNumber(row['Selisih Awal']);
-      const balancing = sumNumbersInText(row['Balancing']);
-      const sisaSelisih = Math.round((selisihAwal + balancing) * 100) / 100;
+      const selisihAwal = toNumber(pick(row, 'Selisih Awal'));
+      const balancing = sumNumbersInText(pick(row, 'Balancing'));
 
       return {
         sku,
-        rak: row['Rak'] || '',
+        rak: pick(row, 'Rak') || '',
         tim: teamCode,
-        qtySistem: toNumber(row['Qty Sistem']),
-        namaProduk: row['Nama Produk'] || '',
-        totalReal: toNumber(row['Total Real']),
+        qtySistem: toNumber(pick(row, 'Qty Sistem')),
+        namaProduk: pick(row, 'Nama Produk') || '',
+        totalReal: toNumber(pick(row, 'Total Real')),
         selisihAwal,
         balancing,
-        sisaSelisih,
-        tglBalancing: row['Tgl Balancing'] || ''
+        sisaSelisih: Math.round((selisihAwal + balancing) * 100) / 100,
+        status: pick(row, 'Status') || '',
+        tglBalancing: pick(row, 'Tgl Balancing') || ''
       };
-    }).filter(r => r.sku && r.selisihAwal !== 0);
+    }).filter(r => r.sku);
 
-    if (team) {
-      rows = rows.filter(r => r.tim === team);
-    }
+    // Hanya tampilkan yang punya selisih. Baris yang belum di-opname
+    // (Selisih Awal masih kosong) tidak dihitung sebagai barang bermasalah.
+    let rows = semua.filter(r => r.selisihAwal !== 0);
+    if (team) rows = rows.filter(r => r.tim === team);
 
-    res.json({ success: true, sheetName, rows, allTeams: Array.from(allTeams).sort() });
+    res.json({
+      success: true,
+      sheetName,
+      rows,
+      allTeams: Array.from(allTeams).sort(),
+      // Info diagnosa: bedakan "kode salah" dari "data belum diisi".
+      _totalBarisTerbaca: semua.length,
+      _headerTerbaca: parsed.meta.fields
+    });
   } catch (err) {
     console.error(`Gagal mengambil data opname untuk ${sheetName}:`, err.message);
-    res.status(404).json({ success: false, message: `Data untuk "${sheetName}" tidak ditemukan. Pastikan tab dengan nama tersebut ada di spreadsheet.` });
+    res.status(404).json({
+      success: false,
+      message: `Data untuk "${sheetName}" tidak ditemukan.`
+    });
   }
 });
+
 
 // Fallback route
 app.get(/.*/, (req, res) => {
