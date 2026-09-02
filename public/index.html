@@ -1617,6 +1617,116 @@ async function promptResetPlastic() {
         }
     }
 }
+  // ===== FITUR BARU: BARANG BERMASALAH (STOCK OPNAME BALANCING) =====
+// Menimpa switchTab lama supaya ikut memuat data opname saat menu ini dibuka.
+async function switchTab(pageId, element) {
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    element.classList.add('active');
+    document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
+    document.getElementById('page-title').innerText = element.querySelector('span:not(.material-symbols-outlined)').innerText;
+    document.getElementById('page-icon').innerText = element.querySelector('.material-symbols-outlined').innerText;
+    const targetPage = document.getElementById(`page-${pageId}`);
+    if (targetPage) {
+        targetPage.classList.add('active');
+        if (pageId === 'gudang-insight-data') loadInsightGudangData();
+        if (pageId === 'resi-retur') loadReturnResiTable();
+        if (pageId === 'barang-bermasalah') loadOpnameMonths();
+    } else {
+        document.getElementById('generic-title').innerText = element.querySelector('span:not(.material-symbols-outlined)').innerText;
+        document.getElementById('page-generic').classList.add('active');
+    }
+}
+
+async function loadOpnameMonths() {
+    const monthSelect = document.getElementById('opname-filter-month');
+    monthSelect.innerHTML = '<option value="">Memuat daftar bulan...</option>';
+    try {
+        const res = await fetch('/api/opname/months');
+        const data = await res.json();
+        if (!data.success || !data.months || data.months.length === 0) {
+            monthSelect.innerHTML = '<option value="">Tidak ada data bulan ditemukan</option>';
+            return;
+        }
+        monthSelect.innerHTML = data.months.map(m => `<option value="${m.value}">${m.label}</option>`).join('');
+        loadBarangBermasalahData();
+    } catch (err) {
+        console.error('Gagal memuat daftar bulan opname:', err);
+        monthSelect.innerHTML = '<option value="">Gagal memuat, coba refresh</option>';
+    }
+}
+
+function renderOpnameSummary(rows) {
+    const total = rows.length;
+    const selesai = rows.filter(r => r.sisaSelisih === 0).length;
+    const belum = total - selesai;
+    const container = document.getElementById('opname-summary-boxes');
+    container.innerHTML = `
+        <div class="sum-box"><h4>Total Barang Bermasalah</h4><div class="val">${total}</div></div>
+        <div class="sum-box" style="border-left-color:#16a34a;"><h4>Sudah Balancing</h4><div class="val">${selesai}</div></div>
+        <div class="sum-box" style="border-left-color:#dc2626;"><h4>Belum Balancing</h4><div class="val">${belum}</div></div>
+    `;
+}
+
+function renderOpnameTable(rows) {
+    const tbody = document.getElementById('opname-table-body');
+    if (!rows || rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#94a3b8;">Tidak ada barang bermasalah untuk filter ini. 🎉</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = rows.map((r, idx) => {
+        const statusBadge = r.sisaSelisih === 0
+            ? `<span style="display:inline-block; padding:3px 8px; border-radius:4px; font-size:11px; background:#dcfce7; color:#15803d; font-weight:700;">✅ Selesai</span>`
+            : `<span style="display:inline-block; padding:3px 8px; border-radius:4px; font-size:11px; background:#fee2e2; color:#dc2626; font-weight:700;">⏳ Belum Selesai</span>`;
+        return `
+        <tr>
+            <td>${idx + 1}</td>
+            <td style="font-family:monospace;">${r.sku}</td>
+            <td>${r.rak}</td>
+            <td>${r.tim}</td>
+            <td class="num">${r.qtySistem}</td>
+            <td>${r.namaProduk}</td>
+            <td class="num">${r.totalReal}</td>
+            <td class="num" style="color:${r.selisihAwal < 0 ? '#dc2626' : '#16a34a'}; font-weight:700;">${r.selisihAwal}</td>
+            <td class="num">${r.balancing}</td>
+            <td class="num" style="font-weight:700; color:${r.sisaSelisih === 0 ? '#16a34a' : '#dc2626'};">${r.sisaSelisih}</td>
+            <td>${statusBadge}</td>
+            <td>${r.tglBalancing || '-'}</td>
+        </tr>`;
+    }).join('');
+}
+
+async function loadBarangBermasalahData() {
+    const month = document.getElementById('opname-filter-month').value;
+    const team = document.getElementById('opname-filter-team').value;
+    if (!month) return;
+    const tbody = document.getElementById('opname-table-body');
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#94a3b8;">Memuat data...</td></tr>`;
+    try {
+        const params = new URLSearchParams({ month });
+        if (team) params.set('team', team);
+        const res = await fetch(`/api/opname/data?${params.toString()}`);
+        const data = await res.json();
+        if (!data.success) {
+            tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#dc2626;">${data.message || 'Gagal memuat data'}</td></tr>`;
+            return;
+        }
+        document.getElementById('opname-table-title').innerText = `Daftar Barang Bermasalah — SO ${month}`;
+
+        const teamSelect = document.getElementById('opname-filter-team');
+        if (!team) {
+            const teams = [...new Set(data.allTeams || [])].sort();
+            const prevSelected = teamSelect.value;
+            teamSelect.innerHTML = '<option value="">Semua Tim</option>' + teams.map(t => `<option value="${t}">Tim ${t}</option>`).join('');
+            teamSelect.value = prevSelected;
+        }
+
+        renderOpnameSummary(data.rows);
+        renderOpnameTable(data.rows);
+    } catch (err) {
+        console.error('Gagal memuat data barang bermasalah:', err);
+        tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#dc2626;">Terjadi kesalahan saat memuat data.</td></tr>`;
+    }
+}
   </script>
 </body>
 </html>
