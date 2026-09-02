@@ -450,12 +450,60 @@
       </section>
 
       <section id="page-barang-bermasalah" class="page-content">
-        <div style="background:#fff; padding:60px 20px; border-radius:8px; border:1px solid #e2e8f0; text-align: center;">
-          <span class="material-symbols-outlined" style="font-size: 48px; color: #cbd5e1; margin-bottom: 12px;">construction</span>
-          <h2 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">Barang Bermasalah</h2>
-          <p style="font-size: 13px; color: #64748b;">Fitur ini sedang dalam pengembangan.</p>
-        </div>
-      </section>
+
+<div class="insight-card">
+<div class="insight-card-title">
+<span class="material-symbols-outlined" style="color: #e11d48;">history_toggle_off</span>
+<span>Filter Barang Bermasalah (Stock Opname)</span>
+</div>
+<div class="form-grid">
+<div class="form-field">
+<label>Bulan Opname</label>
+<select id="opname-filter-month" onchange="loadBarangBermasalahData()"><option value="">Memuat...</option></select>
+</div>
+<div class="form-field">
+<label>Filter Tim (kode awal SKU)</label>
+<select id="opname-filter-team" onchange="loadBarangBermasalahData()"><option value="">Semua Tim</option></select>
+</div>
+<div>
+<button class="btn-action" style="width: 100%;" onclick="loadBarangBermasalahData()">🔍 Tampilkan Data</button>
+</div>
+</div>
+</div>
+
+<div class="summary-grid" id="opname-summary-boxes"></div>
+
+<div class="insight-card">
+<div class="insight-card-title">
+<span class="material-symbols-outlined" style="color: #2563eb;">table_chart</span>
+<span id="opname-table-title">Daftar Barang Bermasalah</span>
+</div>
+<div style="overflow-x: auto;">
+<table>
+<thead>
+<tr>
+<th>No</th>
+<th>SKU</th>
+<th>Rak</th>
+<th>Tim</th>
+<th class="num">Qty Sistem</th>
+<th>Nama Produk</th>
+<th class="num">Qty Real</th>
+<th class="num">Selisih Awal</th>
+<th class="num">Balancing</th>
+<th class="num">Sisa Selisih</th>
+<th>Status</th>
+<th>Tgl Balancing</th>
+</tr>
+</thead>
+<tbody id="opname-table-body">
+<tr><td colspan="12" style="text-align: center; padding: 20px; color: #94a3b8;">Pilih bulan lalu klik "Tampilkan Data".</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+</section>
 
       <!-- PAGE: LACAK AWB BULK SYSTEM -->
       <section id="page-lacak-awb" class="page-content">
