@@ -2,8 +2,33 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
+
+// ===== Penyimpanan Persistent (menggantikan localStorage & object in-memory) =====
+// DATA_DIR diarahkan ke Railway Volume lewat env var DATA_DIR (contoh: /data)
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+const STORE_FILE = path.join(DATA_DIR, 'store.json');
+
+function loadStore() {
+  if (fs.existsSync(STORE_FILE)) {
+    try {
+      return JSON.parse(fs.readFileSync(STORE_FILE, 'utf-8'));
+    } catch (e) {
+      console.error('Gagal membaca store.json, menggunakan store kosong:', e.message);
+      return {};
+    }
+  }
+  return {};
+}
+
+function saveStore(store) {
+  fs.writeFileSync(STORE_FILE, JSON.stringify(store, null, 2));
+}
+
+let kvStore = loadStore();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -27,15 +52,6 @@ const tokenCache = {};
 const dashboardCache = { inbound: null, outbound: null };
 const lastCacheTime = { inbound: 0, outbound: 0 };
 const CACHE_DURATION = 60 * 1000;
-
-// Penyimpanan Data Inventory / Bahan Packing (Thermal & Plastik) per Gudang secara terisolasi
-const warehouseInventory = {};
-WAREHOUSES.forEach(wh => {
-  warehouseInventory[wh.id] = {
-    thermal: [],
-    plastic: []
-  };
-});
 
 function getTodayTimestamps() {
   const now = new Date();
@@ -252,28 +268,18 @@ app.post('/api/track-awb-chunk', async (req, res) => {
   res.json({ success: true, data: results.filter(Boolean) });
 });
 
-// Endpoint Baru: Mengambil Data Inventory/Packing per Gudang
-app.get('/api/inventory/:warehouseId', (req, res) => {
-  const { warehouseId } = req.params;
-  if (!warehouseInventory[warehouseId]) {
-    return res.status(404).json({ success: false, message: 'Gudang tidak ditemukan' });
-  }
-  res.json({ success: true, data: warehouseInventory[warehouseId] });
+// Endpoint Store: Ambil SEMUA data tersimpan sekaligus (dipanggil sekali saat halaman dibuka)
+app.get('/api/store', (req, res) => {
+  res.json({ success: true, value: kvStore });
 });
 
-// Endpoint Baru: Menambah Data Inventory/Packing per Gudang
-app.post('/api/inventory/:warehouseId', (req, res) => {
-  const { warehouseId } = req.params;
-  if (!warehouseInventory[warehouseId]) {
-    return res.status(404).json({ success: false, message: 'Gudang tidak ditemukan' });
-  }
-  const { category, item } = req.body;
-  if (category === 'thermal') {
-    warehouseInventory[warehouseId].thermal.push(item);
-  } else if (category === 'plastic') {
-    warehouseInventory[warehouseId].plastic.push(item);
-  }
-  res.json({ success: true, data: warehouseInventory[warehouseId] });
+// Endpoint Store: Simpan satu key (menggantikan localStorage.setItem)
+app.post('/api/store/:key', (req, res) => {
+  const { key } = req.params;
+  const { value } = req.body;
+  kvStore[key] = value;
+  saveStore(kvStore);
+  res.json({ success: true });
 });
 
 // Fallback route
