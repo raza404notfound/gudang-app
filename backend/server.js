@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
@@ -29,6 +31,7 @@ function saveStore(store) {
 }
 
 let kvStore = loadStore();
+
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -38,15 +41,33 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 const BASE_URL = 'https://pdcgudang.et.r.appspot.com/v1';
 
-// Konfigurasi API Key Biteship
-const BITESHIP_API_KEY = 'biteship_live.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiam50IiwidXNlcklkIjoiNmExYmY4NzRkZDIyMDU1ODRmMDg4ZDk0IiwiaWF0IjoxNzgzOTE4ODQ2fQ.Bbx33UZxpcN4IjxWWOlpQDQaJlPy-wSOPFjy46DCGkY';
+// ===== SEMUA KREDENSIAL DIAMBIL DARI ENVIRONMENT VARIABLES (Railway Variables) =====
+const BITESHIP_API_KEY = process.env.BITESHIP_API_KEY;
+const SECURITY_PASSWORD = process.env.SECURITY_PASSWORD;
 
 const WAREHOUSES = [
-  { id: 'pdc', name: 'PDC Warehouse', username: 'warehousepdc', password: 'Restuibu123', warehouse_id: '38' },
-  { id: 'febri', name: 'Febri Warehouse', username: 'febriwarehouse', password: 'Gudang02', warehouse_id: '67' },
-  { id: 'palem', name: 'Palem Warehouse', username: 'palemwarehouse', password: 'Kitabisa123', warehouse_id: '94' },
-  { id: 'cemara', name: 'Cemara Warehouse', username: 'odiiza', password: 'Disembodied38', warehouse_id: '96' }
+  { id: 'pdc', name: 'PDC Warehouse', username: process.env.WH_PDC_USER, password: process.env.WH_PDC_PASS, warehouse_id: '38' },
+  { id: 'febri', name: 'Febri Warehouse', username: process.env.WH_FEBRI_USER, password: process.env.WH_FEBRI_PASS, warehouse_id: '67' },
+  { id: 'palem', name: 'Palem Warehouse', username: process.env.WH_PALEM_USER, password: process.env.WH_PALEM_PASS, warehouse_id: '94' },
+  { id: 'cemara', name: 'Cemara Warehouse', username: process.env.WH_CEMARA_USER, password: process.env.WH_CEMARA_PASS, warehouse_id: '96' }
 ];
+
+// Peringatan saat start jika ada env var yang lupa diisi (biar ketahuan dari awal, bukan pas runtime error)
+function checkRequiredEnvVars() {
+  const required = [
+    'BITESHIP_API_KEY', 'SECURITY_PASSWORD',
+    'WH_PDC_USER', 'WH_PDC_PASS',
+    'WH_FEBRI_USER', 'WH_FEBRI_PASS',
+    'WH_PALEM_USER', 'WH_PALEM_PASS',
+    'WH_CEMARA_USER', 'WH_CEMARA_PASS'
+  ];
+  const missing = required.filter(key => !process.env[key]);
+  if (missing.length > 0) {
+    console.warn('⚠️  PERINGATAN: Environment variable berikut belum diisi:', missing.join(', '));
+    console.warn('   Set variable ini di Railway → Settings → Variables sebelum deploy production.');
+  }
+}
+checkRequiredEnvVars();
 
 const tokenCache = {};
 const dashboardCache = { inbound: null, outbound: null };
@@ -74,7 +95,6 @@ function parseTotalTrx(data) {
 
 async function getWarehouseToken(wh) {
   if (tokenCache[wh.id]) return tokenCache[wh.id];
-
   try {
     const response = await axios.post(`${BASE_URL}/users/login`, {
       username: wh.username,
@@ -88,10 +108,8 @@ async function getWarehouseToken(wh) {
         'referer': 'https://warehouse.onlypdc.com/'
       }
     });
-
     const resData = response.data?.data || response.data;
     const token = resData?.auth_token || resData?.token || resData?.access_token;
-
     if (token) {
       tokenCache[wh.id] = token;
       console.log(`✅ [LOGIN SUKSES] ${wh.name}`);
@@ -106,7 +124,6 @@ async function getWarehouseToken(wh) {
 async function fetchOverview(type, wh) {
   const token = await getWarehouseToken(wh);
   if (!token) return { total_trx: 0, status_error: 'Login Failed' };
-
   const { time_min, time_max } = getTodayTimestamps();
   const headers = {
     'authorization': `Bearer ${token}`,
@@ -115,13 +132,10 @@ async function fetchOverview(type, wh) {
     'referer': 'https://warehouse.onlypdc.com/',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36'
   };
-
   const url = `${BASE_URL}/warehouses/insight/overview?type=${type}&time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
-
   try {
     const res = await axios.get(url, { headers });
     const rawData = res.data?.data || res.data;
-    
     return {
       total_trx: parseTotalTrx(rawData),
       details: rawData
@@ -139,7 +153,6 @@ async function getFreshDashboardData(type) {
     WAREHOUSES.map(async (wh) => {
       let inboundData = null;
       let outboundData = null;
-
       if (type === 'inbound') {
         inboundData = await fetchOverview('inbound', wh);
       } else if (type === 'outbound') {
@@ -150,7 +163,6 @@ async function getFreshDashboardData(type) {
           fetchOverview('outbound', wh)
         ]);
       }
-
       return {
         id: wh.id,
         name: wh.name,
@@ -164,7 +176,6 @@ async function getFreshDashboardData(type) {
 
   let totalInboundTrx = 0;
   let totalOutboundTrx = 0;
-
   results.forEach(item => {
     if (item.data?.inbound) {
       totalInboundTrx += item.data.inbound.total_trx || 0;
@@ -192,7 +203,6 @@ app.get('/api/dashboard', async (req, res) => {
       if (dashboardCache[type] && (now - lastCacheTime[type] < CACHE_DURATION) && !forceRefresh) {
         return res.json(dashboardCache[type]);
       }
-
       const data = await getFreshDashboardData(type);
       dashboardCache[type] = data;
       lastCacheTime[type] = now;
@@ -210,7 +220,6 @@ app.get('/api/dashboard', async (req, res) => {
 // Endpoint Backend Pelacakan Bulk Resi Biteship
 app.post('/api/track-awb-chunk', async (req, res) => {
   const { batchResi, kurir = 'jnt' } = req.body;
-
   if (!Array.isArray(batchResi) || batchResi.length === 0) {
     return res.json({ success: false, data: [] });
   }
@@ -251,7 +260,6 @@ app.post('/api/track-awb-chunk', async (req, res) => {
           },
           timeout: 12000
         });
-
         const data = fallbackRes.data;
         const status = data.status || "Unknown";
         const history = data.history || [];
@@ -282,12 +290,24 @@ app.post('/api/store/:key', (req, res) => {
   res.json({ success: true });
 });
 
+// ===== BARU: Endpoint verifikasi "sandi keamanan" =====
+// Menggantikan pengecekan password yang tadinya hardcode di frontend (public/index.html).
+// Sekarang password aslinya (SECURITY_PASSWORD) hanya ada di server, tidak pernah dikirim ke browser.
+app.post('/api/verify-security', (req, res) => {
+  const { password } = req.body;
+  if (!SECURITY_PASSWORD) {
+    return res.status(500).json({ valid: false, message: 'SECURITY_PASSWORD belum diset di server.' });
+  }
+  const valid = password === SECURITY_PASSWORD;
+  res.json({ valid });
+});
+
 // Fallback route
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`========================================`);
   console.log(`Server Proxy PDC berjalan di http://localhost:${PORT}`);
