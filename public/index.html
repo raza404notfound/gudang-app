@@ -1467,6 +1467,109 @@
       await initSyncedStore(); // ambil data tersimpan dari server dulu
       checkAuthStatus();
     });
+// ===== PATCH KEAMANAN: verifikasi sandi lewat backend, bukan hardcode =====
+async function checkSecurityPassword() {
+    const password = prompt("Masukkan Sandi Keamanan:");
+    if (password === null) return false;
+    try {
+        const res = await fetch('/api/verify-security', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+        if (!data.valid) {
+            alert("Sandi salah! Anda tidak memiliki izin untuk memasukkan atau mereset data.");
+            return false;
+        }
+        return true;
+    } catch (err) {
+        alert("Gagal memverifikasi sandi, coba lagi.");
+        return false;
+    }
+}
+
+async function addThermalStock() {
+    if (!(await checkSecurityPassword())) return;
+    const input = document.getElementById('input-thermal-roll');
+    const rolls = Number(input.value);
+    if (!rolls || rolls <= 0) return alert('Masukkan jumlah roll thermal yang valid!');
+    const current = getThermalResiStock(currentInsightWhId);
+    const addedResi = rolls * 500;
+    setThermalResiStock(currentInsightWhId, current + addedResi);
+    input.value = '';
+    alert(`Berhasil menambahkan ${rolls} Roll (${addedResi} Resi) thermal di gudang ${currentInsightWhId.toUpperCase()}!`);
+    loadInsightGudangData();
+}
+
+async function addPlasticStock() {
+    if (!(await checkSecurityPassword())) return;
+    const courier = document.getElementById('input-plastic-courier').value;
+    const size = document.getElementById('input-plastic-size').value;
+    const balls = Number(document.getElementById('input-plastic-ball').value);
+    if (!balls || balls <= 0) return alert('Masukkan jumlah ball plastik yang valid!');
+    const sheetsPerBall = (size === '30*40') ? 3000 : 2000;
+    const totalSheetsAdded = balls * sheetsPerBall;
+    const current = getPlasticStock(currentInsightWhId, courier);
+    setPlasticStock(currentInsightWhId, courier, current + totalSheetsAdded);
+    document.getElementById('input-plastic-ball').value = '';
+    alert(`Berhasil menambahkan ${balls} Ball (${totalSheetsAdded.toLocaleString()} lembar) Plastik ${courier} di gudang ${currentInsightWhId.toUpperCase()}!`);
+    loadInsightGudangData();
+}
+
+async function promptResetThermal() {
+    if (!(await checkSecurityPassword())) return;
+    if (confirm(`Yakin ingin mereset/mengenolkan sisa thermal di gudang ${currentInsightWhId.toUpperCase()}?`)) {
+        setThermalResiStock(currentInsightWhId, 0);
+        alert(`Sisa thermal di gudang ${currentInsightWhId.toUpperCase()} berhasil direset menjadi 0!`);
+        loadInsightGudangData();
+    }
+}
+
+async function promptResetPlastic() {
+    if (!(await checkSecurityPassword())) return;
+    const courierOptions = Object.keys(COURIER_PLASTIC_MAP);
+    let promptMessage = "Pilih jenis plastik yang ingin direset:\n";
+    courierOptions.forEach((c, idx) => {
+        promptMessage += `${idx + 1}. ${c}\n`;
+    });
+    promptMessage += `${courierOptions.length + 1}. Semua Plastik (Semua Ekspedisi)\n\nMasukkan nomor pilihan atau nama ekspedisi:`;
+    let userInput = prompt(promptMessage, "1");
+    if (!userInput) return;
+    userInput = userInput.trim();
+    let selectedCourier = "";
+    const userNum = Number(userInput);
+    if (!isNaN(userNum) && userNum >= 1 && userNum <= courierOptions.length) {
+        selectedCourier = courierOptions[userNum - 1];
+    } else if (!isNaN(userNum) && userNum === courierOptions.length + 1) {
+        selectedCourier = "SEMUA";
+    } else {
+        const matched = courierOptions.find(c => c.toLowerCase() === userInput.toLowerCase());
+        if (matched) {
+            selectedCourier = matched;
+        } else if (userInput.toUpperCase() === "SEMUA") {
+            selectedCourier = "SEMUA";
+        }
+    }
+    if (!selectedCourier) {
+        return alert("Pilihan tidak valid!");
+    }
+    if (selectedCourier === "SEMUA") {
+        if (confirm(`⚠️ PERINGATAN: Yakin ingin mereset SEMUA stok plastik di gudang ${currentInsightWhId.toUpperCase()}?`)) {
+            courierOptions.forEach(c => {
+                setPlasticStock(currentInsightWhId, c, 0);
+            });
+            alert(`Semua stok plastik di gudang ${currentInsightWhId.toUpperCase()} berhasil dikosongkan!`);
+            loadInsightGudangData();
+        }
+    } else {
+        if (confirm(`Yakin ingin mereset stok plastik ${selectedCourier} di gudang ${currentInsightWhId.toUpperCase()}?`)) {
+            setPlasticStock(currentInsightWhId, selectedCourier, 0);
+            alert(`Stok plastik ${selectedCourier} di gudang ${currentInsightWhId.toUpperCase()} berhasil dikosongkan!`);
+            loadInsightGudangData();
+        }
+    }
+}
   </script>
 </body>
 </html>
