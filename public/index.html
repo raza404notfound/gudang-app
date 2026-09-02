@@ -757,24 +757,23 @@
       }, 1000);
     }
 
-    function switchTab(pageId, element) {
-      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-      element.classList.add('active');
-      document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
-
-      document.getElementById('page-title').innerText = element.querySelector('span:not(.material-symbols-outlined)').innerText;
-      document.getElementById('page-icon').innerText = element.querySelector('.material-symbols-outlined').innerText;
-
-      const targetPage = document.getElementById(`page-${pageId}`);
-      if (targetPage) {
+    async function switchTab(pageId, element) {
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    element.classList.add('active');
+    document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
+    document.getElementById('page-title').innerText = element.querySelector('span:not(.material-symbols-outlined)').innerText;
+    document.getElementById('page-icon').innerText = element.querySelector('.material-symbols-outlined').innerText;
+    const targetPage = document.getElementById(`page-${pageId}`);
+    if (targetPage) {
         targetPage.classList.add('active');
         if (pageId === 'gudang-insight-data') loadInsightGudangData();
         if (pageId === 'resi-retur') loadReturnResiTable();
-      } else {
+        if (pageId === 'barang-bermasalah') loadOpnameMonths();
+    } else {
         document.getElementById('generic-title').innerText = element.querySelector('span:not(.material-symbols-outlined)').innerText;
         document.getElementById('page-generic').classList.add('active');
-      }
     }
+}
 
     function switchInsightWarehouse(whId, btnElement) {
       document.querySelectorAll('.wh-tab-btn').forEach(btn => btn.classList.remove('active'));
