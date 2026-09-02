@@ -1,11 +1,8 @@
-require('dotenv').config();
-
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
-
 const app = express();
 
 // ===== Penyimpanan Persistent (menggantikan localStorage & object in-memory) =====
@@ -41,33 +38,15 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 const BASE_URL = 'https://pdcgudang.et.r.appspot.com/v1';
 
-// ===== SEMUA KREDENSIAL DIAMBIL DARI ENVIRONMENT VARIABLES (Railway Variables) =====
-const BITESHIP_API_KEY = process.env.BITESHIP_API_KEY;
-const SECURITY_PASSWORD = process.env.SECURITY_PASSWORD;
+// Konfigurasi API Key Biteship
+const BITESHIP_API_KEY = 'biteship_live.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiam50IiwidXNlcklkIjoiNmExYmY4NzRkZDIyMDU1ODRmMDg4ZDk0IiwiaWF0IjoxNzgzOTE4ODQ2fQ.Bbx33UZxpcN4IjxWWOlpQDQaJlPy-wSOPFjy46DCGkY';
 
 const WAREHOUSES = [
-  { id: 'pdc', name: 'PDC Warehouse', username: process.env.WH_PDC_USER, password: process.env.WH_PDC_PASS, warehouse_id: '38' },
-  { id: 'febri', name: 'Febri Warehouse', username: process.env.WH_FEBRI_USER, password: process.env.WH_FEBRI_PASS, warehouse_id: '67' },
-  { id: 'palem', name: 'Palem Warehouse', username: process.env.WH_PALEM_USER, password: process.env.WH_PALEM_PASS, warehouse_id: '94' },
-  { id: 'cemara', name: 'Cemara Warehouse', username: process.env.WH_CEMARA_USER, password: process.env.WH_CEMARA_PASS, warehouse_id: '96' }
+  { id: 'pdc', name: 'PDC Warehouse', username: 'warehousepdc', password: 'Restuibu123', warehouse_id: '38' },
+  { id: 'febri', name: 'Febri Warehouse', username: 'febriwarehouse', password: 'Gudang02', warehouse_id: '67' },
+  { id: 'palem', name: 'Palem Warehouse', username: 'palemwarehouse', password: 'Kitabisa123', warehouse_id: '94' },
+  { id: 'cemara', name: 'Cemara Warehouse', username: 'odiiza', password: 'Disembodied38', warehouse_id: '96' }
 ];
-
-// Peringatan saat start jika ada env var yang lupa diisi (biar ketahuan dari awal, bukan pas runtime error)
-function checkRequiredEnvVars() {
-  const required = [
-    'BITESHIP_API_KEY', 'SECURITY_PASSWORD',
-    'WH_PDC_USER', 'WH_PDC_PASS',
-    'WH_FEBRI_USER', 'WH_FEBRI_PASS',
-    'WH_PALEM_USER', 'WH_PALEM_PASS',
-    'WH_CEMARA_USER', 'WH_CEMARA_PASS'
-  ];
-  const missing = required.filter(key => !process.env[key]);
-  if (missing.length > 0) {
-    console.warn('⚠️  PERINGATAN: Environment variable berikut belum diisi:', missing.join(', '));
-    console.warn('   Set variable ini di Railway → Settings → Variables sebelum deploy production.');
-  }
-}
-checkRequiredEnvVars();
 
 const tokenCache = {};
 const dashboardCache = { inbound: null, outbound: null };
@@ -227,7 +206,6 @@ app.post('/api/track-awb-chunk', async (req, res) => {
   const promises = batchResi.map(async (r) => {
     const resiClean = String(r).trim();
     if (!resiClean) return null;
-
     try {
       const response = await axios.get(`https://api.biteship.com/v1/trackings/${resiClean}/couriers/${kurir}`, {
         headers: {
@@ -236,11 +214,9 @@ app.post('/api/track-awb-chunk', async (req, res) => {
         },
         timeout: 12000
       });
-
       const data = response.data;
       let status = "Unknown";
       let note = "Data dimuat";
-
       if (data && data.success) {
         status = data.status || "Unknown";
         const history = data.history || [];
@@ -249,7 +225,6 @@ app.post('/api/track-awb-chunk', async (req, res) => {
         status = "Gagal API";
         note = data.error || data.message || "Gagal mendapatkan data";
       }
-
       return { resi: resiClean, status: status, note: note, success: true };
     } catch (err) {
       try {
@@ -290,16 +265,85 @@ app.post('/api/store/:key', (req, res) => {
   res.json({ success: true });
 });
 
-// ===== BARU: Endpoint verifikasi "sandi keamanan" =====
-// Menggantikan pengecekan password yang tadinya hardcode di frontend (public/index.html).
-// Sekarang password aslinya (SECURITY_PASSWORD) hanya ada di server, tidak pernah dikirim ke browser.
-app.post('/api/verify-security', (req, res) => {
-  const { password } = req.body;
-  if (!SECURITY_PASSWORD) {
-    return res.status(500).json({ valid: false, message: 'SECURITY_PASSWORD belum diset di server.' });
+// ===== FITUR BARU: BARANG BERMASALAH (STOCK OPNAME BALANCING DARI GOOGLE SHEETS) =====
+const Papa = require('papaparse');
+const OPNAME_SHEET_ID = process.env.GOOGLE_SHEET_ID || '1rEz_ZXSjjYaJolp62ilWd9LIdRey7Dszn5YSfHu69-M';
+
+function sumNumbersInText(text) {
+  if (!text) return 0;
+  const matches = String(text).match(/-?\d+(\.\d+)?/g);
+  if (!matches) return 0;
+  return matches.reduce((sum, n) => sum + parseFloat(n), 0);
+}
+
+function toNumber(val) {
+  if (val === undefined || val === null || val === '') return 0;
+  const n = parseFloat(String(val).replace(/[^0-9.-]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+// Ambil daftar bulan (nama tab) yang tersedia di spreadsheet
+app.get('/api/opname/months', async (req, res) => {
+  try {
+    const feedUrl = `https://spreadsheets.google.com/feeds/worksheets/${OPNAME_SHEET_ID}/public/basic?alt=json`;
+    const response = await axios.get(feedUrl);
+    const entries = response.data?.feed?.entry || [];
+    const months = entries
+      .map(e => e.title?.$t || '')
+      .filter(title => /^SO \d{4}-\d{2}$/.test(title))
+      .map(title => ({ value: title.replace('SO ', ''), label: title }))
+      .sort((a, b) => b.value.localeCompare(a.value));
+    res.json({ success: true, months });
+  } catch (err) {
+    console.error('Gagal mengambil daftar bulan opname:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal mengambil daftar bulan dari Google Sheets. Pastikan spreadsheet bersifat publik (anyone with link can view).' });
   }
-  const valid = password === SECURITY_PASSWORD;
-  res.json({ valid });
+});
+
+// Ambil data barang bermasalah untuk 1 bulan tertentu, opsional difilter per tim (prefix SKU)
+app.get('/api/opname/data', async (req, res) => {
+  const { month, team } = req.query;
+  if (!month) return res.status(400).json({ success: false, message: 'Parameter month wajib diisi.' });
+
+  const sheetName = `SO ${month}`;
+  try {
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${OPNAME_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&range=A5:U10000`;
+    const response = await axios.get(csvUrl);
+    const parsed = Papa.parse(response.data, { header: true, skipEmptyLines: true });
+
+    const allTeams = new Set();
+    let rows = parsed.data.map(row => {
+      const sku = (row['SKU'] || '').trim();
+      const teamCode = sku.split('-')[0] || '';
+      if (teamCode) allTeams.add(teamCode);
+
+      const selisihAwal = toNumber(row['Selisih Awal']);
+      const balancing = sumNumbersInText(row['Balancing']);
+      const sisaSelisih = Math.round((selisihAwal + balancing) * 100) / 100;
+
+      return {
+        sku,
+        rak: row['Rak'] || '',
+        tim: teamCode,
+        qtySistem: toNumber(row['Qty Sistem']),
+        namaProduk: row['Nama Produk'] || '',
+        totalReal: toNumber(row['Total Real']),
+        selisihAwal,
+        balancing,
+        sisaSelisih,
+        tglBalancing: row['Tgl Balancing'] || ''
+      };
+    }).filter(r => r.sku && r.selisihAwal !== 0);
+
+    if (team) {
+      rows = rows.filter(r => r.tim === team);
+    }
+
+    res.json({ success: true, sheetName, rows, allTeams: Array.from(allTeams).sort() });
+  } catch (err) {
+    console.error(`Gagal mengambil data opname untuk ${sheetName}:`, err.message);
+    res.status(404).json({ success: false, message: `Data untuk "${sheetName}" tidak ditemukan. Pastikan tab dengan nama tersebut ada di spreadsheet.` });
+  }
 });
 
 // Fallback route
@@ -307,7 +351,7 @@ app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`========================================`);
   console.log(`Server Proxy PDC berjalan di http://localhost:${PORT}`);
