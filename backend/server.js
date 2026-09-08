@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 
 const app = express();
 app.use(cors());
@@ -259,6 +261,186 @@ app.post('/api/track-awb-chunk', async (req, res) => {
 
   const results = await Promise.all(promises);
   res.json({ success: true, data: results.filter(Boolean) });
+});
+
+// =============================================
+// SISTEM AUTENTIKASI — Data disimpan di Railway
+// =============================================
+
+const USERS_FILE = path.join(__dirname, 'users.json');
+const SUPERUSER = 'raza404nf';
+
+// Hash password pakai SHA-256
+function hashPassword(password) {
+  return crypto.createHash('sha256').update(password).digest('hex');
+}
+
+// Baca data user dari file
+function readUsers() {
+  try {
+    if (!fs.existsSync(USERS_FILE)) return {};
+    return JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+  } catch {
+    return {};
+  }
+}
+
+// Simpan data user ke file
+function writeUsers(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
+}
+
+// Inisialisasi akun superuser otomatis jika belum ada
+function initSuperuser() {
+  const users = readUsers();
+  if (!users[SUPERUSER]) {
+    const defaultPass = process.env.SUPERUSER_PASS || 'Admin@PDC2024';
+    users[SUPERUSER] = {
+      password: hashPassword(defaultPass),
+      role: 'superuser',
+      createdAt: new Date().toISOString()
+    };
+    writeUsers(users);
+    console.log(`✅ [AUTH] Akun superuser '${SUPERUSER}' berhasil dibuat.`);
+  }
+}
+initSuperuser();
+
+// Middleware cek session token sederhana (in-memory)
+const activeSessions = {};
+
+function generateToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function requireAuth(req, res, next) {
+  const token = req.headers['x-session-token'];
+  if (!token || !activeSessions[token]) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  req.sessionUser = activeSessions[token];
+  next();
+}
+
+function requireSuperuser(req, res, next) {
+  const token = req.headers['x-session-token'];
+  if (!token || !activeSessions[token]) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  const user = activeSessions[token];
+  if (user.role !== 'superuser') {
+    return res.status(403).json({ success: false, message: 'Akun Anda tidak bisa mengakses fitur ini.' });
+  }
+  req.sessionUser = user;
+  next();
+}
+
+// POST /api/auth/login
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ success: false, message: 'Username dan password wajib diisi.' });
+  }
+
+  const users = readUsers();
+  const user = users[username.trim()];
+
+  if (!user || user.password !== hashPassword(password)) {
+    return res.status(401).json({ success: false, message: 'Username atau Password salah!' });
+  }
+
+  const token = generateToken();
+  activeSessions[token] = { username: username.trim(), role: user.role };
+
+  res.json({ success: true, token, username: username.trim(), role: user.role });
+});
+
+// POST /api/auth/logout
+app.post('/api/auth/logout', requireAuth, (req, res) => {
+  const token = req.headers['x-session-token'];
+  delete activeSessions[token];
+  res.json({ success: true, message: 'Logout berhasil.' });
+});
+
+// GET /api/auth/me — cek sesi masih valid
+app.get('/api/auth/me', requireAuth, (req, res) => {
+  res.json({ success: true, username: req.sessionUser.username, role: req.sessionUser.role });
+});
+
+// GET /api/users — daftar semua user (superuser only)
+app.get('/api/users', requireSuperuser, (req, res) => {
+  const users = readUsers();
+  const list = Object.entries(users).map(([username, data]) => ({
+    username,
+    role: data.role,
+    createdAt: data.createdAt
+  }));
+  res.json({ success: true, data: list });
+});
+
+// POST /api/users — buat akun baru (superuser only)
+app.post('/api/users', requireSuperuser, (req, res) => {
+  const { username, password, role } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ success: false, message: 'Username dan password wajib diisi.' });
+  }
+
+  const users = readUsers();
+  if (users[username.trim()]) {
+    return res.status(409).json({ success: false, message: 'Username sudah terdaftar.' });
+  }
+
+  users[username.trim()] = {
+    password: hashPassword(password),
+    role: role === 'superuser' ? 'superuser' : 'admin',
+    createdAt: new Date().toISOString()
+  };
+  writeUsers(users);
+
+  res.json({ success: true, message: `Akun '${username.trim()}' berhasil dibuat.` });
+});
+
+// DELETE /api/users/:username — hapus akun (superuser only, tidak bisa hapus diri sendiri)
+app.delete('/api/users/:username', requireSuperuser, (req, res) => {
+  const target = req.params.username;
+  if (target === SUPERUSER) {
+    return res.status(403).json({ success: false, message: 'Akun superuser tidak bisa dihapus.' });
+  }
+
+  const users = readUsers();
+  if (!users[target]) {
+    return res.status(404).json({ success: false, message: 'Akun tidak ditemukan.' });
+  }
+
+  delete users[target];
+  writeUsers(users);
+
+  // Hapus sesi aktif user yang dihapus
+  Object.keys(activeSessions).forEach(token => {
+    if (activeSessions[token].username === target) delete activeSessions[token];
+  });
+
+  res.json({ success: true, message: `Akun '${target}' berhasil dihapus.` });
+});
+
+// PUT /api/users/:username/password — ganti password (superuser only)
+app.put('/api/users/:username/password', requireSuperuser, (req, res) => {
+  const { password } = req.body;
+  const target = req.params.username;
+
+  if (!password) {
+    return res.status(400).json({ success: false, message: 'Password baru wajib diisi.' });
+  }
+
+  const users = readUsers();
+  if (!users[target]) {
+    return res.status(404).json({ success: false, message: 'Akun tidak ditemukan.' });
+  }
+
+  users[target].password = hashPassword(password);
+  writeUsers(users);
+
+  res.json({ success: true, message: `Password akun '${target}' berhasil diubah.` });
 });
 
 // Fallback route
