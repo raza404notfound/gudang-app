@@ -13,15 +13,32 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 const BASE_URL = 'https://pdcgudang.et.r.appspot.com/v1';
 
-// Konfigurasi API Key Biteship
-const BITESHIP_API_KEY = 'biteship_live.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiam50IiwidXNlcklkIjoiNmExYmY4NzRkZDIyMDU1ODRmMDg4ZDk0IiwiaWF0IjoxNzgzOTE4ODQ2fQ.Bbx33UZxpcN4IjxWWOlpQDQaJlPy-wSOPFjy46DCGkY';
+// Konfigurasi API Key Biteship — diambil dari Railway Environment Variables
+const BITESHIP_API_KEY = process.env.BITESHIP_API_KEY;
 
+// Kredensial gudang — diambil dari Railway Environment Variables
+// Daftarkan di Railway: Settings > Variables
 const WAREHOUSES = [
-  { id: 'pdc', name: 'PDC Warehouse', username: 'warehousepdc', password: 'Restuibu123', warehouse_id: '38' },
-  { id: 'febri', name: 'Febri Warehouse', username: 'febriwarehouse', password: 'Gudang02', warehouse_id: '67' },
-  { id: 'palem', name: 'Palem Warehouse', username: 'palemwarehouse', password: 'Kitabisa123', warehouse_id: '94' },
-  { id: 'cemara', name: 'Cemara Warehouse', username: 'odiiza', password: 'Disembodied38', warehouse_id: '96' }
+  { id: 'pdc',    name: 'PDC Warehouse',   username: process.env.WH_PDC_USER,    password: process.env.WH_PDC_PASS,    warehouse_id: '38' },
+  { id: 'febri',  name: 'Febri Warehouse', username: process.env.WH_FEBRI_USER,  password: process.env.WH_FEBRI_PASS,  warehouse_id: '67' },
+  { id: 'palem',  name: 'Palem Warehouse', username: process.env.WH_PALEM_USER,  password: process.env.WH_PALEM_PASS,  warehouse_id: '94' },
+  { id: 'cemara', name: 'Cemara Warehouse',username: process.env.WH_CEMARA_USER, password: process.env.WH_CEMARA_PASS, warehouse_id: '96' }
 ];
+
+// Validasi Environment Variables saat server pertama kali jalan
+const REQUIRED_ENV = [
+  'BITESHIP_API_KEY',
+  'WH_PDC_USER',    'WH_PDC_PASS',
+  'WH_FEBRI_USER',  'WH_FEBRI_PASS',
+  'WH_PALEM_USER',  'WH_PALEM_PASS',
+  'WH_CEMARA_USER', 'WH_CEMARA_PASS'
+];
+const MISSING_ENV = REQUIRED_ENV.filter(key => !process.env[key]);
+if (MISSING_ENV.length > 0) {
+  console.warn('⚠️  [ENV WARNING] Variable berikut belum diisi di Railway:');
+  MISSING_ENV.forEach(key => console.warn(`   - ${key}`));
+  console.warn('   Server tetap jalan, tapi fitur terkait tidak akan berfungsi.');
+}
 
 const tokenCache = {};
 const dashboardCache = { inbound: null, outbound: null };
