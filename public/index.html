@@ -579,13 +579,13 @@
                 <thead>
                   <tr>
                     <th style="width:36px;">No</th>
+                    <th>Gudang</th>
                     <th>No Resi</th>
                     <th>Kurir</th>
-                    <th>Gudang</th>
                     <th>Status</th>
-                    <th>Jam Scan / Dicatat</th>
                     <th>Keterangan</th>
                     <th>Tgl Input</th>
+                    <th>Tgl Dicatat</th>
                   </tr>
                 </thead>
                 <tbody id="track-results-body">
@@ -1272,7 +1272,7 @@
         allTrackedData = data.rows.map(r => ({
           resi: r.resi, gudang: r.gudang || '', kurir: r.kurir || detectKurir(r.resi),
           tanggal: r.tanggal, status: r.status || '', keterangan: r.keterangan || '',
-          tglInput: r.tglInput || '', jamScan: r.jamScan || '', tglDicatat: r.tglDicatat || '',
+          tglInput: r.tglInput || r.tanggal || '', tglDicatat: r.tglDicatat || '',
           category: kategorikanStatus(r.status)
         }));
         hitungSummary(); renderResultsTable();
@@ -1398,26 +1398,29 @@
             body: JSON.stringify({ batchResi: chunk })
           });
           const result = await res.json();
+          const gudangDipilih = document.getElementById('filter-gudang').value || '';
           (result.data || []).forEach(item => {
             if (!item) return;
             const cat = kategorikanStatus(item.status);
-            const waktuNow = new Date().toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
             newData.push({
-              resi: item.resi, gudang: '', kurir: detectKurir(item.resi),
-              tanggal: tanggalInput, status: item.status || '-',
-              keterangan: item.note || '-', tglInput: tanggalInput,
-              jamScan: item.jamScan || waktuNow,
-              tglDicatat: new Date().toLocaleString('id-ID'),
-              histori: item.history || [],
+              resi: item.resi,
+              gudang: gudangDipilih,
+              kurir: item.kurir || detectKurir(item.resi),
+              tanggal: tanggalInput,
+              status: item.status || '-',
+              keterangan: item.note || '-',
+              tglInput: tanggalInput,
+              tglDicatat: item.tglDicatat || '-',
               category: cat
             });
           });
         } catch {
+          const gudangDipilih = document.getElementById('filter-gudang').value || '';
           chunk.forEach(r => newData.push({
-            resi: r, gudang:'', kurir: detectKurir(r), tanggal: tanggalInput,
+            resi: r, gudang: gudangDipilih, kurir: detectKurir(r), tanggal: tanggalInput,
             status: 'Error Koneksi', keterangan: 'Gagal menghubungi API',
-            tglInput: tanggalInput, jamScan: '-', tglDicatat: new Date().toLocaleString('id-ID'),
-            histori: [], category: 'gagal'
+            tglInput: tanggalInput, tglDicatat: '-',
+            category: 'gagal'
           }));
         }
         processed += chunk.length;
@@ -1462,25 +1465,15 @@
 
         const kurirBadge = item.kurir ? `<span class="badge-kurir">${item.kurir}</span>` : '-';
 
-        // Jam scan dari histori jika ada
-        let jamScanDisplay = item.jamScan || '-';
-        if (item.histori && item.histori.length > 0) {
-          const lastH = item.histori[item.histori.length - 1];
-          if (lastH && lastH.updated_at) {
-            const d = new Date(lastH.updated_at);
-            jamScanDisplay = d.toLocaleString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-          }
-        }
-
         return `<tr>
           <td style="color:#94a3b8;">${idx + 1}</td>
+          <td style="font-size:11px;color:#64748b;font-weight:600;">${item.gudang || '-'}</td>
           <td style="font-family:monospace;font-weight:700;font-size:12px;">${item.resi}</td>
           <td>${kurirBadge}</td>
-          <td style="font-size:11px;color:#64748b;">${item.gudang || '-'}</td>
           <td>${badge}</td>
-          <td style="font-size:11px;color:#475569;">${jamScanDisplay}</td>
           <td style="font-size:11px;color:#64748b;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.keterangan}">${item.keterangan || '-'}</td>
-          <td style="font-size:11px;color:#94a3b8;">${item.tglDicatat || item.tanggal || '-'}</td>
+          <td style="font-size:11px;color:#94a3b8;">${item.tglInput || item.tanggal || '-'}</td>
+          <td style="font-size:11px;color:#475569;font-weight:500;">${item.tglDicatat || '-'}</td>
         </tr>`;
       }).join('');
     }
