@@ -260,7 +260,12 @@
         </div>
         <div class="form-group">
           <label>Password</label>
-          <input type="password" id="auth-password" name="password" autocomplete="current-password" required placeholder="Masukkan password">
+          <div style="position:relative;">
+            <input type="password" id="auth-password" name="password" autocomplete="current-password" required placeholder="Masukkan password" style="padding-right: 40px;">
+            <span onclick="toggleLoginPassword()" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; user-select:none;" id="toggle-pass-icon">
+              <span class="material-symbols-outlined" style="font-size:20px;">visibility</span>
+            </span>
+          </div>
         </div>
         <button type="submit" class="btn-auth" id="auth-submit-btn">Login</button>
       </form>
@@ -460,6 +465,7 @@
               <div style="min-width:120px;">
                 <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Role</label>
                 <select id="new-role" style="width:100%; padding:9px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; outline:none; background:#fff;">
+                  <option value="user">User</option>
                   <option value="admin">Admin</option>
                   <option value="superuser">Superuser</option>
                 </select>
@@ -572,6 +578,18 @@
       }
     }
 
+    function toggleLoginPassword() {
+      const input = document.getElementById('auth-password');
+      const icon = document.querySelector('#toggle-pass-icon .material-symbols-outlined');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.innerText = 'visibility_off';
+      } else {
+        input.type = 'password';
+        icon.innerText = 'visibility';
+      }
+    }
+
     async function checkAuthStatus() {
       const token = sessionStorage.getItem('sessionToken');
       const savedUser = sessionStorage.getItem('sessionUser');
@@ -647,7 +665,7 @@
         tbody.innerHTML = data.data.map(u => `
           <tr>
             <td style="font-weight:600;color:#1e293b;">${u.username}</td>
-            <td><span style="background:${u.role==='superuser'?'#fef3c7':'#f1f5f9'};color:${u.role==='superuser'?'#92400e':'#475569'};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">${u.role === 'superuser' ? 'Superuser' : 'Admin'}</span></td>
+            <td><span style="background:${u.role==='superuser'?'#fef3c7':u.role==='admin'?'#f1f5f9':'#f0fdf4'};color:${u.role==='superuser'?'#92400e':u.role==='admin'?'#475569':'#15803d'};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">${u.role === 'superuser' ? 'Superuser' : u.role === 'admin' ? 'Admin' : 'User'}</span></td>
             <td style="color:#64748b;font-size:12px;">${u.createdAt ? new Date(u.createdAt).toLocaleDateString('id-ID') : '-'}</td>
             <td>
               ${u.role !== 'superuser' ? `<button onclick="deleteUser('${u.username}')" style="background:#fee2e2;color:#ef4444;border:none;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">Hapus</button>` : '<span style="color:#cbd5e1;font-size:11px;">—</span>'}
