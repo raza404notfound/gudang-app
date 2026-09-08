@@ -1186,11 +1186,17 @@
       return 'J&T';
     }
 
-    function kategorikanStatus(status) {
+    function kategorikanStatus(status, keterangan) {
       const s = String(status || '').toLowerCase();
+      const k = String(keterangan || '').toLowerCase();
       if (!status || s.includes('gagal') || s.includes('error') || s === '-') return 'gagal';
       if (s.includes('cancel') || s.includes('batal') || s.includes('cancelled')) return 'cancel';
-      if (s.includes('manifest') || s.includes('picking') || s.includes('allocated') || s.includes('disimpan')) return 'belum_jalan';
+      // Sudah jalan: picked, dropping, delivered
+      if (s.includes('picked') || s.includes('dropping') || s.includes('delivered') || k.includes('has been picked')) return 'sudah_jalan';
+      // Belum jalan: manifest / allocated / picking_up yang masih manifes
+      if (s.includes('manifest') || s.includes('allocated') || s.includes('disimpan') || k.includes('manifes') ||
+          (s.includes('picking') && k.includes('manifes'))) return 'belum_jalan';
+      if (s.includes('picking_up') || s.includes('confirmed')) return 'belum_jalan';
       return 'sudah_jalan';
     }
 
@@ -1273,7 +1279,7 @@
           resi: r.resi, gudang: r.gudang || '', kurir: r.kurir || detectKurir(r.resi),
           tanggal: r.tanggal, status: r.status || '', keterangan: r.keterangan || '',
           tglInput: r.tglInput || r.tanggal || '', tglDicatat: r.tglDicatat || '',
-          category: kategorikanStatus(r.status)
+          category: kategorikanStatus(r.status, r.keterangan)
         }));
         hitungSummary(); renderResultsTable();
         document.getElementById('btn-sync-sheet').disabled = false;
@@ -1401,7 +1407,7 @@
           const gudangDipilih = document.getElementById('filter-gudang').value || '';
           (result.data || []).forEach(item => {
             if (!item) return;
-            const cat = kategorikanStatus(item.status);
+            const cat = kategorikanStatus(item.status, item.note);
             newData.push({
               resi: item.resi,
               gudang: gudangDipilih,
