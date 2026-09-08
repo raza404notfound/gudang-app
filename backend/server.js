@@ -392,7 +392,7 @@ app.post('/api/users', requireSuperuser, (req, res) => {
 
   users[username.trim()] = {
     password: hashPassword(password),
-    role: role === 'superuser' ? 'superuser' : 'admin',
+    role: role === 'superuser' ? 'superuser' : role === 'admin' ? 'admin' : 'user',
     createdAt: new Date().toISOString()
   };
   writeUsers(users);
