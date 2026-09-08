@@ -241,6 +241,93 @@
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
     }
+
+    /* =============================================
+       AWB TRACKING — NEW UI
+    ============================================= */
+    .awb-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; justify-content:space-between; background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:14px 18px; margin-bottom:12px; }
+    .awb-toolbar-left { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+    .awb-toolbar-right { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .awb-filter-group { display:flex; flex-direction:column; gap:4px; }
+    .awb-label { font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; }
+    .awb-date-input { padding:7px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; outline:none; color:#334155; }
+    .awb-date-input:focus { border-color:#e11d48; }
+    .awb-select { padding:7px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; outline:none; background:#fff; color:#334155; }
+    .awb-btn { display:flex; align-items:center; gap:6px; padding:7px 14px; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; transition:0.2s; }
+    .awb-btn .material-symbols-outlined { font-size:15px; }
+    .awb-btn-dark { background:#0f172a; color:#fff; }
+    .awb-btn-dark:hover { background:#1e293b; }
+    .awb-btn-yellow { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+    .awb-btn-yellow:hover { background:#fde68a; }
+    .awb-btn-blue { background:#0284c7; color:#fff; }
+    .awb-btn-blue:hover { background:#0369a1; }
+    .awb-btn-blue:disabled { background:#94a3b8; cursor:not-allowed; }
+    .awb-status-msg { font-size:12px; color:#64748b; min-height:16px; margin-bottom:10px; padding:0 2px; }
+
+    .awb-stat-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:14px; }
+    .awb-stat-card { background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; display:flex; align-items:center; gap:10px; }
+    .awb-stat-icon .material-symbols-outlined { font-size:22px; }
+    .awb-stat-val { font-size:20px; font-weight:800; line-height:1; }
+    .awb-stat-label { font-size:10px; color:#94a3b8; font-weight:600; text-transform:uppercase; margin-top:2px; }
+    .stat-total .awb-stat-icon { color:#475569; } .stat-total .awb-stat-val { color:#1e293b; }
+    .stat-proses .awb-stat-icon { color:#0284c7; } .stat-proses .awb-stat-val { color:#0284c7; }
+    .stat-jalan .awb-stat-icon { color:#16a34a; } .stat-jalan .awb-stat-val { color:#16a34a; }
+    .stat-belum .awb-stat-icon { color:#d97706; } .stat-belum .awb-stat-val { color:#d97706; }
+    .stat-cancel .awb-stat-icon { color:#dc2626; } .stat-cancel .awb-stat-val { color:#dc2626; }
+    .stat-gagal .awb-stat-icon { color:#94a3b8; } .stat-gagal .awb-stat-val { color:#94a3b8; }
+
+    .awb-main-layout { display:flex; gap:14px; align-items:flex-start; }
+    .awb-main-left { flex:1; min-width:0; display:flex; flex-direction:column; gap:12px; }
+    .awb-main-right { width:240px; flex-shrink:0; display:flex; flex-direction:column; gap:0; }
+
+    .awb-card { background:#fff; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; }
+    .awb-card-header { padding:10px 14px; background:#f8fafc; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:700; color:#1e293b; display:flex; justify-content:space-between; align-items:center; }
+    .awb-card-body { padding:14px; }
+    .awb-count-badge { background:#f1f5f9; color:#475569; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; }
+
+    .awb-textarea { width:100%; height:130px; padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; font-family:monospace; resize:vertical; outline:none; line-height:1.6; }
+    .awb-textarea:focus { border-color:#e11d48; box-shadow:0 0 0 2px rgba(225,29,72,0.08); }
+
+    .awb-btn-lacak { flex:1; display:flex; align-items:center; justify-content:center; gap:7px; padding:11px; background:#e11d48; color:#fff; border:none; border-radius:6px; font-size:13px; font-weight:700; cursor:pointer; transition:0.2s; }
+    .awb-btn-lacak:hover { background:#be123c; }
+    .awb-btn-lacak:disabled { background:#94a3b8; cursor:not-allowed; }
+    .awb-btn-lacak-secondary { display:flex; align-items:center; gap:6px; padding:11px 14px; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; transition:0.2s; }
+    .awb-btn-lacak-secondary:hover { background:#e2e8f0; }
+
+    .awb-table-toolbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding:8px 0 6px; }
+    .awb-filter-btn { padding:4px 10px; border-radius:4px; border:1px solid #e2e8f0; background:#f8fafc; font-size:11px; font-weight:600; color:#475569; cursor:pointer; transition:0.15s; }
+    .awb-filter-btn.active { background:#0f172a; color:#fff; border-color:#0f172a; }
+    .awb-filter-btn.filter-jalan.active { background:#dcfce7; color:#15803d; border-color:#86efac; }
+    .awb-filter-btn.filter-belum.active { background:#fef3c7; color:#92400e; border-color:#fde68a; }
+    .awb-filter-btn.filter-cancel.active { background:#fee2e2; color:#dc2626; border-color:#fca5a5; }
+    .awb-filter-btn.filter-gagal.active { background:#f1f5f9; color:#475569; border-color:#cbd5e1; }
+
+    .awb-summary-row { display:flex; justify-content:space-between; align-items:center; padding:9px 14px; border-bottom:1px solid #f8fafc; font-size:12px; font-weight:500; color:#475569; cursor:pointer; transition:background 0.15s; }
+    .awb-summary-row:last-child { border-bottom:none; }
+    .awb-summary-row:hover { background:#f8fafc; }
+    .highlight-jalan:hover { background:#f0fdf4!important; }
+    .highlight-belum:hover { background:#fffbeb!important; }
+    .highlight-cancel:hover { background:#fff1f2!important; }
+
+    /* Status badges di tabel */
+    .badge-jalan { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; background:#dcfce7; color:#15803d; }
+    .badge-belum { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; background:#fef3c7; color:#92400e; }
+    .badge-cancel { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; background:#fee2e2; color:#dc2626; }
+    .badge-gagal { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; background:#f1f5f9; color:#64748b; }
+    .badge-kurir { display:inline-block; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:700; background:#e0f2fe; color:#0369a1; }
+
+    /* Responsive AWB */
+    @media (max-width: 1024px) {
+      .awb-stat-grid { grid-template-columns:repeat(3,1fr); }
+      .awb-main-layout { flex-direction:column; }
+      .awb-main-right { width:100%; }
+    }
+    @media (max-width: 768px) {
+      .awb-stat-grid { grid-template-columns:repeat(2,1fr); }
+      .awb-toolbar { flex-direction:column; align-items:stretch; }
+      .awb-toolbar-right { justify-content:stretch; }
+      .awb-toolbar-right .awb-btn { flex:1; justify-content:center; }
+    }
   </style>
 </head>
 <body>
@@ -354,87 +441,199 @@
       <!-- PAGE: LACAK AWB BULK SYSTEM -->
       <section id="page-lacak-awb" class="page-content">
 
-        <!-- TOOLBAR: Filter Tanggal + Sumber Resi -->
-        <div style="background:#fff; border-radius:8px; border:1px solid #e2e8f0; padding:16px 20px; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
-          <div>
-            <label style="display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:5px; text-transform:uppercase;">Tanggal Tracking</label>
-            <input type="date" id="filter-tanggal" style="padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; outline:none; color:#334155;">
+        <!-- TOOLBAR -->
+        <div class="awb-toolbar">
+          <div class="awb-toolbar-left">
+            <div class="awb-filter-group">
+              <label class="awb-label">Tanggal</label>
+              <input type="date" id="filter-tanggal" class="awb-date-input">
+            </div>
+            <div class="awb-filter-group">
+              <label class="awb-label">Gudang</label>
+              <select id="filter-gudang" class="awb-select">
+                <option value="">Semua Gudang</option>
+                <option value="GUDANG 1">Gudang 1</option>
+                <option value="GUDANG 2">Gudang 2</option>
+                <option value="GUDANG 3">Gudang 3</option>
+              </select>
+            </div>
           </div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button onclick="loadFromSheet()" id="btn-load-sheet" style="display:flex; align-items:center; gap:6px; padding:8px 14px; background:#0f172a; color:#fff; border:none; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer;">
-              <span class="material-symbols-outlined" style="font-size:16px;">table_view</span> Ambil dari Sheet
+          <div class="awb-toolbar-right">
+            <button onclick="loadFromSheet()" id="btn-load-sheet" class="awb-btn awb-btn-dark">
+              <span class="material-symbols-outlined">table_view</span> Ambil dari Sheet
             </button>
-            <button onclick="syncToSheet()" id="btn-sync-sheet" style="display:flex; align-items:center; gap:6px; padding:8px 14px; background:#0284c7; color:#fff; border:none; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer;" disabled>
-              <span class="material-symbols-outlined" style="font-size:16px;">sync</span> Simpan ke Sheet
+            <button onclick="loadBelumJalan()" id="btn-load-belum-jalan" class="awb-btn awb-btn-yellow">
+              <span class="material-symbols-outlined">filter_alt</span> Resi Belum Jalan
+            </button>
+            <button onclick="syncToSheet()" id="btn-sync-sheet" class="awb-btn awb-btn-blue" disabled>
+              <span class="material-symbols-outlined">cloud_upload</span> Simpan ke Sheet
             </button>
           </div>
-          <div id="sheet-status-msg" style="font-size:12px; color:#64748b; align-self:center;"></div>
+        </div>
+        <div id="sheet-status-msg" class="awb-status-msg"></div>
+
+        <!-- STAT CARDS -->
+        <div class="awb-stat-grid">
+          <div class="awb-stat-card stat-total">
+            <div class="awb-stat-icon"><span class="material-symbols-outlined">inventory</span></div>
+            <div class="awb-stat-body">
+              <div class="awb-stat-val" id="cnt-total">0</div>
+              <div class="awb-stat-label">Total Resi</div>
+            </div>
+          </div>
+          <div class="awb-stat-card stat-proses">
+            <div class="awb-stat-icon"><span class="material-symbols-outlined">pending</span></div>
+            <div class="awb-stat-body">
+              <div class="awb-stat-val" id="cnt-belum-cek">0</div>
+              <div class="awb-stat-label">Antrian</div>
+            </div>
+          </div>
+          <div class="awb-stat-card stat-jalan">
+            <div class="awb-stat-icon"><span class="material-symbols-outlined">local_shipping</span></div>
+            <div class="awb-stat-body">
+              <div class="awb-stat-val" id="cnt-sudah-jalan">0</div>
+              <div class="awb-stat-label">Sudah Jalan</div>
+            </div>
+          </div>
+          <div class="awb-stat-card stat-belum">
+            <div class="awb-stat-icon"><span class="material-symbols-outlined">schedule</span></div>
+            <div class="awb-stat-body">
+              <div class="awb-stat-val" id="cnt-belum-jalan">0</div>
+              <div class="awb-stat-label">Belum Jalan</div>
+            </div>
+          </div>
+          <div class="awb-stat-card stat-cancel">
+            <div class="awb-stat-icon"><span class="material-symbols-outlined">cancel</span></div>
+            <div class="awb-stat-body">
+              <div class="awb-stat-val" id="cnt-cancel">0</div>
+              <div class="awb-stat-label">Cancel</div>
+            </div>
+          </div>
+          <div class="awb-stat-card stat-gagal">
+            <div class="awb-stat-icon"><span class="material-symbols-outlined">error</span></div>
+            <div class="awb-stat-body">
+              <div class="awb-stat-val" id="cnt-gagal-cek">0</div>
+              <div class="awb-stat-label">Gagal Cek</div>
+            </div>
+          </div>
         </div>
 
-        <div class="tracking-layout">
-          <div class="tracking-main-left">
+        <div class="awb-main-layout">
+          <!-- KIRI: Input + Tabel -->
+          <div class="awb-main-left">
 
-            <!-- Input Resi Manual -->
-            <div style="background:#fff; padding:20px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:16px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <h2 style="font-size:15px; font-weight:700; color:#1e293b;">LACAK AWB / RESI BULK</h2>
-                <span style="font-size:11px; color:#94a3b8;" id="resi-count-label">0 resi</span>
+            <!-- Input Resi -->
+            <div class="awb-card">
+              <div class="awb-card-header">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span class="material-symbols-outlined" style="color:#e11d48;font-size:18px;">qr_code_scanner</span>
+                  <span>Input Resi</span>
+                </div>
+                <span id="resi-count-label" class="awb-count-badge">0 resi</span>
               </div>
-              <p style="font-size:12px; color:#64748b; margin-bottom:12px;">Paste resi manual atau klik "Ambil dari Sheet" untuk load otomatis.</p>
-              <textarea id="input-awb-bulk" class="textarea-resi" oninput="updateResiCount()" placeholder="Masukkan nomor resi di sini (1 resi per baris)&#10;Contoh:&#10;JX1234567890&#10;JX0987654321"></textarea>
+              <div class="awb-card-body">
+                <textarea id="input-awb-bulk" class="awb-textarea" oninput="updateResiCount()" placeholder="Paste nomor resi (1 per baris)&#10;JX1234567890&#10;JX0987654321&#10;&#10;Atau klik tombol di atas untuk ambil dari Sheet"></textarea>
+                <div style="display:flex;gap:8px;margin-top:10px;">
+                  <button onclick="handleTrackAwbBulk()" id="btn-lacak-now" class="awb-btn-lacak">
+                    <span class="material-symbols-outlined" style="font-size:18px;">search</span>
+                    <span id="btn-lacak-text">Lacak Sekarang</span>
+                  </button>
+                  <button onclick="trackBelumJalanSaja()" id="btn-lacak-belum-jalan" class="awb-btn-lacak-secondary" title="Track ulang hanya resi yang statusnya Belum Jalan">
+                    <span class="material-symbols-outlined" style="font-size:16px;">replay</span>
+                    <span>Track Ulang Belum Jalan</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div id="awb-progress-wrap" style="display:none;" class="awb-card" style="padding:12px 16px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-size:12px;font-weight:600;color:#475569;" id="progress-label">Memproses...</span>
+                <span style="font-size:11px;color:#94a3b8;" id="chunk-progress-text"></span>
+              </div>
+              <div style="background:#f1f5f9;border-radius:4px;height:6px;overflow:hidden;">
+                <div id="awb-progress-bar" style="height:100%;background:#e11d48;border-radius:4px;width:0%;transition:width 0.3s;"></div>
+              </div>
+            </div>
+
+            <!-- Filter Tampilan Tabel -->
+            <div class="awb-table-toolbar">
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="awb-filter-btn active" onclick="setTableFilter('semua', this)">Semua</button>
+                <button class="awb-filter-btn filter-jalan" onclick="setTableFilter('sudah_jalan', this)">✅ Sudah Jalan</button>
+                <button class="awb-filter-btn filter-belum" onclick="setTableFilter('belum_jalan', this)">⏳ Belum Jalan</button>
+                <button class="awb-filter-btn filter-cancel" onclick="setTableFilter('cancel', this)">❌ Cancel</button>
+                <button class="awb-filter-btn filter-gagal" onclick="setTableFilter('gagal', this)">⚠️ Gagal</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="text" id="search-resi" oninput="renderResultsTable()" placeholder="Cari resi..." style="padding:5px 10px;border:1px solid #e2e8f0;border-radius:5px;font-size:12px;outline:none;width:140px;">
+                <span style="font-size:11px;color:#94a3b8;" id="table-count-label"></span>
+              </div>
             </div>
 
             <!-- Tabel Hasil -->
-            <div class="table-container-track">
-              <div style="padding:12px 16px; background:#f8fafc; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:700; color:#1e293b; display:flex; justify-content:space-between; align-items:center;">
-                <span>Detail Status Resi</span>
-                <span id="chunk-progress-text" style="font-size:11px; color:#64748b; font-weight:500;">Ready</span>
-              </div>
+            <div class="table-container-track" style="margin-top:0;">
               <table class="track-table">
                 <thead>
                   <tr>
                     <th style="width:36px;">No</th>
-                    <th>Resi (AWB)</th>
-                    <th>Tanggal</th>
-                    <th>Status Pengiriman</th>
-                    <th>Catatan Terakhir</th>
-                    <th>Update</th>
+                    <th>No Resi</th>
+                    <th>Kurir</th>
+                    <th>Gudang</th>
+                    <th>Status</th>
+                    <th>Jam Scan / Dicatat</th>
+                    <th>Keterangan</th>
+                    <th>Tgl Input</th>
                   </tr>
                 </thead>
                 <tbody id="track-results-body">
-                  <tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:30px;">Belum ada pelacakan.</td></tr>
+                  <tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:40px;">
+                    <span class="material-symbols-outlined" style="font-size:36px;display:block;margin-bottom:8px;color:#cbd5e1;">search</span>
+                    Belum ada data. Ambil dari Sheet atau input resi manual.
+                  </td></tr>
                 </tbody>
               </table>
             </div>
           </div>
 
-          <!-- Sidebar Ringkasan -->
-          <div class="tracking-sidebar-right">
-            <div class="summary-box-title">
-              <span>Ringkasan</span>
-              <span style="font-size:11px; color:#94a3b8; font-weight:400; cursor:pointer;" onclick="resetTrackingSummary()">🔄 Reset</span>
-            </div>
-            <div class="summary-item"><span>Belum cek</span><span id="cnt-belum-cek" style="color:#64748b;">0</span></div>
-            <div class="summary-item"><span>Sedang cek</span><span id="cnt-sedang-cek" style="color:#0284c7;">0</span></div>
-            <div class="summary-item"><span class="txt-kuning">Resi Belum Jalan</span><span id="cnt-belum-jalan" class="txt-kuning">0</span></div>
-            <div class="summary-item"><span class="txt-hijau">Resi Sudah Jalan</span><span id="cnt-sudah-jalan" class="txt-hijau">0</span></div>
-            <div class="summary-item"><span class="txt-merah">Resi Cancel</span><span id="cnt-cancel" class="txt-merah">0</span></div>
-            <div class="summary-item"><span style="color:#64748b;">Gagal Cek</span><span id="cnt-gagal-cek" style="color:#64748b;">0</span></div>
-            <div class="summary-item" style="border-bottom:none; font-weight:700; padding-top:12px;">
-              <span>Total</span><span id="cnt-total" style="color:#0f172a; font-size:14px;">0</span>
+          <!-- KANAN: Ringkasan & History -->
+          <div class="awb-main-right">
+            <div class="awb-card">
+              <div class="awb-card-header">
+                <span>Ringkasan Sesi</span>
+                <button onclick="resetTrackingSummary()" style="background:none;border:none;cursor:pointer;font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:3px;">
+                  <span class="material-symbols-outlined" style="font-size:13px;">refresh</span> Reset
+                </button>
+              </div>
+              <div class="awb-card-body" style="padding:0;">
+                <div class="awb-summary-row"><span>Sedang Diproses</span><span id="cnt-sedang-cek" style="color:#0284c7;font-weight:700;">0</span></div>
+                <div class="awb-summary-row highlight-jalan" onclick="setTableFilter('sudah_jalan')">
+                  <span>✅ Sudah Jalan</span><span id="cnt-sudah-jalan2" style="color:#16a34a;font-weight:700;">0</span>
+                </div>
+                <div class="awb-summary-row highlight-belum" onclick="setTableFilter('belum_jalan')">
+                  <span>⏳ Belum Jalan</span><span id="cnt-belum-jalan2" style="color:#d97706;font-weight:700;">0</span>
+                </div>
+                <div class="awb-summary-row highlight-cancel" onclick="setTableFilter('cancel')">
+                  <span>❌ Cancel</span><span id="cnt-cancel2" style="color:#dc2626;font-weight:700;">0</span>
+                </div>
+                <div class="awb-summary-row" onclick="setTableFilter('gagal')">
+                  <span>⚠️ Gagal Cek</span><span id="cnt-gagal2" style="color:#64748b;font-weight:700;">0</span>
+                </div>
+              </div>
             </div>
 
-            <div style="margin-top:16px; padding-top:14px; border-top:1px solid #f1f5f9;">
-              <label style="font-size:12px; color:#475569; display:flex; align-items:center; gap:8px; cursor:pointer;">
-                <input type="checkbox" id="check-hide-running" onchange="filterResultRows()">
-                <span>Sembunyikan Resi Sudah Jalan</span>
-              </label>
+            <!-- Info Box -->
+            <div class="awb-card" style="margin-top:12px;">
+              <div class="awb-card-header"><span>ℹ️ Panduan</span></div>
+              <div class="awb-card-body" style="font-size:12px;color:#64748b;line-height:1.7;">
+                <p style="margin-bottom:6px;"><b>1.</b> Pilih tanggal → <b>Ambil dari Sheet</b></p>
+                <p style="margin-bottom:6px;"><b>2.</b> Klik <b>Lacak Sekarang</b> untuk track semua resi</p>
+                <p style="margin-bottom:6px;"><b>3.</b> Atau klik <b>Resi Belum Jalan</b> untuk filter otomatis resi manifest dari sheet</p>
+                <p style="margin-bottom:6px;"><b>4.</b> Klik <b>Track Ulang Belum Jalan</b> untuk track hanya resi yang belum jalan</p>
+                <p><b>5.</b> <b>Simpan ke Sheet</b> untuk update data ke Google Sheets</p>
+              </div>
             </div>
-
-            <button id="btn-lacak-now" onclick="handleTrackAwbBulk()" class="btn-lacak-utama" style="margin-top:12px;">
-              <span class="material-symbols-outlined" style="font-size:18px;">search</span>
-              <span>Lacak Sekarang</span>
-            </button>
           </div>
         </div>
       </section>
@@ -966,95 +1165,179 @@
       } catch (err) {}
     }
 
-    // LOGIKA BULK TRACKING AWB
+    // =============================================
+    // TRACKING AWB — FULL REVAMP
+    // =============================================
+    let currentTableFilter = 'semua';
+
+    function detectKurir(resi) {
+      resi = String(resi).toUpperCase().trim();
+      if (/^JX\d+$/.test(resi) || /^JY\d+$/.test(resi)) return 'JNT';
+      if (/^JT\d+$/.test(resi)) return 'JNT';
+      if (/^000\d+$/.test(resi) || /^886\d+$/.test(resi)) return 'SiCepat';
+      if (/^LP\d+$/.test(resi)) return 'Lalamove';
+      if (/^JDID\d+$/.test(resi)) return 'JD ID';
+      if (/^AWB\d+$/.test(resi) || /^10\d{10}$/.test(resi)) return 'Anteraja';
+      if (/^TGK\d+$/.test(resi)) return 'Tiki';
+      if (/^\d{20,}$/.test(resi)) return 'Shopee Express';
+      if (/^IDEX\d+$/.test(resi)) return 'ID Express';
+      if (/^PCP\d+$/.test(resi)) return 'Paxel';
+      return 'J&T';
+    }
+
+    function kategorikanStatus(status) {
+      const s = String(status || '').toLowerCase();
+      if (!status || s.includes('gagal') || s.includes('error') || s === '-') return 'gagal';
+      if (s.includes('cancel') || s.includes('batal') || s.includes('cancelled')) return 'cancel';
+      if (s.includes('manifest') || s.includes('picking') || s.includes('allocated') || s.includes('disimpan')) return 'belum_jalan';
+      return 'sudah_jalan';
+    }
+
     function updateResiCount() {
       const lines = document.getElementById('input-awb-bulk').value.split('\n').map(s => s.trim()).filter(Boolean);
       document.getElementById('resi-count-label').innerText = `${lines.length} resi`;
     }
 
-    function resetTrackingSummary() {
-      document.getElementById('cnt-total').innerText = '0';
-      document.getElementById('cnt-belum-cek').innerText = '0';
-      document.getElementById('cnt-sedang-cek').innerText = '0';
-      document.getElementById('cnt-belum-jalan').innerText = '0';
-      document.getElementById('cnt-sudah-jalan').innerText = '0';
-      document.getElementById('cnt-cancel').innerText = '0';
-      document.getElementById('cnt-gagal-cek').innerText = '0';
-      document.getElementById('track-results-body').innerHTML = `<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:30px;">Belum ada pelacakan.</td></tr>`;
-      document.getElementById('btn-sync-sheet').disabled = true;
-      document.getElementById('sheet-status-msg').innerText = '';
-      allTrackedData = [];
+    function setTableFilter(filter, btnEl) {
+      currentTableFilter = filter;
+      document.querySelectorAll('.awb-filter-btn').forEach(b => b.classList.remove('active'));
+      if (btnEl) btnEl.classList.add('active');
+      else {
+        document.querySelectorAll('.awb-filter-btn').forEach(b => {
+          if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(filter)) b.classList.add('active');
+        });
+      }
+      renderResultsTable();
     }
 
-    // =============================================
-    // GOOGLE SHEETS INTEGRATION
-    // =============================================
+    function hitungSummary() {
+      let jalan = 0, belum = 0, cancel = 0, gagal = 0;
+      allTrackedData.forEach(d => {
+        if (d.category === 'sudah_jalan') jalan++;
+        else if (d.category === 'belum_jalan') belum++;
+        else if (d.category === 'cancel') cancel++;
+        else gagal++;
+      });
+      const total = allTrackedData.length;
+      document.getElementById('cnt-total').innerText = total;
+      document.getElementById('cnt-sudah-jalan').innerText = jalan;
+      document.getElementById('cnt-belum-jalan').innerText = belum;
+      document.getElementById('cnt-cancel').innerText = cancel;
+      document.getElementById('cnt-gagal-cek').innerText = gagal;
+      document.getElementById('cnt-belum-cek').innerText = '0';
+      document.getElementById('cnt-sedang-cek').innerText = '0';
+      // Sidebar summary
+      if (document.getElementById('cnt-sudah-jalan2')) document.getElementById('cnt-sudah-jalan2').innerText = jalan;
+      if (document.getElementById('cnt-belum-jalan2')) document.getElementById('cnt-belum-jalan2').innerText = belum;
+      if (document.getElementById('cnt-cancel2')) document.getElementById('cnt-cancel2').innerText = cancel;
+      if (document.getElementById('cnt-gagal2')) document.getElementById('cnt-gagal2').innerText = gagal;
+    }
+
+    function resetTrackingSummary() {
+      allTrackedData = [];
+      ['cnt-total','cnt-belum-cek','cnt-sedang-cek','cnt-sudah-jalan','cnt-belum-jalan','cnt-cancel','cnt-gagal-cek',
+       'cnt-sudah-jalan2','cnt-belum-jalan2','cnt-cancel2','cnt-gagal2'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.innerText = '0';
+      });
+      document.getElementById('track-results-body').innerHTML = `<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:40px;">Data direset.</td></tr>`;
+      document.getElementById('btn-sync-sheet').disabled = true;
+      document.getElementById('sheet-status-msg').innerText = '';
+      document.getElementById('awb-progress-wrap').style.display = 'none';
+      if (document.getElementById('table-count-label')) document.getElementById('table-count-label').innerText = '';
+    }
+
+    // Load semua resi dari sheet berdasarkan tanggal
     async function loadFromSheet() {
       const tanggal = document.getElementById('filter-tanggal').value;
       if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
-
+      const gudang = document.getElementById('filter-gudang').value;
       const btn = document.getElementById('btn-load-sheet');
       const msg = document.getElementById('sheet-status-msg');
       btn.disabled = true;
-      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px;animation:spin 1s linear infinite;">sync</span> Memuat...`;
+      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Memuat...`;
       msg.innerText = 'Mengambil data dari Sheet...';
       msg.style.color = '#0284c7';
-
       try {
         const token = sessionStorage.getItem('sessionToken');
-        const res = await fetch(`/api/sheet/load?tanggal=${tanggal}`, {
+        const res = await fetch(`/api/sheet/load?tanggal=${tanggal}&gudang=${encodeURIComponent(gudang)}`, {
           headers: { 'x-session-token': token }
         });
         const data = await res.json();
-
-        if (!data.success) {
-          msg.innerText = data.message || 'Gagal ambil data dari Sheet.';
-          msg.style.color = '#ef4444';
-          return;
-        }
-
+        if (!data.success) { msg.innerText = data.message || 'Gagal.'; msg.style.color = '#ef4444'; return; }
         const resiList = data.rows.map(r => r.resi).filter(Boolean);
         document.getElementById('input-awb-bulk').value = resiList.join('\n');
         updateResiCount();
-
-        // Jika ada data status yang sudah tersimpan, tampilkan langsung
-        if (data.rows.some(r => r.status)) {
-          allTrackedData = data.rows.map(r => {
-            const statusLower = String(r.status || '').toLowerCase();
-            let category = 'sudah_jalan';
-            if (statusLower.includes('picking') || statusLower.includes('manifest') || statusLower.includes('allocated')) category = 'belum_jalan';
-            else if (statusLower.includes('cancel') || statusLower.includes('batal')) category = 'cancel';
-            else if (statusLower.includes('gagal') || statusLower.includes('error') || !r.status) category = 'gagal';
-            return { resi: r.resi, tanggal: r.tanggal, status: r.status || '-', note: r.catatan || '-', waktuUpdate: r.waktuUpdate || '-', category };
-          });
-          hitungSummary();
-          renderResultsTable();
-          document.getElementById('btn-sync-sheet').disabled = false;
-        }
-
-        msg.innerText = `✅ ${resiList.length} resi berhasil dimuat dari Sheet.`;
+        // Tampilkan data yang sudah ada dari sheet
+        allTrackedData = data.rows.map(r => ({
+          resi: r.resi, gudang: r.gudang || '', kurir: r.kurir || detectKurir(r.resi),
+          tanggal: r.tanggal, status: r.status || '', keterangan: r.keterangan || '',
+          tglInput: r.tglInput || '', jamScan: r.jamScan || '', tglDicatat: r.tglDicatat || '',
+          category: kategorikanStatus(r.status)
+        }));
+        hitungSummary(); renderResultsTable();
+        document.getElementById('btn-sync-sheet').disabled = false;
+        msg.innerText = `✅ ${resiList.length} resi dimuat dari Sheet.`;
         msg.style.color = '#16a34a';
       } catch (err) {
-        msg.innerText = 'Gagal terhubung ke server.';
-        msg.style.color = '#ef4444';
+        msg.innerText = 'Gagal terhubung ke server.'; msg.style.color = '#ef4444';
       } finally {
         btn.disabled = false;
-        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px;">table_view</span> Ambil dari Sheet`;
+        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;">table_view</span> Ambil dari Sheet`;
       }
+    }
+
+    // Load hanya resi belum jalan (status manifest) dari sheet
+    async function loadBelumJalan() {
+      const tanggal = document.getElementById('filter-tanggal').value;
+      if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
+      const gudang = document.getElementById('filter-gudang').value;
+      const btn = document.getElementById('btn-load-belum-jalan');
+      const msg = document.getElementById('sheet-status-msg');
+      btn.disabled = true;
+      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Memuat...`;
+      msg.innerText = 'Mengambil resi belum jalan dari Sheet...';
+      msg.style.color = '#d97706';
+      try {
+        const token = sessionStorage.getItem('sessionToken');
+        const res = await fetch(`/api/sheet/load?tanggal=${tanggal}&gudang=${encodeURIComponent(gudang)}&filter=belum_jalan`, {
+          headers: { 'x-session-token': token }
+        });
+        const data = await res.json();
+        if (!data.success) { msg.innerText = data.message || 'Gagal.'; msg.style.color = '#ef4444'; return; }
+        const resiList = data.rows.map(r => r.resi).filter(Boolean);
+        if (resiList.length === 0) { msg.innerText = '✅ Tidak ada resi belum jalan untuk tanggal ini.'; msg.style.color = '#16a34a'; return; }
+        document.getElementById('input-awb-bulk').value = resiList.join('\n');
+        updateResiCount();
+        msg.innerText = `⏳ ${resiList.length} resi belum jalan siap di-track ulang.`;
+        msg.style.color = '#d97706';
+      } catch (err) {
+        msg.innerText = 'Gagal terhubung ke server.'; msg.style.color = '#ef4444';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;">filter_alt</span> Resi Belum Jalan`;
+      }
+    }
+
+    // Track ulang hanya resi yang statusnya belum jalan di allTrackedData
+    async function trackBelumJalanSaja() {
+      const belumJalanList = allTrackedData.filter(d => d.category === 'belum_jalan').map(d => d.resi);
+      if (belumJalanList.length === 0) return alert('Tidak ada resi belum jalan untuk di-track ulang.');
+      document.getElementById('input-awb-bulk').value = belumJalanList.join('\n');
+      updateResiCount();
+      // Hapus data belum jalan dari allTrackedData supaya tidak duplikat
+      allTrackedData = allTrackedData.filter(d => d.category !== 'belum_jalan');
+      await handleTrackAwbBulk();
     }
 
     async function syncToSheet() {
       if (allTrackedData.length === 0) return alert('Tidak ada data untuk disimpan.');
       const tanggal = document.getElementById('filter-tanggal').value;
       if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
-
       const btn = document.getElementById('btn-sync-sheet');
       const msg = document.getElementById('sheet-status-msg');
       btn.disabled = true;
-      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px;animation:spin 1s linear infinite;">sync</span> Menyimpan...`;
-      msg.innerText = 'Mengirim data ke Sheet...';
-      msg.style.color = '#0284c7';
-
+      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Menyimpan...`;
+      msg.innerText = 'Mengirim ke Sheet...'; msg.style.color = '#0284c7';
       try {
         const token = sessionStorage.getItem('sessionToken');
         const res = await fetch('/api/sheet/sync', {
@@ -1063,181 +1346,145 @@
           body: JSON.stringify({ tanggal, data: allTrackedData })
         });
         const result = await res.json();
-
-        if (result.success) {
-          msg.innerText = `✅ ${allTrackedData.length} data berhasil disimpan ke Sheet.`;
-          msg.style.color = '#16a34a';
-        } else {
-          msg.innerText = result.message || 'Gagal simpan ke Sheet.';
-          msg.style.color = '#ef4444';
-        }
-      } catch (err) {
-        msg.innerText = 'Gagal terhubung ke server.';
-        msg.style.color = '#ef4444';
-      } finally {
+        if (result.success) { msg.innerText = `✅ ${allTrackedData.length} data tersimpan ke Sheet.`; msg.style.color = '#16a34a'; }
+        else { msg.innerText = result.message || 'Gagal.'; msg.style.color = '#ef4444'; }
+      } catch { msg.innerText = 'Gagal terhubung ke server.'; msg.style.color = '#ef4444'; }
+      finally {
         btn.disabled = false;
-        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px;">sync</span> Simpan ke Sheet`;
+        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;">cloud_upload</span> Simpan ke Sheet`;
       }
-    }
-
-    function hitungSummary() {
-      let belumJalan = 0, sudahJalan = 0, cancel = 0, gagal = 0;
-      allTrackedData.forEach(item => {
-        if (item.category === 'belum_jalan') belumJalan++;
-        else if (item.category === 'cancel') cancel++;
-        else if (item.category === 'gagal') gagal++;
-        else sudahJalan++;
-      });
-      document.getElementById('cnt-total').innerText = allTrackedData.length;
-      document.getElementById('cnt-belum-cek').innerText = '0';
-      document.getElementById('cnt-sedang-cek').innerText = '0';
-      document.getElementById('cnt-belum-jalan').innerText = belumJalan;
-      document.getElementById('cnt-sudah-jalan').innerText = sudahJalan;
-      document.getElementById('cnt-cancel').innerText = cancel;
-      document.getElementById('cnt-gagal-cek').innerText = gagal;
     }
 
     async function handleTrackAwbBulk() {
       const rawText = document.getElementById('input-awb-bulk').value.trim();
       if (!rawText) return alert('Silakan masukkan nomor resi terlebih dahulu!');
-
       const resiList = rawText.split('\n').map(s => s.trim().toUpperCase()).filter(Boolean);
-      if (resiList.length === 0) return alert('Tidak ada resi valid yang terdeteksi!');
+      if (resiList.length === 0) return alert('Tidak ada resi valid!');
 
       const btn = document.getElementById('btn-lacak-now');
       btn.disabled = true;
-      btn.innerHTML = `<span class="material-symbols-outlined" style="animation: spin 1s linear infinite;">sync</span> Sedang Melacak...`;
+      document.getElementById('btn-lacak-text').innerText = 'Sedang Melacak...';
+      document.getElementById('awb-progress-wrap').style.display = 'block';
 
-      allTrackedData = [];
       const totalResi = resiList.length;
-
-      let cntBelumJalan = 0;
-      let cntSudahJalan = 0;
-      let cntCancel = 0;
-      let cntGagalCek = 0;
+      let processed = 0;
 
       document.getElementById('cnt-total').innerText = totalResi;
       document.getElementById('cnt-belum-cek').innerText = totalResi;
-      document.getElementById('cnt-sedang-cek').innerText = '0';
-      document.getElementById('cnt-belum-jalan').innerText = '0';
-      document.getElementById('cnt-sudah-jalan').innerText = '0';
-      document.getElementById('cnt-cancel').innerText = '0';
-      document.getElementById('cnt-gagal-cek').innerText = '0';
+      ['cnt-sedang-cek','cnt-sudah-jalan','cnt-belum-jalan','cnt-cancel','cnt-gagal-cek',
+       'cnt-sudah-jalan2','cnt-belum-jalan2','cnt-cancel2','cnt-gagal2'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.innerText = '0';
+      });
 
+      const tanggalInput = document.getElementById('filter-tanggal').value || new Date().toISOString().slice(0,10);
       const CHUNK_SIZE = 50;
       const chunks = [];
-      for (let i = 0; i < resiList.length; i += CHUNK_SIZE) {
-        chunks.push(resiList.slice(i, i + CHUNK_SIZE));
-      }
+      for (let i = 0; i < resiList.length; i += CHUNK_SIZE) chunks.push(resiList.slice(i, i + CHUNK_SIZE));
 
-      let processedCount = 0;
-      document.getElementById('track-results-body').innerHTML = '';
-
+      const newData = [];
       for (let i = 0; i < chunks.length; i++) {
-        const currentChunk = chunks[i];
-        
-        document.getElementById('cnt-sedang-cek').innerText = currentChunk.length;
-        document.getElementById('cnt-belum-cek').innerText = totalResi - processedCount;
-        document.getElementById('chunk-progress-text').innerText = `Memproses Batch ${i + 1} dari ${chunks.length} (${processedCount}/${totalResi} Selesai)`;
+        const chunk = chunks[i];
+        document.getElementById('cnt-sedang-cek').innerText = chunk.length;
+        document.getElementById('cnt-belum-cek').innerText = totalResi - processed;
+        document.getElementById('chunk-progress-text').innerText = `Batch ${i+1}/${chunks.length} (${processed}/${totalResi})`;
+        document.getElementById('awb-progress-bar').style.width = `${Math.round((processed/totalResi)*100)}%`;
+        document.getElementById('progress-label').innerText = `Memproses ${processed+1}–${Math.min(processed+chunk.length, totalResi)} dari ${totalResi} resi...`;
 
         try {
           const res = await fetch('/api/track-awb-chunk', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ batchResi: currentChunk, kurir: 'jnt' })
+            body: JSON.stringify({ batchResi: chunk })
           });
-          
-          const resultData = await res.json();
-          const items = resultData.data || [];
-
-          items.forEach(item => {
-            const statusLower = String(item.status || '').toLowerCase();
-            
-            const isBelumJalan = statusLower.includes("picking") || statusLower.includes("manifest") || statusLower.includes("allocated");
-            const isCancel = statusLower.includes("cancel") || statusLower.includes("batal");
-            const isGagal = statusLower.includes("gagal") || statusLower.includes("error");
-
-            let category = 'sudah_jalan';
-            if (isGagal) { category = 'gagal'; cntGagalCek++; }
-            else if (isCancel) { category = 'cancel'; cntCancel++; }
-            else if (isBelumJalan) { category = 'belum_jalan'; cntBelumJalan++; }
-            else { category = 'sudah_jalan'; cntSudahJalan++; }
-
-            const tanggalInput = document.getElementById('filter-tanggal').value || new Date().toISOString().slice(0, 10);
-            const waktuNow = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-
-            allTrackedData.push({
-              resi: item.resi,
-              tanggal: tanggalInput,
-              status: item.status,
-              note: item.note,
-              waktuUpdate: waktuNow,
-              category
+          const result = await res.json();
+          (result.data || []).forEach(item => {
+            if (!item) return;
+            const cat = kategorikanStatus(item.status);
+            const waktuNow = new Date().toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+            newData.push({
+              resi: item.resi, gudang: '', kurir: detectKurir(item.resi),
+              tanggal: tanggalInput, status: item.status || '-',
+              keterangan: item.note || '-', tglInput: tanggalInput,
+              jamScan: item.jamScan || waktuNow,
+              tglDicatat: new Date().toLocaleString('id-ID'),
+              histori: item.history || [],
+              category: cat
             });
           });
-
-        } catch (err) {
-          currentChunk.forEach(r => {
-            cntGagalCek++;
-            allTrackedData.push({ resi: r, status: 'Error Koneksi', note: 'Gagal menembak API', category: 'gagal' });
-          });
+        } catch {
+          chunk.forEach(r => newData.push({
+            resi: r, gudang:'', kurir: detectKurir(r), tanggal: tanggalInput,
+            status: 'Error Koneksi', keterangan: 'Gagal menghubungi API',
+            tglInput: tanggalInput, jamScan: '-', tglDicatat: new Date().toLocaleString('id-ID'),
+            histori: [], category: 'gagal'
+          }));
         }
-
-        processedCount += currentChunk.length;
-        
-        document.getElementById('cnt-belum-jalan').innerText = cntBelumJalan;
-        document.getElementById('cnt-sudah-jalan').innerText = cntSudahJalan;
-        document.getElementById('cnt-cancel').innerText = cntCancel;
-        document.getElementById('cnt-gagal-cek').innerText = cntGagalCek;
-        
-        renderResultsTable();
+        processed += chunk.length;
+        // Merge newData ke allTrackedData (update jika resi sudah ada)
+        newData.forEach(nd => {
+          const idx = allTrackedData.findIndex(d => d.resi === nd.resi);
+          if (idx >= 0) allTrackedData[idx] = nd; else allTrackedData.push(nd);
+        });
+        hitungSummary(); renderResultsTable();
       }
 
-      document.getElementById('cnt-sedang-cek').innerText = '0';
-      document.getElementById('cnt-belum-cek').innerText = '0';
-      document.getElementById('chunk-progress-text').innerText = `Selesai (${totalResi}/${totalResi} Resi Dimuat)`;
+      document.getElementById('awb-progress-bar').style.width = '100%';
+      document.getElementById('chunk-progress-text').innerText = `Selesai (${totalResi}/${totalResi})`;
+      document.getElementById('progress-label').innerText = 'Tracking selesai!';
       document.getElementById('btn-sync-sheet').disabled = false;
-
       btn.disabled = false;
-      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size: 18px;">search</span><span>Lacak Sekarang</span>`;
+      document.getElementById('btn-lacak-text').innerText = 'Lacak Sekarang';
     }
 
     function renderResultsTable() {
       const tbody = document.getElementById('track-results-body');
-      const hideRunning = document.getElementById('check-hide-running').checked;
-
+      const searchVal = (document.getElementById('search-resi')?.value || '').toLowerCase();
       const filtered = allTrackedData.filter(item => {
-        if (hideRunning && item.category === 'sudah_jalan') return false;
+        if (currentTableFilter !== 'semua' && item.category !== currentTableFilter) return false;
+        if (searchVal && !item.resi.toLowerCase().includes(searchVal)) return false;
         return true;
       });
 
+      if (document.getElementById('table-count-label'))
+        document.getElementById('table-count-label').innerText = `${filtered.length} data`;
+
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Tidak ada data yang ditunjukkan dengan filter ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:30px;">Tidak ada data untuk filter ini.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = filtered.map((item, idx) => {
-        let statusBadge = `<span class="txt-hijau">${item.status}</span>`;
-        if (item.category === 'belum_jalan') statusBadge = `<span class="txt-kuning">${item.status}</span>`;
-        if (item.category === 'cancel') statusBadge = `<span class="txt-merah">${item.status}</span>`;
-        if (item.category === 'gagal') statusBadge = `<span style="color:#64748b;">${item.status}</span>`;
+        let badge = `<span class="badge-jalan">${item.status}</span>`;
+        if (item.category === 'belum_jalan') badge = `<span class="badge-belum">${item.status}</span>`;
+        else if (item.category === 'cancel') badge = `<span class="badge-cancel">${item.status}</span>`;
+        else if (item.category === 'gagal') badge = `<span class="badge-gagal">${item.status}</span>`;
 
-        return `
-          <tr>
-            <td>${idx + 1}</td>
-            <td style="font-family:monospace; font-weight:700;">${item.resi}</td>
-            <td style="color:#64748b; font-size:11px;">${item.tanggal || '-'}</td>
-            <td>${statusBadge}</td>
-            <td style="color:#64748b;">${item.note || '-'}</td>
-            <td style="color:#94a3b8; font-size:11px;">${item.waktuUpdate || '-'}</td>
-          </tr>
-        `;
+        const kurirBadge = item.kurir ? `<span class="badge-kurir">${item.kurir}</span>` : '-';
+
+        // Jam scan dari histori jika ada
+        let jamScanDisplay = item.jamScan || '-';
+        if (item.histori && item.histori.length > 0) {
+          const lastH = item.histori[item.histori.length - 1];
+          if (lastH && lastH.updated_at) {
+            const d = new Date(lastH.updated_at);
+            jamScanDisplay = d.toLocaleString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+          }
+        }
+
+        return `<tr>
+          <td style="color:#94a3b8;">${idx + 1}</td>
+          <td style="font-family:monospace;font-weight:700;font-size:12px;">${item.resi}</td>
+          <td>${kurirBadge}</td>
+          <td style="font-size:11px;color:#64748b;">${item.gudang || '-'}</td>
+          <td>${badge}</td>
+          <td style="font-size:11px;color:#475569;">${jamScanDisplay}</td>
+          <td style="font-size:11px;color:#64748b;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.keterangan}">${item.keterangan || '-'}</td>
+          <td style="font-size:11px;color:#94a3b8;">${item.tglDicatat || item.tanggal || '-'}</td>
+        </tr>`;
       }).join('');
     }
 
-    function filterResultRows() {
-      renderResultsTable();
-    }
+    function filterResultRows() { renderResultsTable(); }
 
     document.addEventListener('DOMContentLoaded', checkAuthStatus);
 
