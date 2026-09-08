@@ -443,6 +443,63 @@ app.put('/api/users/:username/password', requireSuperuser, (req, res) => {
   res.json({ success: true, message: `Password akun '${target}' berhasil diubah.` });
 });
 
+// =============================================
+// GOOGLE SHEETS INTEGRATION
+// =============================================
+const SHEET_SCRIPT_URL = process.env.SHEET_SCRIPT_URL || '';
+
+// GET /api/sheet/load?tanggal=YYYY-MM-DD
+app.get('/api/sheet/load', requireAuth, async (req, res) => {
+  const { tanggal } = req.query;
+  if (!tanggal) return res.status(400).json({ success: false, message: 'Parameter tanggal wajib diisi.' });
+  if (!SHEET_SCRIPT_URL) return res.status(500).json({ success: false, message: 'SHEET_SCRIPT_URL belum dikonfigurasi di Railway Variables.' });
+
+  try {
+    const response = await axios.get(SHEET_SCRIPT_URL, {
+      params: { action: 'load', tanggal },
+      timeout: 15000
+    });
+
+    const data = response.data;
+    if (!data.success) return res.json({ success: false, message: data.message || 'Gagal ambil data dari Sheet.' });
+
+    res.json({ success: true, rows: data.rows || [] });
+  } catch (err) {
+    console.error('Sheet load error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal terhubung ke Google Apps Script.' });
+  }
+});
+
+// POST /api/sheet/sync
+app.post('/api/sheet/sync', requireAuth, async (req, res) => {
+  const { tanggal, data: trackData } = req.body;
+  if (!tanggal || !Array.isArray(trackData)) return res.status(400).json({ success: false, message: 'Data tidak valid.' });
+  if (!SHEET_SCRIPT_URL) return res.status(500).json({ success: false, message: 'SHEET_SCRIPT_URL belum dikonfigurasi di Railway Variables.' });
+
+  try {
+    const response = await axios.post(SHEET_SCRIPT_URL, {
+      action: 'sync',
+      tanggal,
+      rows: trackData.map(item => ({
+        tanggal: item.tanggal,
+        resi: item.resi,
+        status: item.status,
+        catatan: item.note,
+        waktuUpdate: item.waktuUpdate
+      }))
+    }, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 30000
+    });
+
+    const result = response.data;
+    res.json({ success: result.success, message: result.message || 'Selesai.' });
+  } catch (err) {
+    console.error('Sheet sync error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal terhubung ke Google Apps Script.' });
+  }
+});
+
 // Fallback route
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
