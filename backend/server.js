@@ -209,41 +209,71 @@ app.post('/api/track-awb-chunk', async (req, res) => {
     return res.json({ success: false, data: [] });
   }
 
+  // Cari waktu status setelah manifest dari history
+  function extractTglDicatat(history) {
+    if (!Array.isArray(history) || history.length === 0) return '';
+
+    // Cari index event manifest
+    let manifestIdx = -1;
+    for (let i = 0; i < history.length; i++) {
+      const note = String(history[i].note || '').toLowerCase();
+      if (note.includes('manifest') || note.includes('manifes')) { manifestIdx = i; break; }
+    }
+
+    // Ambil event SETELAH manifest (jam status berubah)
+    let targetEvent = null;
+    if (manifestIdx >= 0 && history[manifestIdx + 1]) {
+      targetEvent = history[manifestIdx + 1];
+    } else {
+      // Kalau tidak ada manifest atau tidak ada event setelahnya, ambil event terakhir
+      targetEvent = history[history.length - 1];
+    }
+
+    if (targetEvent && targetEvent.updated_at) {
+      const d = new Date(targetEvent.updated_at);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString('id-ID', {
+          timeZone: 'Asia/Jakarta',
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+      }
+    }
+    return '';
+  }
+
   const promises = batchResi.map(async (r) => {
     const resiClean = String(r).trim();
     if (!resiClean) return null;
 
     try {
       const response = await axios.get(`https://api.biteship.com/v1/trackings/${resiClean}/couriers/${kurir}`, {
-        headers: {
-          'Authorization': BITESHIP_API_KEY,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Authorization': BITESHIP_API_KEY, 'Content-Type': 'application/json' },
         timeout: 12000
       });
 
       const data = response.data;
       let status = "Unknown";
       let note = "Data dimuat";
+      let tglDicatat = "";
+      let courierName = "";
 
       if (data && data.success) {
         status = data.status || "Unknown";
         const history = data.history || [];
         note = (history.length > 0) ? history[history.length - 1].note : "Data dimuat";
+        tglDicatat = extractTglDicatat(history);
+        courierName = data.courier?.company || data.courier?.name || "";
       } else {
         status = "Gagal API";
         note = data.error || data.message || "Gagal mendapatkan data";
       }
 
-      return { resi: resiClean, status: status, note: note, success: true };
+      return { resi: resiClean, status, note, tglDicatat, kurir: courierName, success: true };
     } catch (err) {
-      // Fallback ke endpoint pelacakan standar jika endpoint spesifik kurir melempar error
       try {
         const fallbackRes = await axios.get(`https://api.biteship.com/v1/trackings/${resiClean}`, {
-          headers: {
-            'Authorization': BITESHIP_API_KEY,
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Authorization': BITESHIP_API_KEY, 'Content-Type': 'application/json' },
           timeout: 12000
         });
 
@@ -251,10 +281,12 @@ app.post('/api/track-awb-chunk', async (req, res) => {
         const status = data.status || "Unknown";
         const history = data.history || [];
         const note = (history.length > 0) ? history[history.length - 1].note : "Data dimuat";
-        return { resi: resiClean, status: status, note: note, success: true };
+        const tglDicatat = extractTglDicatat(history);
+        const courierName = data.courier?.company || data.courier?.name || "";
+        return { resi: resiClean, status, note, tglDicatat, kurir: courierName, success: true };
       } catch (fallbackErr) {
         const noteErr = fallbackErr.response?.data?.message || fallbackErr.response?.data?.error || "Gagal API / Resi Tidak Ditemukan";
-        return { resi: resiClean, status: "Gagal Cek", note: noteErr, success: false };
+        return { resi: resiClean, status: "Gagal Cek", note: noteErr, tglDicatat: '', kurir: '', success: false };
       }
     }
   });
@@ -483,11 +515,10 @@ app.post('/api/sheet/sync', requireAuth, async (req, res) => {
         gudang     : item.gudang      || '',
         resi       : item.resi        || '',
         kurir      : item.kurir       || '',
+        status     : item.status      || '',
         keterangan : item.keterangan  || item.note || '',
         tglInput   : item.tglInput    || tanggal,
-        jamScan    : item.jamScan     || '',
-        tglDicatat : item.tglDicatat  || new Date().toLocaleString('id-ID'),
-        status     : item.status      || ''
+        tglDicatat : item.tglDicatat  || ''
       }))
     }, { headers: { 'Content-Type': 'application/json' }, timeout: 30000 });
 
