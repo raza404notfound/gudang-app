@@ -248,7 +248,7 @@
   <!-- SIDEBAR OVERLAY (mobile) -->
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
-  <!-- MODAL LOGIN / REGISTER -->
+  <!-- MODAL LOGIN -->
   <div id="auth-modal" class="login-overlay">
     <div class="login-card">
       <h3 id="auth-title">Masuk Administrator</h3>
@@ -263,7 +263,6 @@
           <input type="password" id="auth-password" name="password" autocomplete="current-password" required placeholder="Masukkan password">
         </div>
         <button type="submit" class="btn-auth" id="auth-submit-btn">Login</button>
-        <span class="toggle-auth" id="auth-toggle" onclick="toggleAuthMode()">Belum punya akun? Buat akun baru</span>
       </form>
     </div>
   </div>
@@ -293,6 +292,11 @@
       <a class="nav-item" onclick="switchTab('pusat-inventory', this)"><span class="material-symbols-outlined">inventory_2</span><span>Pusat Inventory</span></a>
       <a class="nav-item" onclick="switchTab('barang-bermasalah', this)"><span class="material-symbols-outlined">history_toggle_off</span><span>Barang Bermasalah</span></a>
       <a class="nav-item" onclick="switchTab('lacak-awb', this)"><span class="material-symbols-outlined">local_shipping</span><span>Lacak AWB</span></a>
+    </div>
+
+    <div class="nav-section">
+      <div class="section-title">PENGATURAN</div>
+      <a class="nav-item" id="nav-kelola-akun" style="display:none;" onclick="switchTab('kelola-akun', this); loadUserList();"><span class="material-symbols-outlined">manage_accounts</span><span>Kelola Akun</span></a>
     </div>
   </aside>
 
@@ -436,11 +440,65 @@
         </div>
       </section>
 
+      <!-- PAGE: KELOLA AKUN (Superuser only) -->
+      <section id="page-kelola-akun" class="page-content">
+        <div style="max-width: 720px;">
+
+          <!-- Form Buat Akun Baru -->
+          <div style="background:#fff; border-radius:8px; border:1px solid #e2e8f0; padding:20px; margin-bottom:20px;">
+            <h2 style="font-size:15px; font-weight:700; color:#1e293b; margin-bottom:4px;">Buat Akun Baru</h2>
+            <p style="font-size:12px; color:#64748b; margin-bottom:16px;">Akun baru hanya bisa dibuat oleh superuser.</p>
+            <form onsubmit="handleCreateUser(event)" style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
+              <div style="flex:1; min-width:150px;">
+                <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Username</label>
+                <input id="new-username" type="text" required placeholder="username baru" style="width:100%; padding:9px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; outline:none;">
+              </div>
+              <div style="flex:1; min-width:150px;">
+                <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Password</label>
+                <input id="new-password" type="password" required placeholder="password baru" style="width:100%; padding:9px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; outline:none;">
+              </div>
+              <div style="min-width:120px;">
+                <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Role</label>
+                <select id="new-role" style="width:100%; padding:9px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; outline:none; background:#fff;">
+                  <option value="admin">Admin</option>
+                  <option value="superuser">Superuser</option>
+                </select>
+              </div>
+              <div>
+                <button id="btn-create-user" type="submit" style="padding:9px 18px; background:#e11d48; color:#fff; border:none; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer;">Buat Akun</button>
+              </div>
+            </form>
+            <p id="create-user-msg" style="font-size:12px; margin-top:10px; min-height:16px;"></p>
+          </div>
+
+          <!-- Daftar Akun -->
+          <div style="background:#fff; border-radius:8px; border:1px solid #e2e8f0; overflow:hidden;">
+            <div style="padding:12px 16px; background:#f8fafc; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:700; color:#1e293b; display:flex; justify-content:space-between; align-items:center;">
+              <span>Daftar Akun Terdaftar</span>
+              <button onclick="loadUserList()" style="background:none; border:none; cursor:pointer; color:#64748b; font-size:12px; display:flex; align-items:center; gap:4px;"><span class="material-symbols-outlined" style="font-size:14px;">refresh</span> Refresh</button>
+            </div>
+            <table style="width:100%; border-collapse:collapse; font-size:12px;">
+              <thead>
+                <tr>
+                  <th style="padding:9px 14px; text-align:left; background:#f8fafc; color:#64748b; font-weight:600; border-bottom:1px solid #e2e8f0;">Username</th>
+                  <th style="padding:9px 14px; text-align:left; background:#f8fafc; color:#64748b; font-weight:600; border-bottom:1px solid #e2e8f0;">Role</th>
+                  <th style="padding:9px 14px; text-align:left; background:#f8fafc; color:#64748b; font-weight:600; border-bottom:1px solid #e2e8f0;">Dibuat</th>
+                  <th style="padding:9px 14px; text-align:left; background:#f8fafc; color:#64748b; font-weight:600; border-bottom:1px solid #e2e8f0;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="user-list-body">
+                <tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:30px;">Belum ada data.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </section>
+
     </div>
   </main>
 
   <script>
-    let isRegisterMode = false;
     let lastFetchTimeInbound = null;
     let lastFetchTimeOutbound = null;
     let allTrackedData = [];
@@ -472,59 +530,190 @@
       'cancel': 'Batal'
     };
 
-    function getStoredUsers() { return JSON.parse(localStorage.getItem('app_users_db') || '{}'); }
-    function saveUser(username, password) {
-      const users = getStoredUsers();
-      users[username] = password;
-      localStorage.setItem('app_users_db', JSON.stringify(users));
-    }
+    // =============================================
+    // AUTH — Server-based (Railway), bukan localStorage
+    // =============================================
+    let currentSessionToken = sessionStorage.getItem('sessionToken') || null;
+    let currentUserRole = sessionStorage.getItem('sessionRole') || null;
 
-    function toggleAuthMode() {
-      isRegisterMode = !isRegisterMode;
-      document.getElementById('auth-title').innerText = isRegisterMode ? 'Buat Akun Baru' : 'Masuk Administrator';
-      document.getElementById('auth-subtitle').innerText = isRegisterMode ? 'Daftarkan username dan password Anda' : 'Silakan isi akun Anda untuk melanjutkan';
-      document.getElementById('auth-submit-btn').innerText = isRegisterMode ? 'Daftar' : 'Login';
-      document.getElementById('auth-toggle').innerText = isRegisterMode ? 'Sudah punya akun? Login di sini' : 'Belum punya akun? Buat akun baru';
-    }
-
-    function handleAuth(event) {
+    async function handleAuth(event) {
       event.preventDefault();
       const userVal = document.getElementById('auth-username').value.trim();
       const passVal = document.getElementById('auth-password').value.trim();
       if (!userVal || !passVal) return alert('Username & Password wajib diisi!');
 
-      const users = getStoredUsers();
-      if (isRegisterMode) {
-        if (users[userVal]) return alert('Username sudah terdaftar!');
-        saveUser(userVal, passVal);
-        alert('Registrasi berhasil! Silakan login.');
-        toggleAuthMode();
-      } else {
-        if (!users[userVal] || users[userVal] !== passVal) return alert('Username atau Password salah!');
-        sessionStorage.setItem('isLoggedIn', 'true');
-        sessionStorage.setItem('sessionUser', userVal);
-        location.reload();
+      const btn = document.getElementById('auth-submit-btn');
+      btn.disabled = true;
+      btn.innerText = 'Memproses...';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: userVal, password: passVal })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          sessionStorage.setItem('sessionToken', data.token);
+          sessionStorage.setItem('sessionUser', data.username);
+          sessionStorage.setItem('sessionRole', data.role);
+          currentSessionToken = data.token;
+          currentUserRole = data.role;
+          location.reload();
+        } else {
+          alert(data.message || 'Username atau Password salah!');
+        }
+      } catch (err) {
+        alert('Gagal terhubung ke server. Coba lagi.');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Login';
       }
     }
 
-    function checkAuthStatus() {
-      const isLoggedIn = sessionStorage.getItem('isLoggedIn');
-      const currentUser = sessionStorage.getItem('sessionUser');
-      if (isLoggedIn === 'true' && currentUser) {
-        document.getElementById('auth-modal').style.display = 'none';
-        document.getElementById('user-name-display').innerText = currentUser.toUpperCase();
-        document.getElementById('user-avatar').innerText = currentUser.charAt(0).toUpperCase();
-        loadDashboard();
-        startRealtimeTimer();
-      } else {
+    async function checkAuthStatus() {
+      const token = sessionStorage.getItem('sessionToken');
+      const savedUser = sessionStorage.getItem('sessionUser');
+      const savedRole = sessionStorage.getItem('sessionRole');
+
+      if (!token || !savedUser) {
+        document.getElementById('auth-modal').style.display = 'flex';
+        return;
+      }
+
+      // Verifikasi token ke server
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { 'x-session-token': token }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          currentSessionToken = token;
+          currentUserRole = data.role;
+          document.getElementById('auth-modal').style.display = 'none';
+          document.getElementById('user-name-display').innerText = data.username.toUpperCase();
+          document.getElementById('user-avatar').innerText = data.username.charAt(0).toUpperCase();
+
+          // Tampilkan menu Kelola Akun hanya untuk superuser
+          if (data.role === 'superuser') {
+            document.getElementById('nav-kelola-akun').style.display = 'flex';
+          }
+
+          loadDashboard();
+          startRealtimeTimer();
+        } else {
+          sessionStorage.clear();
+          document.getElementById('auth-modal').style.display = 'flex';
+        }
+      } catch (err) {
+        sessionStorage.clear();
         document.getElementById('auth-modal').style.display = 'flex';
       }
     }
 
-    function logout() {
-      sessionStorage.removeItem('isLoggedIn');
-      sessionStorage.removeItem('sessionUser');
+    async function logout() {
+      const token = sessionStorage.getItem('sessionToken');
+      if (token) {
+        try {
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: { 'x-session-token': token }
+          });
+        } catch (e) {}
+      }
+      sessionStorage.clear();
       location.reload();
+    }
+
+    // =============================================
+    // KELOLA AKUN — Hanya superuser
+    // =============================================
+    async function loadUserList() {
+      const token = sessionStorage.getItem('sessionToken');
+      const tbody = document.getElementById('user-list-body');
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:20px;">Memuat data...</td></tr>';
+
+      try {
+        const res = await fetch('/api/users', { headers: { 'x-session-token': token } });
+        const data = await res.json();
+
+        if (!data.success) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#ef4444;padding:20px;">${data.message}</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = data.data.map(u => `
+          <tr>
+            <td style="font-weight:600;color:#1e293b;">${u.username}</td>
+            <td><span style="background:${u.role==='superuser'?'#fef3c7':'#f1f5f9'};color:${u.role==='superuser'?'#92400e':'#475569'};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">${u.role === 'superuser' ? 'Superuser' : 'Admin'}</span></td>
+            <td style="color:#64748b;font-size:12px;">${u.createdAt ? new Date(u.createdAt).toLocaleDateString('id-ID') : '-'}</td>
+            <td>
+              ${u.role !== 'superuser' ? `<button onclick="deleteUser('${u.username}')" style="background:#fee2e2;color:#ef4444;border:none;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">Hapus</button>` : '<span style="color:#cbd5e1;font-size:11px;">—</span>'}
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#ef4444;padding:20px;">Gagal memuat data akun.</td></tr>';
+      }
+    }
+
+    async function handleCreateUser(event) {
+      event.preventDefault();
+      const token = sessionStorage.getItem('sessionToken');
+      const username = document.getElementById('new-username').value.trim();
+      const password = document.getElementById('new-password').value.trim();
+      const role = document.getElementById('new-role').value;
+      const btn = document.getElementById('btn-create-user');
+      const msgEl = document.getElementById('create-user-msg');
+
+      if (!username || !password) return;
+
+      btn.disabled = true;
+      btn.innerText = 'Menyimpan...';
+      msgEl.innerText = '';
+
+      try {
+        const res = await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-session-token': token },
+          body: JSON.stringify({ username, password, role })
+        });
+        const data = await res.json();
+        if (data.success) {
+          msgEl.style.color = '#16a34a';
+          msgEl.innerText = data.message;
+          document.getElementById('new-username').value = '';
+          document.getElementById('new-password').value = '';
+          loadUserList();
+        } else {
+          msgEl.style.color = '#ef4444';
+          msgEl.innerText = data.message;
+        }
+      } catch (err) {
+        msgEl.style.color = '#ef4444';
+        msgEl.innerText = 'Gagal terhubung ke server.';
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Buat Akun';
+      }
+    }
+
+    async function deleteUser(username) {
+      if (!confirm(`Hapus akun "${username}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+      const token = sessionStorage.getItem('sessionToken');
+      try {
+        const res = await fetch(`/api/users/${username}`, {
+          method: 'DELETE',
+          headers: { 'x-session-token': token }
+        });
+        const data = await res.json();
+        alert(data.message);
+        if (data.success) loadUserList();
+      } catch (err) {
+        alert('Gagal menghapus akun.');
+      }
     }
 
     function getTimeAgoText(timestamp) {
