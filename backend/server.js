@@ -294,7 +294,7 @@ function writeUsers(users) {
 function initSuperuser() {
   const users = readUsers();
   if (!users[SUPERUSER]) {
-    const defaultPass = process.env.SUPERUSER_PASS || 'Admin@PDC2024';
+    const defaultPass = process.env.SUPERUSER_KEY || 'Admin@PDC2024';
     users[SUPERUSER] = {
       password: hashPassword(defaultPass),
       role: 'superuser',
