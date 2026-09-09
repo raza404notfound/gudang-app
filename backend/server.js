@@ -226,43 +226,50 @@ app.post('/api/track-awb-chunk', async (req, res) => {
 
 // =============================================
 // SISTEM AUTENTIKASI
-// Akun disimpan di file users.json (Railway Volume)
+// Akun disimpan di Google Sheet tab _Akun (via Apps Script).
+// Superuser (raza404nf) bisa login langsung lewat SUPERUSER_KEY
+// tanpa perlu ada di sheet — sebagai fallback darurat.
 // =============================================
-const USERS_FILE = path.join(__dirname, 'users.json');
-const SUPERUSER  = 'raza404nf';
+const SUPERUSER = 'raza404nf';
 
 function hashPassword(password) {
   return crypto.createHash('sha256').update(password).digest('hex');
 }
 
-function readUsers() {
+// Cache akun di memory supaya login tidak lambat (refresh tiap 2 menit)
+let usersCache = null;
+let usersCacheTime = 0;
+const USERS_CACHE_TTL = 2 * 60 * 1000; // 2 menit
+
+async function getUsers(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && usersCache && (now - usersCacheTime < USERS_CACHE_TTL)) {
+    return usersCache;
+  }
+  if (!SHEET_SCRIPT_URL) return {};
   try {
-    if (!fs.existsSync(USERS_FILE)) return {};
-    return JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
-  } catch {
-    return {};
+    const res = await axios.get(SHEET_SCRIPT_URL, { params: { action: 'getUsers' }, timeout: 10000 });
+    if (res.data && res.data.success) {
+      usersCache = res.data.users || {};
+      usersCacheTime = now;
+      return usersCache;
+    }
+  } catch (err) {
+    console.error('Gagal ambil users dari sheet:', err.message);
+    // Kalau gagal fetch, kembalikan cache lama kalau ada
+    if (usersCache) return usersCache;
   }
+  return {};
 }
 
-function writeUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
+async function saveUsers(users) {
+  if (!SHEET_SCRIPT_URL) throw new Error('SHEET_SCRIPT_URL belum diatur.');
+  const res = await axios.post(SHEET_SCRIPT_URL, { action: 'saveUsers', users }, { timeout: 15000 });
+  if (!res.data || !res.data.success) throw new Error(res.data?.message || 'Gagal simpan akun.');
+  // Reset cache supaya data terbaru langsung terbaca
+  usersCache = null;
+  return res.data;
 }
-
-// Buat akun superuser otomatis saat server pertama kali jalan
-function initSuperuser() {
-  const users = readUsers();
-  if (!users[SUPERUSER]) {
-    const defaultPass = SUPERUSER_KEY || 'Admin@PDC2024';
-    users[SUPERUSER] = {
-      password: hashPassword(defaultPass),
-      role: 'superuser',
-      createdAt: new Date().toISOString()
-    };
-    writeUsers(users);
-    console.log(`✅ [AUTH] Akun superuser '${SUPERUSER}' berhasil dibuat.`);
-  }
-}
-initSuperuser();
 
 const activeSessions = {};
 
@@ -293,22 +300,36 @@ function requireSuperuser(req, res, next) {
 }
 
 // POST /api/auth/login
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ success: false, message: 'Username dan password wajib diisi.' });
   }
 
-  const users = readUsers();
-  const user  = users[username.trim()];
+  const uname = username.trim().toLowerCase();
 
-  if (!user || user.password !== hashPassword(password)) {
-    return res.status(401).json({ success: false, message: 'Username atau Password salah!' });
+  // Jalur superuser langsung via SUPERUSER_KEY (tidak perlu ada di sheet)
+  // Ini memastikan raza404nf selalu bisa login meski sheet bermasalah
+  if (uname === SUPERUSER && SUPERUSER_KEY && password === SUPERUSER_KEY) {
+    const token = generateToken();
+    activeSessions[token] = { username: SUPERUSER, role: 'superuser' };
+    return res.json({ success: true, token, username: SUPERUSER, role: 'superuser' });
   }
 
-  const token = generateToken();
-  activeSessions[token] = { username: username.trim(), role: user.role };
-  res.json({ success: true, token, username: username.trim(), role: user.role });
+  // Jalur akun biasa — cek ke sheet _Akun
+  try {
+    const users = await getUsers();
+    const user  = users[uname];
+    if (!user || user.password !== hashPassword(password)) {
+      return res.status(401).json({ success: false, message: 'Username atau Password salah!' });
+    }
+    const token = generateToken();
+    activeSessions[token] = { username: uname, role: user.role || 'user' };
+    res.json({ success: true, token, username: uname, role: user.role || 'user' });
+  } catch (err) {
+    console.error('Login error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal menghubungi database akun.' });
+  }
 });
 
 // POST /api/auth/logout
@@ -324,62 +345,85 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
 });
 
 // GET /api/users (superuser only)
-app.get('/api/users', requireSuperuser, (req, res) => {
-  const users = readUsers();
-  const list = Object.entries(users).map(([username, data]) => ({
-    username, role: data.role, createdAt: data.createdAt
-  }));
-  res.json({ success: true, data: list });
+app.get('/api/users', requireSuperuser, async (req, res) => {
+  try {
+    const users = await getUsers(true); // force refresh supaya selalu data terbaru
+    const list = Object.entries(users).map(([username, data]) => ({
+      username, role: data.role || 'user', createdAt: data.createdAt || ''
+    }));
+    // Tambahkan superuser ke list kalau belum ada di sheet
+    if (!list.find(u => u.username === SUPERUSER)) {
+      list.unshift({ username: SUPERUSER, role: 'superuser', createdAt: '-' });
+    }
+    res.json({ success: true, data: list });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // POST /api/users (superuser only)
-app.post('/api/users', requireSuperuser, (req, res) => {
+app.post('/api/users', requireSuperuser, async (req, res) => {
   const { username, password, role } = req.body;
   if (!username || !password) {
     return res.status(400).json({ success: false, message: 'Username dan password wajib diisi.' });
   }
-  const users = readUsers();
-  if (users[username.trim()]) {
-    return res.status(409).json({ success: false, message: 'Username sudah terdaftar.' });
+  const uname = username.trim().toLowerCase();
+  if (uname === SUPERUSER) {
+    return res.status(403).json({ success: false, message: 'Username tersebut tidak bisa digunakan.' });
   }
-  users[username.trim()] = {
-    password: hashPassword(password),
-    role: role === 'superuser' ? 'superuser' : role === 'admin' ? 'admin' : 'user',
-    createdAt: new Date().toISOString()
-  };
-  writeUsers(users);
-  res.json({ success: true, message: `Akun '${username.trim()}' berhasil dibuat.` });
+  try {
+    const users = await getUsers(true);
+    if (users[uname]) {
+      return res.status(409).json({ success: false, message: 'Username sudah terdaftar.' });
+    }
+    users[uname] = {
+      password: hashPassword(password),
+      role: role === 'superuser' ? 'superuser' : role === 'admin' ? 'admin' : 'user',
+      createdAt: new Date().toISOString()
+    };
+    await saveUsers(users);
+    res.json({ success: true, message: `Akun '${uname}' berhasil dibuat.` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // DELETE /api/users/:username (superuser only)
-app.delete('/api/users/:username', requireSuperuser, (req, res) => {
-  const target = req.params.username;
+app.delete('/api/users/:username', requireSuperuser, async (req, res) => {
+  const target = req.params.username.toLowerCase();
   if (target === SUPERUSER) {
     return res.status(403).json({ success: false, message: 'Akun superuser tidak bisa dihapus.' });
   }
-  const users = readUsers();
-  if (!users[target]) {
-    return res.status(404).json({ success: false, message: 'Akun tidak ditemukan.' });
+  try {
+    const users = await getUsers(true);
+    if (!users[target]) {
+      return res.status(404).json({ success: false, message: 'Akun tidak ditemukan.' });
+    }
+    delete users[target];
+    Object.keys(activeSessions).forEach(token => {
+      if (activeSessions[token].username === target) delete activeSessions[token];
+    });
+    await saveUsers(users);
+    res.json({ success: true, message: `Akun '${target}' berhasil dihapus.` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
-  delete users[target];
-  // Hapus sesi aktif user yang dihapus
-  Object.keys(activeSessions).forEach(token => {
-    if (activeSessions[token].username === target) delete activeSessions[token];
-  });
-  writeUsers(users);
-  res.json({ success: true, message: `Akun '${target}' berhasil dihapus.` });
 });
 
 // PUT /api/users/:username/password (superuser only)
-app.put('/api/users/:username/password', requireSuperuser, (req, res) => {
-  const target = req.params.username;
+app.put('/api/users/:username/password', requireSuperuser, async (req, res) => {
+  const target = req.params.username.toLowerCase();
   const { password } = req.body;
   if (!password) return res.status(400).json({ success: false, message: 'Password baru wajib diisi.' });
-  const users = readUsers();
-  if (!users[target]) return res.status(404).json({ success: false, message: 'Akun tidak ditemukan.' });
-  users[target].password = hashPassword(password);
-  writeUsers(users);
-  res.json({ success: true, message: `Password akun '${target}' berhasil diubah.` });
+  try {
+    const users = await getUsers(true);
+    if (!users[target]) return res.status(404).json({ success: false, message: 'Akun tidak ditemukan.' });
+    users[target].password = hashPassword(password);
+    await saveUsers(users);
+    res.json({ success: true, message: `Password akun '${target}' berhasil diubah.` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // =============================================
