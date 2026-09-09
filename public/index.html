@@ -1342,8 +1342,10 @@
     // Bunyikan notifikasi suara sesuai jenis hasil scan
     function playScanVoice(type) {
       try {
-        const msgMap = { tut: 'Tut', double: 'Double paket', cancel: 'Paket cancel order' };
-        const utter = new SpeechSynthesisUtterance(msgMap[type] || 'Tut');
+        const msgMap = { double: 'Double paket', cancel: 'Paket cancel order' };
+        const msg = msgMap[type];
+        if (!msg) return; // tipe 'tut' tidak berbunyi apapun
+        const utter = new SpeechSynthesisUtterance(msg);
         utter.lang = 'id-ID';
         utter.rate = 1.05;
         speechSynthesis.cancel();
