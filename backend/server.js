@@ -6,277 +6,57 @@ const fs = require('fs');
 const crypto = require('crypto');
 
 const app = express();
-
-// =============================================
-// PENYIMPANAN PERSISTENT (data umum, opsional)
-// DATA_DIR diarahkan ke Railway Volume lewat env var DATA_DIR (contoh: /data)
-// =============================================
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-const STORE_FILE = path.join(DATA_DIR, 'store.json');
-
-function loadStore() {
-  if (fs.existsSync(STORE_FILE)) {
-    try {
-      return JSON.parse(fs.readFileSync(STORE_FILE, 'utf-8'));
-    } catch (e) {
-      console.error('Gagal membaca store.json, menggunakan store kosong:', e.message);
-      return {};
-    }
-  }
-  return {};
-}
-function saveStore(store) {
-  fs.writeFileSync(STORE_FILE, JSON.stringify(store, null, 2));
-}
-let kvStore = loadStore();
-
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
 
 // =============================================
-// KONFIGURASI DARI ENVIRONMENT VARIABLES (Railway)
-// TIDAK ADA CREDENTIAL YANG DITULIS LANGSUNG DI SINI.
-// Semua nilai WAJIB diisi di Railway -> tab Variables.
+// ENVIRONMENT VARIABLES (semua dari Railway)
+// Tidak ada credential yang hardcoded di sini.
+// Isi semua variable ini di Railway > Variables.
 // =============================================
-const BITESHIP_API_KEY = process.env.BITESHIP_API_KEY || '';
-const SHEET_SCRIPT_URL = process.env.SHEET_SCRIPT_URL || ''; // URL deploy Web App Apps Script (.../exec)
-const SUPERUSER_USERNAME = process.env.SUPERUSER_USERNAME || 'raza404nf'; // default sesuai catatan project
-const SUPERUSER_KEY = process.env.SUPERUSER_KEY || ''; // password superuser
-const PASSWORD_SALT = process.env.PASSWORD_SALT || 'ganti-salt-ini-di-railway';
-
-const BASE_URL = 'https://pdcgudang.et.r.appspot.com/v1';
+const BITESHIP_API_KEY = process.env.BITESHIP_API_KEY;
+const SHEET_SCRIPT_URL = process.env.SHEET_SCRIPT_URL || '';
+const SUPERUSER_KEY    = process.env.SUPERUSER_KEY;
 
 const WAREHOUSES = [
-  { id: 'pdc',    name: 'PDC Warehouse',    username: process.env.WH_PDC_USER    || '', password: process.env.WH_PDC_PASS    || '', warehouse_id: '38' },
-  { id: 'febri',  name: 'Febri Warehouse',  username: process.env.WH_FEBRI_USER  || '', password: process.env.WH_FEBRI_PASS  || '', warehouse_id: '67' },
-  { id: 'palem',  name: 'Palem Warehouse',  username: process.env.WH_PALEM_USER  || '', password: process.env.WH_PALEM_PASS  || '', warehouse_id: '94' },
-  { id: 'cemara', name: 'Cemara Warehouse', username: process.env.WH_CEMARA_USER || '', password: process.env.WH_CEMARA_PASS || '', warehouse_id: '96' }
+  { id: 'pdc',    name: 'PDC Warehouse',    username: process.env.WH_PDC_USER,    password: process.env.WH_PDC_PASS,    warehouse_id: '38' },
+  { id: 'febri',  name: 'Febri Warehouse',  username: process.env.WH_FEBRI_USER,  password: process.env.WH_FEBRI_PASS,  warehouse_id: '67' },
+  { id: 'palem',  name: 'Palem Warehouse',  username: process.env.WH_PALEM_USER,  password: process.env.WH_PALEM_PASS,  warehouse_id: '94' },
+  { id: 'cemara', name: 'Cemara Warehouse', username: process.env.WH_CEMARA_USER, password: process.env.WH_CEMARA_PASS, warehouse_id: '96' }
 ];
 
-// Peringatan di log kalau ada env var penting yang belum diisi (bukan error fatal,
-// supaya server tetap bisa jalan untuk fitur lain yang tidak butuh itu)
-function warnIfMissing(name, val) {
-  if (!val) console.warn(`⚠️  Environment variable "${name}" belum diisi di Railway.`);
+const REQUIRED_ENV = [
+  'BITESHIP_API_KEY',
+  'WH_PDC_USER',    'WH_PDC_PASS',
+  'WH_FEBRI_USER',  'WH_FEBRI_PASS',
+  'WH_PALEM_USER',  'WH_PALEM_PASS',
+  'WH_CEMARA_USER', 'WH_CEMARA_PASS',
+  'SUPERUSER_KEY',  'SHEET_SCRIPT_URL'
+];
+const MISSING_ENV = REQUIRED_ENV.filter(key => !process.env[key]);
+if (MISSING_ENV.length > 0) {
+  console.warn('⚠️  [ENV WARNING] Variable berikut belum diisi di Railway:');
+  MISSING_ENV.forEach(key => console.warn(`   - ${key}`));
+  console.warn('   Server tetap jalan, tapi fitur terkait tidak akan berfungsi.');
 }
-warnIfMissing('BITESHIP_API_KEY', BITESHIP_API_KEY);
-warnIfMissing('SHEET_SCRIPT_URL', SHEET_SCRIPT_URL);
-warnIfMissing('SUPERUSER_KEY', SUPERUSER_KEY);
-warnIfMissing('PASSWORD_SALT', PASSWORD_SALT !== 'ganti-salt-ini-di-railway' ? PASSWORD_SALT : '');
-WAREHOUSES.forEach(wh => {
-  warnIfMissing(`WH_${wh.id.toUpperCase()}_USER`, wh.username);
-  warnIfMissing(`WH_${wh.id.toUpperCase()}_PASS`, wh.password);
-});
 
 // =============================================
-// SESSION & AUTH (token disimpan di memory server)
-// Catatan: saat Railway redeploy, semua session hilang (user perlu login ulang).
-// Ini konsisten dengan cara kerja sebelumnya, bukan bug baru.
+// DASHBOARD CACHE
 // =============================================
-const sessions = {}; // token -> { username, role, createdAt }
-
-function hashPassword(plain) {
-  return crypto.createHash('sha256').update(plain + PASSWORD_SALT).digest('hex');
-}
-
-function generateToken() {
-  return crypto.randomBytes(24).toString('hex');
-}
-
-function requireAuth(req, res, next) {
-  const token = req.headers['x-session-token'];
-  const session = token && sessions[token];
-  if (!session) return res.status(401).json({ success: false, message: 'Sesi tidak valid, silakan login ulang.' });
-  req.session = session;
-  next();
-}
-
-function requireSuperuser(req, res, next) {
-  if (req.session.role !== 'superuser') {
-    return res.status(403).json({ success: false, message: 'Hanya superuser yang boleh mengakses fitur ini.' });
-  }
-  next();
-}
-
-// Ambil daftar user dari Apps Script (tab _Akun)
-async function fetchUsersFromSheet() {
-  if (!SHEET_SCRIPT_URL) throw new Error('SHEET_SCRIPT_URL belum diatur di Railway.');
-  const res = await axios.get(SHEET_SCRIPT_URL, { params: { action: 'getUsers' }, timeout: 15000 });
-  if (!res.data || !res.data.success) throw new Error(res.data?.message || 'Gagal mengambil data akun.');
-  return res.data.users || {};
-}
-
-// Simpan seluruh daftar user ke Apps Script (tab _Akun)
-async function saveUsersToSheet(users) {
-  if (!SHEET_SCRIPT_URL) throw new Error('SHEET_SCRIPT_URL belum diatur di Railway.');
-  const res = await axios.post(SHEET_SCRIPT_URL, { action: 'saveUsers', users }, { timeout: 15000 });
-  if (!res.data || !res.data.success) throw new Error(res.data?.message || 'Gagal menyimpan data akun.');
-  return res.data;
-}
-
-// ---- POST /api/auth/login ----
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    if (!username || !password) {
-      return res.json({ success: false, message: 'Username & Password wajib diisi!' });
-    }
-
-    // Jalur bootstrap superuser lewat Environment Variable (tidak perlu ada di sheet dulu)
-    if (SUPERUSER_KEY &&
-        username === SUPERUSER_USERNAME && password === SUPERUSER_KEY) {
-      const token = generateToken();
-      sessions[token] = { username, role: 'superuser', createdAt: Date.now() };
-      return res.json({ success: true, token, username, role: 'superuser' });
-    }
-
-    const users = await fetchUsersFromSheet();
-    const account = users[username];
-    if (!account || account.password !== hashPassword(password)) {
-      return res.json({ success: false, message: 'Username atau Password salah!' });
-    }
-
-    const token = generateToken();
-    sessions[token] = { username, role: account.role || 'user', createdAt: Date.now() };
-    res.json({ success: true, token, username, role: account.role || 'user' });
-  } catch (err) {
-    console.error('Login error:', err.message);
-    res.status(500).json({ success: false, message: 'Gagal terhubung ke server akun.' });
-  }
-});
-
-// ---- GET /api/auth/me ----
-app.get('/api/auth/me', requireAuth, (req, res) => {
-  res.json({ success: true, username: req.session.username, role: req.session.role });
-});
-
-// ---- POST /api/auth/logout ----
-app.post('/api/auth/logout', (req, res) => {
-  const token = req.headers['x-session-token'];
-  if (token) delete sessions[token];
-  res.json({ success: true });
-});
-
-// ---- GET /api/users (daftar akun, khusus superuser) ----
-app.get('/api/users', requireAuth, requireSuperuser, async (req, res) => {
-  try {
-    const users = await fetchUsersFromSheet();
-    const data = Object.entries(users).map(([username, d]) => ({
-      username, role: d.role || 'user', createdAt: d.createdAt || ''
-    }));
-    res.json({ success: true, data });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// ---- POST /api/users (buat akun baru, khusus superuser) ----
-app.post('/api/users', requireAuth, requireSuperuser, async (req, res) => {
-  try {
-    const { username, password, role } = req.body;
-    if (!username || !password) {
-      return res.json({ success: false, message: 'Username & Password wajib diisi!' });
-    }
-    const users = await fetchUsersFromSheet();
-    if (users[username]) {
-      return res.json({ success: false, message: 'Username sudah terdaftar!' });
-    }
-    users[username] = {
-      password: hashPassword(password),
-      role: role || 'user',
-      createdAt: new Date().toISOString()
-    };
-    await saveUsersToSheet(users);
-    res.json({ success: true, message: `Akun "${username}" berhasil dibuat.` });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// ---- DELETE /api/users/:username (hapus akun, khusus superuser) ----
-app.delete('/api/users/:username', requireAuth, requireSuperuser, async (req, res) => {
-  try {
-    const { username } = req.params;
-    const users = await fetchUsersFromSheet();
-    if (!users[username]) {
-      return res.json({ success: false, message: 'Akun tidak ditemukan.' });
-    }
-    delete users[username];
-    await saveUsersToSheet(users);
-    res.json({ success: true, message: `Akun "${username}" berhasil dihapus.` });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// =============================================
-// PROXY KE GOOGLE APPS SCRIPT (Sheet Tracking AWB)
-// =============================================
-
-// ---- GET /api/sheet/load ----
-app.get('/api/sheet/load', requireAuth, async (req, res) => {
-  try {
-    if (!SHEET_SCRIPT_URL) return res.status(500).json({ success: false, message: 'SHEET_SCRIPT_URL belum diatur di Railway.' });
-    const { tanggal, gudang, filter, onlyPending } = req.query;
-    const result = await axios.get(SHEET_SCRIPT_URL, {
-      params: { action: 'load', tanggal, gudang, filter, onlyPending },
-      timeout: 20000
-    });
-    res.json(result.data);
-  } catch (err) {
-    console.error('Sheet load error:', err.message);
-    res.status(500).json({ success: false, message: 'Gagal mengambil data dari Sheet.' });
-  }
-});
-
-// ---- POST /api/sheet/sync ----
-app.post('/api/sheet/sync', requireAuth, async (req, res) => {
-  try {
-    if (!SHEET_SCRIPT_URL) return res.status(500).json({ success: false, message: 'SHEET_SCRIPT_URL belum diatur di Railway.' });
-    const { tanggal, data } = req.body; // frontend mengirim field "data", Apps Script butuh "rows"
-    const result = await axios.post(SHEET_SCRIPT_URL, {
-      action: 'sync',
-      tanggal,
-      rows: data
-    }, { timeout: 20000 });
-    res.json(result.data);
-  } catch (err) {
-    console.error('Sheet sync error:', err.message);
-    res.status(500).json({ success: false, message: 'Gagal menyimpan data ke Sheet.' });
-  }
-});
-
-// ---- GET /api/sheet/cancel-list (untuk fitur Lacak Cancel) ----
-app.get('/api/sheet/cancel-list', requireAuth, async (req, res) => {
-  try {
-    if (!SHEET_SCRIPT_URL) return res.status(500).json({ success: false, message: 'SHEET_SCRIPT_URL belum diatur di Railway.' });
-    const { tanggal, gudang } = req.query;
-    const result = await axios.get(SHEET_SCRIPT_URL, {
-      params: { action: 'cancelList', tanggal, gudang },
-      timeout: 20000
-    });
-    res.json(result.data);
-  } catch (err) {
-    console.error('Cancel list error:', err.message);
-    res.status(500).json({ success: false, message: 'Gagal mengambil data resi cancel.' });
-  }
-});
-
-// =============================================
-// DASHBOARD INBOUND / OUTBOUND (Warehouse Insight)
-// =============================================
-const tokenCache = {};
-const dashboardCache = { inbound: null, outbound: null };
-const lastCacheTime = { inbound: 0, outbound: 0 };
-const CACHE_DURATION = 60 * 1000;
+const tokenCache   = {};
+const dashboardCache  = { inbound: null, outbound: null };
+const lastCacheTime   = { inbound: 0, outbound: 0 };
+const CACHE_DURATION  = 60 * 1000;
+const BASE_URL        = 'https://pdcgudang.et.r.appspot.com/v1';
 
 function getTodayTimestamps() {
   const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime();
-  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
-  return { time_min: startOfDay, time_max: endOfDay };
+  return {
+    time_min: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime(),
+    time_max: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime()
+  };
 }
 
 function parseTotalTrx(data) {
@@ -333,7 +113,7 @@ async function fetchOverview(type, wh) {
     'accept': 'application/json, text/plain, */*',
     'origin': 'https://warehouse.onlypdc.com',
     'referer': 'https://warehouse.onlypdc.com/',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36'
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151.0.0.0 Safari/537.36'
   };
   const url = `${BASE_URL}/warehouses/insight/overview?type=${type}&time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
 
@@ -365,10 +145,9 @@ async function getFreshDashboardData(type) {
     })
   );
 
-  let totalInboundTrx = 0;
-  let totalOutboundTrx = 0;
+  let totalInboundTrx = 0, totalOutboundTrx = 0;
   results.forEach(item => {
-    if (item.data?.inbound) totalInboundTrx += item.data.inbound.total_trx || 0;
+    if (item.data?.inbound)  totalInboundTrx  += item.data.inbound.total_trx  || 0;
     if (item.data?.outbound) totalOutboundTrx += item.data.outbound.total_trx || 0;
   });
 
@@ -379,6 +158,7 @@ async function getFreshDashboardData(type) {
   };
 }
 
+// GET /api/dashboard
 app.get('/api/dashboard', async (req, res) => {
   try {
     const type = req.query.type;
@@ -395,17 +175,14 @@ app.get('/api/dashboard', async (req, res) => {
       return res.json(data);
     }
 
-    const data = await getFreshDashboardData();
-    res.json(data);
+    res.json(await getFreshDashboardData());
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
+    console.error('Dashboard error:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-// =============================================
-// TRACKING BULK RESI (Biteship)
-// =============================================
+// POST /api/track-awb-chunk
 app.post('/api/track-awb-chunk', async (req, res) => {
   const { batchResi, kurir = 'jnt' } = req.body;
   if (!Array.isArray(batchResi) || batchResi.length === 0) {
@@ -418,38 +195,27 @@ app.post('/api/track-awb-chunk', async (req, res) => {
   const promises = batchResi.map(async (r) => {
     const resiClean = String(r).trim();
     if (!resiClean) return null;
-
     try {
-      const response = await axios.get(`https://api.biteship.com/v1/trackings/${resiClean}/couriers/${kurir}`, {
-        headers: { 'Authorization': BITESHIP_API_KEY, 'Content-Type': 'application/json' },
-        timeout: 12000
-      });
+      const response = await axios.get(
+        `https://api.biteship.com/v1/trackings/${resiClean}/couriers/${kurir}`,
+        { headers: { 'Authorization': BITESHIP_API_KEY, 'Content-Type': 'application/json' }, timeout: 12000 }
+      );
       const data = response.data;
-      let status = "Unknown";
-      let note = "Data dimuat";
-      if (data && data.success) {
-        status = data.status || "Unknown";
-        const history = data.history || [];
-        note = (history.length > 0) ? history[history.length - 1].note : "Data dimuat";
-      } else {
-        status = "Gagal API";
-        note = data.error || data.message || "Gagal mendapatkan data";
-      }
+      const status = data?.success ? (data.status || 'Unknown') : 'Gagal API';
+      const history = data?.history || [];
+      const note = history.length > 0 ? history[history.length - 1].note : 'Data dimuat';
       return { resi: resiClean, status, note, success: true };
     } catch (err) {
       try {
-        const fallbackRes = await axios.get(`https://api.biteship.com/v1/trackings/${resiClean}`, {
-          headers: { 'Authorization': BITESHIP_API_KEY, 'Content-Type': 'application/json' },
-          timeout: 12000
-        });
-        const data = fallbackRes.data;
-        const status = data.status || "Unknown";
-        const history = data.history || [];
-        const note = (history.length > 0) ? history[history.length - 1].note : "Data dimuat";
-        return { resi: resiClean, status, note, success: true };
+        const fallback = await axios.get(
+          `https://api.biteship.com/v1/trackings/${resiClean}`,
+          { headers: { 'Authorization': BITESHIP_API_KEY, 'Content-Type': 'application/json' }, timeout: 12000 }
+        );
+        const data = fallback.data;
+        const history = data?.history || [];
+        return { resi: resiClean, status: data.status || 'Unknown', note: history.length > 0 ? history[history.length - 1].note : 'Data dimuat', success: true };
       } catch (fallbackErr) {
-        const noteErr = fallbackErr.response?.data?.message || fallbackErr.response?.data?.error || "Gagal API / Resi Tidak Ditemukan";
-        return { resi: resiClean, status: "Gagal Cek", note: noteErr, success: false };
+        return { resi: resiClean, status: 'Gagal Cek', note: fallbackErr.response?.data?.message || 'Gagal API / Resi Tidak Ditemukan', success: false };
       }
     }
   });
@@ -459,27 +225,250 @@ app.post('/api/track-awb-chunk', async (req, res) => {
 });
 
 // =============================================
-// PENYIMPANAN KV UMUM (opsional, untuk fitur lain di masa depan)
+// SISTEM AUTENTIKASI
+// Akun disimpan di file users.json (Railway Volume)
 // =============================================
-app.get('/api/store', (req, res) => {
-  res.json({ success: true, value: kvStore });
-});
-app.post('/api/store/:key', (req, res) => {
-  const { key } = req.params;
-  const { value } = req.body;
-  kvStore[key] = value;
-  saveStore(kvStore);
-  res.json({ success: true });
+const USERS_FILE = path.join(__dirname, 'users.json');
+const SUPERUSER  = 'raza404nf';
+
+function hashPassword(password) {
+  return crypto.createHash('sha256').update(password).digest('hex');
+}
+
+function readUsers() {
+  try {
+    if (!fs.existsSync(USERS_FILE)) return {};
+    return JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+  } catch {
+    return {};
+  }
+}
+
+function writeUsers(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
+}
+
+// Buat akun superuser otomatis saat server pertama kali jalan
+function initSuperuser() {
+  const users = readUsers();
+  if (!users[SUPERUSER]) {
+    const defaultPass = SUPERUSER_KEY || 'Admin@PDC2024';
+    users[SUPERUSER] = {
+      password: hashPassword(defaultPass),
+      role: 'superuser',
+      createdAt: new Date().toISOString()
+    };
+    writeUsers(users);
+    console.log(`✅ [AUTH] Akun superuser '${SUPERUSER}' berhasil dibuat.`);
+  }
+}
+initSuperuser();
+
+const activeSessions = {};
+
+function generateToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function requireAuth(req, res, next) {
+  const token = req.headers['x-session-token'];
+  if (!token || !activeSessions[token]) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  req.sessionUser = activeSessions[token];
+  next();
+}
+
+function requireSuperuser(req, res, next) {
+  const token = req.headers['x-session-token'];
+  if (!token || !activeSessions[token]) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  const user = activeSessions[token];
+  if (user.role !== 'superuser') {
+    return res.status(403).json({ success: false, message: 'Akun Anda tidak bisa mengakses fitur ini.' });
+  }
+  req.sessionUser = user;
+  next();
+}
+
+// POST /api/auth/login
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ success: false, message: 'Username dan password wajib diisi.' });
+  }
+
+  const users = readUsers();
+  const user  = users[username.trim()];
+
+  if (!user || user.password !== hashPassword(password)) {
+    return res.status(401).json({ success: false, message: 'Username atau Password salah!' });
+  }
+
+  const token = generateToken();
+  activeSessions[token] = { username: username.trim(), role: user.role };
+  res.json({ success: true, token, username: username.trim(), role: user.role });
 });
 
-// Fallback route -> serve index.html (SPA)
+// POST /api/auth/logout
+app.post('/api/auth/logout', requireAuth, (req, res) => {
+  const token = req.headers['x-session-token'];
+  delete activeSessions[token];
+  res.json({ success: true, message: 'Logout berhasil.' });
+});
+
+// GET /api/auth/me
+app.get('/api/auth/me', requireAuth, (req, res) => {
+  res.json({ success: true, username: req.sessionUser.username, role: req.sessionUser.role });
+});
+
+// GET /api/users (superuser only)
+app.get('/api/users', requireSuperuser, (req, res) => {
+  const users = readUsers();
+  const list = Object.entries(users).map(([username, data]) => ({
+    username, role: data.role, createdAt: data.createdAt
+  }));
+  res.json({ success: true, data: list });
+});
+
+// POST /api/users (superuser only)
+app.post('/api/users', requireSuperuser, (req, res) => {
+  const { username, password, role } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ success: false, message: 'Username dan password wajib diisi.' });
+  }
+  const users = readUsers();
+  if (users[username.trim()]) {
+    return res.status(409).json({ success: false, message: 'Username sudah terdaftar.' });
+  }
+  users[username.trim()] = {
+    password: hashPassword(password),
+    role: role === 'superuser' ? 'superuser' : role === 'admin' ? 'admin' : 'user',
+    createdAt: new Date().toISOString()
+  };
+  writeUsers(users);
+  res.json({ success: true, message: `Akun '${username.trim()}' berhasil dibuat.` });
+});
+
+// DELETE /api/users/:username (superuser only)
+app.delete('/api/users/:username', requireSuperuser, (req, res) => {
+  const target = req.params.username;
+  if (target === SUPERUSER) {
+    return res.status(403).json({ success: false, message: 'Akun superuser tidak bisa dihapus.' });
+  }
+  const users = readUsers();
+  if (!users[target]) {
+    return res.status(404).json({ success: false, message: 'Akun tidak ditemukan.' });
+  }
+  delete users[target];
+  // Hapus sesi aktif user yang dihapus
+  Object.keys(activeSessions).forEach(token => {
+    if (activeSessions[token].username === target) delete activeSessions[token];
+  });
+  writeUsers(users);
+  res.json({ success: true, message: `Akun '${target}' berhasil dihapus.` });
+});
+
+// PUT /api/users/:username/password (superuser only)
+app.put('/api/users/:username/password', requireSuperuser, (req, res) => {
+  const target = req.params.username;
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ success: false, message: 'Password baru wajib diisi.' });
+  const users = readUsers();
+  if (!users[target]) return res.status(404).json({ success: false, message: 'Akun tidak ditemukan.' });
+  users[target].password = hashPassword(password);
+  writeUsers(users);
+  res.json({ success: true, message: `Password akun '${target}' berhasil diubah.` });
+});
+
+// =============================================
+// PROXY KE GOOGLE APPS SCRIPT
+// =============================================
+
+// GET /api/sheet/load
+app.get('/api/sheet/load', requireAuth, async (req, res) => {
+  const { tanggal, gudang, filter, onlyPending } = req.query;
+  if (!tanggal) return res.status(400).json({ success: false, message: 'Parameter tanggal wajib diisi.' });
+  if (!SHEET_SCRIPT_URL) return res.status(500).json({ success: false, message: 'SHEET_SCRIPT_URL belum dikonfigurasi di Railway Variables.' });
+
+  try {
+    const params = { action: 'load', tanggal };
+    if (gudang)      params.gudang      = gudang;
+    if (filter)      params.filter      = filter;
+    if (onlyPending) params.onlyPending = onlyPending;
+
+    const response = await axios.get(SHEET_SCRIPT_URL, { params, timeout: 15000 });
+    const data = response.data;
+    if (!data.success) return res.json({ success: false, message: data.message || 'Gagal ambil data dari Sheet.' });
+    res.json({ success: true, rows: data.rows || [] });
+  } catch (err) {
+    console.error('Sheet load error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal terhubung ke Google Apps Script.' });
+  }
+});
+
+// POST /api/sheet/sync
+app.post('/api/sheet/sync', requireAuth, async (req, res) => {
+  const { tanggal, data: trackData } = req.body;
+  if (!tanggal || !Array.isArray(trackData)) return res.status(400).json({ success: false, message: 'Data tidak valid.' });
+  if (!SHEET_SCRIPT_URL) return res.status(500).json({ success: false, message: 'SHEET_SCRIPT_URL belum dikonfigurasi di Railway Variables.' });
+
+  try {
+    const response = await axios.post(SHEET_SCRIPT_URL, {
+      action: 'sync',
+      tanggal,
+      rows: trackData.map(item => ({
+        gudang     : item.gudang      || '',
+        resi       : item.resi        || '',
+        kurir      : item.kurir       || '',
+        status     : item.status      || '',
+        keterangan : item.keterangan  || item.note || '',
+        tglInput   : item.tglInput    || tanggal,
+        tglDicatat : item.tglDicatat  || ''
+      }))
+    }, { headers: { 'Content-Type': 'application/json' }, timeout: 30000 });
+
+    const result = response.data;
+    res.json({ success: result.success, message: result.message || 'Selesai.' });
+  } catch (err) {
+    console.error('Sheet sync error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal terhubung ke Google Apps Script.' });
+  }
+});
+
+// GET /api/sheet/cancel-list (untuk fitur Lacak Cancel)
+app.get('/api/sheet/cancel-list', requireAuth, async (req, res) => {
+  const { tanggal, gudang } = req.query;
+  if (!tanggal) return res.status(400).json({ success: false, message: 'Parameter tanggal wajib diisi.' });
+  if (!SHEET_SCRIPT_URL) return res.status(500).json({ success: false, message: 'SHEET_SCRIPT_URL belum dikonfigurasi di Railway Variables.' });
+
+  try {
+    const params = { action: 'cancelList', tanggal };
+    if (gudang) params.gudang = gudang;
+
+    const response = await axios.get(SHEET_SCRIPT_URL, { params, timeout: 15000 });
+    const data = response.data;
+    if (!data.success) return res.json({ success: false, message: data.message || 'Gagal ambil data cancel.' });
+    res.json({ success: true, rows: data.rows || [] });
+  } catch (err) {
+    console.error('Cancel list error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal terhubung ke Google Apps Script.' });
+  }
+});
+
+// Fallback route
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
+// =============================================
+// PORT — selalu baca dari process.env.PORT
+// Railway mengisi ini otomatis saat deploy.
+// =============================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`========================================`);
-  console.log(`Server PDC Warehouse Admin berjalan di port ${PORT}`);
+  console.log(`Server PDC Warehouse Admin: port ${PORT}`);
   console.log(`========================================`);
 });
