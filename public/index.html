@@ -9,8 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
-  
-  <style>
+<style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; }
     body { display: flex; background-color: #f8fafc; color: #334155; height: 100vh; overflow: hidden; }
 
@@ -328,15 +327,12 @@
       .awb-toolbar-right { justify-content:stretch; }
       .awb-toolbar-right .awb-btn { flex:1; justify-content:center; }
     }
-  </style>
 </head>
 <body>
-
   <!-- SIDEBAR OVERLAY (mobile) -->
-  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
-
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
   <!-- MODAL LOGIN -->
-  <div id="auth-modal" class="login-overlay">
+<div id="auth-modal" class="login-overlay">
     <div class="login-card">
       <h3 id="auth-title">Masuk Administrator</h3>
       <p id="auth-subtitle">Silakan isi akun Anda untuk melanjutkan</p>
@@ -358,9 +354,37 @@
       </form>
     </div>
   </div>
+  <!-- MODAL LACAK CANCEL -->
+<div id="cancel-modal" class="login-overlay" style="display:none; z-index: 10000;">
+    <div class="login-card" style="width: 440px; max-width: 92vw;">
+      <h3 style="margin-bottom:6px;">🚨 Lacak Resi Cancel</h3>
+      <p style="font-size:12px;color:#64748b;text-align:center;margin-bottom:16px;">Scan atau ketik resi lalu tekan Enter.</p>
+
+      <input type="text" id="cancel-scan-input" placeholder="Scan / ketik resi di sini..." autocomplete="off"
+        onkeydown="handleCancelScan(event)"
+        style="width:100%;padding:12px;border:2px solid #e11d48;border-radius:8px;font-size:16px;font-family:monospace;outline:none;margin-bottom:14px;">
+
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:10px;">
+        <span>Total Cancel: <b id="cancel-total-count">0</b></span>
+        <span>Sudah Discan: <b id="cancel-scanned-count" style="color:#16a34a;">0</b></span>
+      </div>
+
+      <div id="cancel-last-result" style="min-height:50px;padding:12px;border-radius:8px;background:#f8fafc;color:#64748b;text-align:center;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:center;">
+        Menunggu scan...
+      </div>
+
+      <div style="max-height:180px;overflow-y:auto;border-top:1px solid #f1f5f9;padding-top:10px;">
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <tbody id="cancel-list-body"></tbody>
+        </table>
+      </div>
+
+      <button onclick="closeLacakCancel()" style="width:100%;margin-top:14px;padding:10px;background:#f1f5f9;color:#475569;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Tutup</button>
+    </div>
+</div>
 
   <!-- SIDEBAR -->
-  <aside class="sidebar">
+<aside class="sidebar">
     <div class="brand-header">
       <span class="material-symbols-outlined">store</span>
       <span>PDC <span style="color: #334155; font-weight: 500;">Warehouse Admin</span></span>
@@ -373,7 +397,6 @@
         <span class="user-badge">Warehouse Crew</span>
       </div>
     </div>
-    
     <div class="nav-section">
       <div class="section-title">UTAMA</div>
       <a class="nav-item active" onclick="switchTab('dashboard', this)"><span class="material-symbols-outlined">home</span><span>Dashboard</span></a>
@@ -390,10 +413,9 @@
       <div class="section-title">PENGATURAN</div>
       <a class="nav-item" id="nav-kelola-akun" style="display:none;" onclick="switchTab('kelola-akun', this); loadUserList();"><span class="material-symbols-outlined">manage_accounts</span><span>Kelola Akun</span></a>
     </div>
-  </aside>
-
+</aside>
   <!-- MAIN WRAPPER -->
-  <main class="main-wrapper">
+<main class="main-wrapper">
     <header class="top-header">
       <div class="top-header-left">
         <button class="btn-hamburger" id="btn-hamburger" onclick="toggleSidebar()" aria-label="Toggle menu">
@@ -406,7 +428,6 @@
         <span class="material-symbols-outlined" style="font-size: 16px;">logout</span> Keluar
       </button>
     </header>
-
     <div class="content-container">
       
       <!-- PAGE: DASHBOARD -->
@@ -468,6 +489,9 @@
             </button>
             <button onclick="syncToSheet()" id="btn-sync-sheet" class="awb-btn awb-btn-blue" disabled>
               <span class="material-symbols-outlined">cloud_upload</span> Simpan ke Sheet
+            </button>
+            <button onclick="openLacakCancel()" id="btn-lacak-cancel" class="awb-btn" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;">
+              <span class="material-symbols-outlined">report</span> Lacak Cancel
             </button>
           </div>
         </div>
@@ -704,9 +728,8 @@
       </section>
 
     </div>
-  </main>
-
-  <script>
+</main>
+<script>
     let lastFetchTimeInbound = null;
     let lastFetchTimeOutbound = null;
     let allTrackedData = [];
@@ -1253,6 +1276,124 @@
       if (document.getElementById('table-count-label')) document.getElementById('table-count-label').innerText = '';
     }
 
+    // =============================================
+    // LACAK CANCEL — Scan resi + notifikasi suara
+    // =============================================
+    let cancelResiSet = new Set();     // semua resi berstatus cancel di tanggal terpilih
+    let cancelScannedSet = new Set();  // resi yang sudah discan selama sesi popup ini terbuka
+
+    async function openLacakCancel() {
+      const tanggal = document.getElementById('filter-tanggal').value;
+      if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
+      const gudang = document.getElementById('filter-gudang').value;
+
+      document.getElementById('cancel-modal').style.display = 'flex';
+      const resultBox = document.getElementById('cancel-last-result');
+      resultBox.innerText = 'Memuat data cancel...';
+      resultBox.style.background = '#f8fafc';
+      resultBox.style.color = '#64748b';
+
+      cancelResiSet = new Set();
+      cancelScannedSet = new Set();
+      updateCancelCounts();
+
+      try {
+        const token = sessionStorage.getItem('sessionToken');
+        const res = await fetch(`/api/sheet/cancel-list?tanggal=${tanggal}&gudang=${encodeURIComponent(gudang)}`, {
+          headers: { 'x-session-token': token }
+        });
+        const data = await res.json();
+        if (!data.success) {
+          resultBox.innerText = data.message || 'Gagal memuat data.';
+          return;
+        }
+        data.rows.forEach(r => cancelResiSet.add(String(r.resi).toUpperCase()));
+        renderCancelList(data.rows);
+        updateCancelCounts();
+        resultBox.innerText = `${cancelResiSet.size} resi cancel siap discan.`;
+        document.getElementById('cancel-scan-input').value = '';
+        document.getElementById('cancel-scan-input').focus();
+      } catch (err) {
+        resultBox.innerText = 'Gagal terhubung ke server.';
+      }
+    }
+
+    function renderCancelList(rows) {
+      const tbody = document.getElementById('cancel-list-body');
+      if (!rows || rows.length === 0) {
+        tbody.innerHTML = `<tr><td style="text-align:center;color:#94a3b8;padding:16px;">Tidak ada resi cancel di tanggal ini.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows.map(r => `
+        <tr id="cancel-row-${r.resi}">
+          <td style="padding:5px 4px;font-family:monospace;font-weight:600;">${r.resi}</td>
+          <td style="padding:5px 4px;color:#94a3b8;">${r.gudang || '-'}</td>
+          <td style="padding:5px 4px;text-align:right;"><span id="cancel-badge-${r.resi}" style="font-size:10px;color:#94a3b8;">Belum scan</span></td>
+        </tr>
+      `).join('');
+    }
+
+    function updateCancelCounts() {
+      document.getElementById('cancel-total-count').innerText = cancelResiSet.size;
+      document.getElementById('cancel-scanned-count').innerText = cancelScannedSet.size;
+    }
+
+    // Bunyikan notifikasi suara sesuai jenis hasil scan
+    function playScanVoice(type) {
+      try {
+        const msgMap = { tut: 'Tut', double: 'Double paket', cancel: 'Paket cancel order' };
+        const utter = new SpeechSynthesisUtterance(msgMap[type] || 'Tut');
+        utter.lang = 'id-ID';
+        utter.rate = 1.05;
+        speechSynthesis.cancel();
+        speechSynthesis.speak(utter);
+      } catch (e) { /* browser tidak mendukung text-to-speech, abaikan */ }
+    }
+
+    function handleCancelScan(event) {
+      if (event.key !== 'Enter') return;
+      const input = document.getElementById('cancel-scan-input');
+      const resi = input.value.trim().toUpperCase();
+      input.value = '';
+      if (!resi) return;
+
+      const resultBox = document.getElementById('cancel-last-result');
+
+      // Resi sudah pernah discan sebelumnya (baik cancel maupun bukan) -> Double paket
+      if (cancelScannedSet.has(resi)) {
+        playScanVoice('double');
+        resultBox.innerText = `⚠️ DOUBLE PAKET: ${resi}`;
+        resultBox.style.background = '#fef3c7';
+        resultBox.style.color = '#92400e';
+        return;
+      }
+
+      cancelScannedSet.add(resi);
+
+      if (cancelResiSet.has(resi)) {
+        // Resi ada di daftar cancel & baru pertama kali discan -> Paket cancel order
+        playScanVoice('cancel');
+        resultBox.innerText = `🚨 PAKET CANCEL ORDER: ${resi}`;
+        resultBox.style.background = '#fee2e2';
+        resultBox.style.color = '#dc2626';
+        const badge = document.getElementById(`cancel-badge-${resi}`);
+        if (badge) { badge.innerText = '✅ Ditemukan'; badge.style.color = '#16a34a'; badge.style.fontWeight = '700'; }
+      } else {
+        // Resi bukan cancel & belum pernah discan -> Tut
+        playScanVoice('tut');
+        resultBox.innerText = `Tut — ${resi} (bukan resi cancel)`;
+        resultBox.style.background = '#f1f5f9';
+        resultBox.style.color = '#475569';
+      }
+
+      updateCancelCounts();
+    }
+
+    function closeLacakCancel() {
+      document.getElementById('cancel-modal').style.display = 'none';
+      speechSynthesis.cancel();
+    }
+
     // Load semua resi dari sheet berdasarkan tanggal
     async function loadFromSheet() {
       const tanggal = document.getElementById('filter-tanggal').value;
@@ -1266,11 +1407,13 @@
       msg.style.color = '#0284c7';
       try {
         const token = sessionStorage.getItem('sessionToken');
-        const res = await fetch(`/api/sheet/load?tanggal=${tanggal}&gudang=${encodeURIComponent(gudang)}`, {
+        const res = await fetch(`/api/sheet/load?tanggal=${tanggal}&gudang=${encodeURIComponent(gudang)}&onlyPending=true`, {
           headers: { 'x-session-token': token }
         });
         const data = await res.json();
         if (!data.success) { msg.innerText = data.message || 'Gagal.'; msg.style.color = '#ef4444'; return; }
+        // Keamanan: hanya resi yang BELUM lanjut statusnya (bukan picked/dropping/delivered/cancel)
+        // yang otomatis dimasukkan ke kotak input untuk ditrack ulang.
         const resiList = data.rows.map(r => r.resi).filter(Boolean);
         document.getElementById('input-awb-bulk').value = resiList.join('\n');
         updateResiCount();
@@ -1516,6 +1659,6 @@
         });
       });
     });
-  </script>
+</script>
 </body>
 </html>
