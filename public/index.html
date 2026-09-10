@@ -1203,6 +1203,28 @@
     // =============================================
     let currentTableFilter = 'semua';
 
+    // Format tanggal apapun menjadi yyyy-MM-dd HH:mm (WIB)
+    // Menangani: Date object string panjang, ISO string, yyyy-MM-dd HH:mm, dll.
+    function formatTglDisplay(val) {
+      if (!val || val === '-') return '-';
+      const s = String(val).trim();
+      // Sudah format pendek yyyy-MM-dd atau yyyy-MM-dd HH:mm → langsung pakai
+      if (/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/.test(s)) return s;
+      // Format panjang seperti "Thu Sep 10 2026 09:21:00 GMT+0700 ..."
+      // atau ISO "2026-09-10T02:21:00.000Z" → parse jadi Date lalu konversi ke WIB
+      try {
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return s; // tidak bisa di-parse, kembalikan apa adanya
+        const wib = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+        const yyyy = wib.getUTCFullYear();
+        const mm   = String(wib.getUTCMonth() + 1).padStart(2, '0');
+        const dd   = String(wib.getUTCDate()).padStart(2, '0');
+        const hh   = String(wib.getUTCHours()).padStart(2, '0');
+        const min  = String(wib.getUTCMinutes()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+      } catch (e) { return s; }
+    }
+
     function detectKurir(resi) {
       resi = String(resi).toUpperCase().trim();
       if (/^JX\d+$/.test(resi) || /^JY\d+$/.test(resi)) return 'JNT';
@@ -1762,7 +1784,7 @@
           <td>${badge}</td>
           <td style="font-size:11px;color:#64748b;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.keterangan}">${item.keterangan || '-'}</td>
           <td style="font-size:11px;color:#94a3b8;">${item.tglInput || item.tanggal || '-'}</td>
-          <td style="font-size:11px;color:#475569;font-weight:500;">${item.tglDicatat || '-'}</td>
+          <td style="font-size:11px;color:#475569;font-weight:500;">${formatTglDisplay(item.tglDicatat) || '-'}</td>
         </tr>`;
       }).join('');
     }
