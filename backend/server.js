@@ -192,6 +192,65 @@ app.post('/api/track-awb-chunk', async (req, res) => {
     return res.status(500).json({ success: false, message: 'BITESHIP_API_KEY belum diatur di Railway.' });
   }
 
+  // Format tanggal+jam WIB (GMT+7) untuk TGL INPUT
+  function getNowWIB() {
+    const now = new Date();
+    const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    const yyyy = wib.getUTCFullYear();
+    const mm   = String(wib.getUTCMonth() + 1).padStart(2, '0');
+    const dd   = String(wib.getUTCDate()).padStart(2, '0');
+    const hh   = String(wib.getUTCHours()).padStart(2, '0');
+    const min  = String(wib.getUTCMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+  }
+
+  // Dari history Biteship, ambil timestamp PERTAMA setelah status manifest
+  // Ini adalah waktu saat resi berpindah status dari manifest ke status berikutnya
+  function getTglDicatatFromHistory(history) {
+    if (!history || history.length === 0) return '';
+    // Cari index history yang statusnya manifest/allocated
+    let manifestIdx = -1;
+    for (let i = 0; i < history.length; i++) {
+      const note = (history[i].note || '').toLowerCase();
+      const status = (history[i].status || '').toLowerCase();
+      if (note.includes('manifes') || note.includes('disimpan') ||
+          status.includes('manifest') || status.includes('allocated')) {
+        manifestIdx = i;
+      }
+    }
+    // Ambil entry SETELAH manifest (yaitu saat status berubah dari manifest)
+    if (manifestIdx >= 0 && manifestIdx + 1 < history.length) {
+      const next = history[manifestIdx + 1];
+      if (next.updated_at || next.created_at) {
+        const raw = next.updated_at || next.created_at;
+        const d = new Date(raw);
+        const wib = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+        const yyyy = wib.getUTCFullYear();
+        const mm   = String(wib.getUTCMonth() + 1).padStart(2, '0');
+        const dd   = String(wib.getUTCDate()).padStart(2, '0');
+        const hh   = String(wib.getUTCHours()).padStart(2, '0');
+        const min  = String(wib.getUTCMinutes()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+      }
+    }
+    // Fallback: ambil timestamp entry terakhir
+    const last = history[history.length - 1];
+    if (last.updated_at || last.created_at) {
+      const raw = last.updated_at || last.created_at;
+      const d = new Date(raw);
+      const wib = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+      const yyyy = wib.getUTCFullYear();
+      const mm   = String(wib.getUTCMonth() + 1).padStart(2, '0');
+      const dd   = String(wib.getUTCDate()).padStart(2, '0');
+      const hh   = String(wib.getUTCHours()).padStart(2, '0');
+      const min  = String(wib.getUTCMinutes()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+    }
+    return '';
+  }
+
+  const tglInput = getNowWIB(); // jam saat user klik Lacak Sekarang (WIB)
+
   const promises = batchResi.map(async (r) => {
     const resiClean = String(r).trim();
     if (!resiClean) return null;
@@ -204,7 +263,8 @@ app.post('/api/track-awb-chunk', async (req, res) => {
       const status = data?.success ? (data.status || 'Unknown') : 'Gagal API';
       const history = data?.history || [];
       const note = history.length > 0 ? history[history.length - 1].note : 'Data dimuat';
-      return { resi: resiClean, status, note, success: true };
+      const tglDicatat = getTglDicatatFromHistory(history);
+      return { resi: resiClean, status, note, tglDicatat, tglInput, success: true };
     } catch (err) {
       try {
         const fallback = await axios.get(
@@ -213,9 +273,11 @@ app.post('/api/track-awb-chunk', async (req, res) => {
         );
         const data = fallback.data;
         const history = data?.history || [];
-        return { resi: resiClean, status: data.status || 'Unknown', note: history.length > 0 ? history[history.length - 1].note : 'Data dimuat', success: true };
+        const note = history.length > 0 ? history[history.length - 1].note : 'Data dimuat';
+        const tglDicatat = getTglDicatatFromHistory(history);
+        return { resi: resiClean, status: data.status || 'Unknown', note, tglDicatat, tglInput, success: true };
       } catch (fallbackErr) {
-        return { resi: resiClean, status: 'Gagal Cek', note: fallbackErr.response?.data?.message || 'Gagal API / Resi Tidak Ditemukan', success: false };
+        return { resi: resiClean, status: 'Gagal Cek', note: fallbackErr.response?.data?.message || 'Gagal API / Resi Tidak Ditemukan', tglDicatat: '', tglInput, success: false };
       }
     }
   });
