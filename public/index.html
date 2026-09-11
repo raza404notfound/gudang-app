@@ -413,8 +413,8 @@
 
     <div class="nav-section">
       <div class="section-title">PRODUK</div>
-      <a class="nav-item" onclick="switchTab('pusat-inventory', this)"><span class="material-symbols-outlined">inventory_2</span><span>Pusat Inventory</span></a>
-      <a class="nav-item" onclick="switchTab('barang-bermasalah', this)"><span class="material-symbols-outlined">history_toggle_off</span><span>Barang Bermasalah</span></a>
+      <a class="nav-item" onclick="switchTab('pusat-inventory', this); initSoPage();"><span class="material-symbols-outlined">inventory_2</span><span>Pusat Inventory</span></a>
+      <a class="nav-item" onclick="switchTab('barang-bermasalah', this); initDataOpname();"><span class="material-symbols-outlined">assignment</span><span>Data Opname</span></a>
       <a class="nav-item" onclick="switchTab('lacak-awb', this)"><span class="material-symbols-outlined">local_shipping</span><span>Lacak AWB</span></a>
     </div>
 
@@ -453,18 +453,271 @@
 
       <!-- MENU PLACEHOLDERS -->
       <section id="page-pusat-inventory" class="page-content">
-        <div style="background:#fff; padding:60px 20px; border-radius:8px; border:1px solid #e2e8f0; text-align: center;">
-          <span class="material-symbols-outlined" style="font-size: 48px; color: #cbd5e1; margin-bottom: 12px;">construction</span>
-          <h2 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">Pusat Inventory</h2>
-          <p style="font-size: 13px; color: #64748b;">Fitur ini sedang dalam pengembangan.</p>
+        <style>
+          .so-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin-bottom:14px;}
+          .so-toolbar select,.so-toolbar input[type=text]{border:1px solid #cbd5e1;border-radius:6px;padding:6px 10px;font-size:13px;color:#1e293b;background:#f8fafc;outline:none;transition:border-color .15s;}
+          .so-toolbar select:focus,.so-toolbar input[type=text]:focus{border-color:#e11d48;}
+          .so-sesi-select{min-width:160px;}
+          .so-status-group{display:flex;gap:6px;flex-wrap:wrap;}
+          .so-chip{border:1.5px solid #e2e8f0;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;background:#f8fafc;color:#64748b;transition:all .15s;white-space:nowrap;user-select:none;}
+          .so-chip:hover{border-color:#94a3b8;color:#334155;}
+          .so-chip.aktif-Balance{background:#f0fdf4;border-color:#22c55e;color:#15803d;}
+          .so-chip.aktif-Plus{background:#eff6ff;border-color:#3b82f6;color:#1d4ed8;}
+          .so-chip.aktif-Minus{background:#fff1f2;border-color:#e11d48;color:#be123c;}
+          .so-chip.aktif-Belum{background:#fefce8;border-color:#ca8a04;color:#92400e;}
+          .so-chip.aktif-Semua{background:#f1f5f9;border-color:#64748b;color:#1e293b;}
+          .so-stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+          .so-stat-card{flex:1 1 100px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;text-align:center;}
+          .so-stat-card .num{font-size:20px;font-weight:700;color:#1e293b;}
+          .so-stat-card .lbl{font-size:11px;color:#64748b;margin-top:2px;}
+          .so-stat-card.c-balance .num{color:#16a34a;}
+          .so-stat-card.c-plus .num{color:#2563eb;}
+          .so-stat-card.c-minus .num{color:#e11d48;}
+          .so-stat-card.c-belum .num{color:#ca8a04;}
+          .so-table-wrap{background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:auto;}
+          .so-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+          .so-table thead th{background:#1e293b;color:#f8fafc;padding:9px 10px;text-align:left;font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:2;}
+          .so-table tbody tr{border-bottom:1px solid #f1f5f9;transition:background .1s;}
+          .so-table tbody tr:hover{background:#f8fafc;}
+          .so-table td{padding:8px 10px;vertical-align:middle;color:#334155;}
+          .so-badge{display:inline-block;border-radius:12px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;}
+          .so-badge-Balance{background:#dcfce7;color:#15803d;}
+          .so-badge-Plus{background:#dbeafe;color:#1d4ed8;}
+          .so-badge-Minus{background:#ffe4e6;color:#be123c;}
+          .so-badge-Belum{background:#fef9c3;color:#92400e;}
+          .so-sel-minus{color:#dc2626;font-weight:700;}
+          .so-sel-plus{color:#2563eb;font-weight:700;}
+          .so-thumb{width:44px;height:44px;object-fit:cover;border-radius:6px;cursor:pointer;background:#f1f5f9;display:block;}
+          .so-thumb-empty{width:44px;height:44px;border-radius:6px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:18px;}
+          .so-pager{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:10px 14px;border-top:1px solid #f1f5f9;font-size:13px;color:#475569;}
+          .so-pager button{border:1px solid #e2e8f0;border-radius:6px;padding:4px 12px;background:#f8fafc;cursor:pointer;font-size:12px;color:#334155;}
+          .so-pager button:disabled{opacity:.4;cursor:default;}
+          .so-pager button:not(:disabled):hover{background:#e2e8f0;}
+          #so-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:9999;align-items:center;justify-content:center;}
+          #so-lightbox.open{display:flex;}
+          #so-lightbox img{max-width:90vw;max-height:90vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.5);}
+          #so-lightbox-close{position:absolute;top:18px;right:24px;color:#fff;font-size:30px;cursor:pointer;background:none;border:none;line-height:1;}
+          .so-state-box{padding:60px 20px;text-align:center;color:#94a3b8;}
+          .so-state-box .material-symbols-outlined{font-size:48px;margin-bottom:10px;display:block;}
+          .so-state-box p{font-size:13px;margin:0;}
+          .so-info-bar{font-size:12px;color:#64748b;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+        </style>
+
+        <!-- TOOLBAR -->
+        <div class="so-toolbar">
+          <select class="so-sesi-select" id="so-sesi-select" onchange="soGantiSesi()">
+            <option value="">— Pilih Bulan SO —</option>
+          </select>
+          <input type="text" id="so-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:200px;" oninput="soFilter()">
+          <select id="so-personil-filter" onchange="soFilter()">
+            <option value="">Semua Personil</option>
+          </select>
+          <input type="text" id="so-rak-filter" placeholder="Filter Rak..." style="min-width:110px;" oninput="soFilter()">
+          <div class="so-status-group">
+            <div class="so-chip aktif-Semua" onclick="soSetStatus('Semua',this)" id="so-chip-Semua">Semua</div>
+            <div class="so-chip" onclick="soSetStatus('Balance',this)" id="so-chip-Balance">Balance</div>
+            <div class="so-chip" onclick="soSetStatus('Plus',this)"    id="so-chip-Plus">Plus</div>
+            <div class="so-chip" onclick="soSetStatus('Minus',this)"   id="so-chip-Minus">Minus</div>
+            <div class="so-chip" onclick="soSetStatus('Belum',this)"   id="so-chip-Belum">Belum</div>
+          </div>
         </div>
+
+        <!-- INFO BAR -->
+        <div class="so-info-bar" id="so-info-bar" style="display:none;">
+          <span><b id="so-info-total">0</b> produk total</span>
+          <span>·</span>
+          <span>Menampilkan <b id="so-info-tampil">0</b></span>
+          <span>·</span>
+          <span style="color:#e11d48;font-weight:600;" id="so-info-sesi"></span>
+        </div>
+
+        <!-- STATS -->
+        <div class="so-stats" id="so-stats" style="display:none;">
+          <div class="so-stat-card c-balance"><div class="num" id="so-n-balance">0</div><div class="lbl">Balance</div></div>
+          <div class="so-stat-card c-plus">   <div class="num" id="so-n-plus">0</div>   <div class="lbl">Plus (lebih)</div></div>
+          <div class="so-stat-card c-minus">  <div class="num" id="so-n-minus">0</div>  <div class="lbl">Minus (kurang)</div></div>
+          <div class="so-stat-card c-belum">  <div class="num" id="so-n-belum">0</div>  <div class="lbl">Belum dihitung</div></div>
+        </div>
+
+        <!-- TABEL -->
+        <div class="so-table-wrap" id="so-table-wrap">
+          <div class="so-state-box" id="so-state-box">
+            <span class="material-symbols-outlined">inventory_2</span>
+            <p>Pilih bulan SO untuk memuat data.</p>
+          </div>
+          <table class="so-table" id="so-table" style="display:none;">
+            <thead>
+              <tr>
+                <th style="width:52px;">Foto</th>
+                <th>SKU</th>
+                <th>Nama Produk</th>
+                <th>Rak</th>
+                <th>Tim</th>
+                <th style="text-align:right;">Sistem</th>
+                <th style="text-align:right;">Real</th>
+                <th style="text-align:right;">Selisih</th>
+                <th>Status</th>
+                <th>Personil</th>
+                <th>Balancing</th>
+                <th style="width:80px;text-align:center;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="so-tbody"></tbody>
+          </table>
+          <div class="so-pager" id="so-pager" style="display:none;">
+            <button onclick="soHalamanNav(-1)" id="so-btn-prev">‹ Prev</button>
+            <span id="so-pager-info">1 / 1</span>
+            <button onclick="soHalamanNav(1)"  id="so-btn-next">Next ›</button>
+          </div>
+        </div>
+
+        <!-- LIGHTBOX -->
+        <div id="so-lightbox" onclick="soCloseLightbox()">
+          <button id="so-lightbox-close" onclick="soCloseLightbox()">✕</button>
+          <img id="so-lightbox-img" src="" alt="Foto produk">
+        </div>
+
       </section>
 
       <section id="page-barang-bermasalah" class="page-content">
-        <div style="background:#fff; padding:60px 20px; border-radius:8px; border:1px solid #e2e8f0; text-align: center;">
-          <span class="material-symbols-outlined" style="font-size: 48px; color: #cbd5e1; margin-bottom: 12px;">construction</span>
-          <h2 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">Barang Bermasalah</h2>
-          <p style="font-size: 13px; color: #64748b;">Fitur ini sedang dalam pengembangan.</p>
+        <style>
+          .do-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin-bottom:14px;}
+          .do-toolbar select,.do-toolbar input[type=text]{border:1px solid #cbd5e1;border-radius:6px;padding:6px 10px;font-size:13px;color:#1e293b;background:#f8fafc;outline:none;}
+          .do-table-wrap{background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:auto;}
+          .do-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+          .do-table thead th{background:#1e293b;color:#f8fafc;padding:9px 10px;text-align:left;font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:2;}
+          .do-table tbody tr{border-bottom:1px solid #f1f5f9;transition:background .1s;}
+          .do-table tbody tr:hover{background:#f8fafc;}
+          .do-table td{padding:8px 10px;vertical-align:middle;color:#334155;}
+          .do-badge-rusak{display:inline-flex;align-items:center;gap:4px;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;}
+          .do-badge-ok{display:inline-block;background:#dcfce7;color:#15803d;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;}
+          .do-state-box{padding:60px 20px;text-align:center;color:#94a3b8;}
+          .do-state-box .material-symbols-outlined{font-size:48px;margin-bottom:10px;display:block;}
+          /* Modal Actions */
+          #do-modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:9000;align-items:center;justify-content:center;}
+          #do-modal-overlay.open{display:flex;}
+          .do-modal{background:#fff;border-radius:12px;width:440px;max-width:94vw;box-shadow:0 12px 40px rgba(0,0,0,.2);overflow:hidden;}
+          .do-modal-header{padding:14px 18px;background:#1e293b;color:#fff;font-size:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center;}
+          .do-modal-body{padding:18px;}
+          .do-tab-bar{display:flex;gap:0;border-bottom:2px solid #f1f5f9;margin-bottom:16px;}
+          .do-tab{padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s;}
+          .do-tab.aktif{color:#e11d48;border-bottom-color:#e11d48;}
+          .do-tab-panel{display:none;}
+          .do-tab-panel.aktif{display:block;}
+          /* Form barang rusak */
+          .do-form-row{margin-bottom:12px;}
+          .do-form-row label{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:4px;}
+          .do-form-row input,.do-form-row textarea{width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;outline:none;transition:border-color .15s;}
+          .do-form-row input:focus,.do-form-row textarea:focus{border-color:#e11d48;}
+          .do-form-row textarea{resize:vertical;min-height:70px;font-family:inherit;}
+          .do-btn-submit{width:100%;padding:10px;background:#e11d48;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;}
+          .do-btn-submit:hover{background:#be123c;}
+          .do-btn-submit:disabled{background:#94a3b8;cursor:not-allowed;}
+          /* Riwayat */
+          .do-riwayat-item{padding:10px 12px;border:1px solid #f1f5f9;border-radius:8px;margin-bottom:8px;background:#fafafa;}
+          .do-riwayat-item .tgl{font-size:11px;color:#94a3b8;}
+          .do-riwayat-item .qty{font-size:16px;font-weight:700;color:#be123c;}
+          .do-riwayat-item .user{font-size:11px;font-weight:600;color:#475569;}
+          .do-riwayat-item .ket{font-size:12px;color:#64748b;margin-top:3px;}
+          .do-pager{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:10px 14px;border-top:1px solid #f1f5f9;font-size:13px;color:#475569;}
+          .do-pager button{border:1px solid #e2e8f0;border-radius:6px;padding:4px 12px;background:#f8fafc;cursor:pointer;font-size:12px;color:#334155;}
+          .do-pager button:disabled{opacity:.4;cursor:default;}
+        </style>
+
+        <!-- TOOLBAR -->
+        <div class="do-toolbar">
+          <select id="do-sesi-select" onchange="doGantiSesi()" style="min-width:160px;">
+            <option value="">— Pilih Bulan SO —</option>
+          </select>
+          <input type="text" id="do-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:200px;" oninput="doFilter()">
+          <select id="do-filter-status" onchange="doFilter()">
+            <option value="">Semua Status</option>
+            <option value="rusak">Dirusak</option>
+            <option value="ok">Normal</option>
+          </select>
+        </div>
+
+        <!-- INFO -->
+        <div id="do-info-bar" style="font-size:12px;color:#64748b;margin-bottom:10px;display:none;">
+          <b id="do-info-tampil">0</b> produk ditampilkan · <span style="color:#e11d48;font-weight:600;" id="do-info-sesi"></span>
+        </div>
+
+        <!-- TABEL -->
+        <div class="do-table-wrap" id="do-table-wrap">
+          <div class="do-state-box" id="do-state-box">
+            <span class="material-symbols-outlined">assignment</span>
+            <p>Pilih bulan SO untuk memuat data.</p>
+          </div>
+          <table class="do-table" id="do-table" style="display:none;">
+            <thead>
+              <tr>
+                <th style="width:52px;">Foto</th>
+                <th>SKU</th>
+                <th>Nama Produk</th>
+                <th>Rak</th>
+                <th style="text-align:right;">Sistem</th>
+                <th style="text-align:right;">Real</th>
+                <th style="text-align:right;">Selisih</th>
+                <th>Status SO</th>
+                <th>Status Barang</th>
+                <th style="width:70px;text-align:center;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="do-tbody"></tbody>
+          </table>
+          <div class="do-pager" id="do-pager" style="display:none;">
+            <button onclick="doHalamanNav(-1)" id="do-btn-prev">‹ Prev</button>
+            <span id="do-pager-info">1 / 1</span>
+            <button onclick="doHalamanNav(1)" id="do-btn-next">Next ›</button>
+          </div>
+        </div>
+
+        <!-- MODAL ACTIONS -->
+        <div id="do-modal-overlay" onclick="doTutupModal(event)">
+          <div class="do-modal" onclick="event.stopPropagation()">
+            <div class="do-modal-header">
+              <span id="do-modal-judul">Aksi Produk</span>
+              <button onclick="doTutupModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;">✕</button>
+            </div>
+            <div class="do-modal-body">
+              <div class="do-tab-bar">
+                <div class="do-tab aktif" onclick="doSwitchTab('rusak',this)">Barang Rusak</div>
+                <div class="do-tab" onclick="doSwitchTab('riwayat',this)">Riwayat</div>
+              </div>
+
+              <!-- Panel: Barang Rusak -->
+              <div class="do-tab-panel aktif" id="do-panel-rusak">
+                <div class="do-form-row">
+                  <label>SKU</label>
+                  <input type="text" id="do-form-sku" readonly style="background:#f8fafc;color:#64748b;">
+                </div>
+                <div class="do-form-row">
+                  <label>Nama Produk</label>
+                  <input type="text" id="do-form-nama" readonly style="background:#f8fafc;color:#64748b;">
+                </div>
+                <div class="do-form-row">
+                  <label>Jumlah Rusak (pcs)</label>
+                  <input type="number" id="do-form-qty" min="1" placeholder="Masukkan jumlah pcs yang rusak">
+                </div>
+                <div class="do-form-row">
+                  <label>Keterangan</label>
+                  <textarea id="do-form-ket" placeholder="Contoh: Rusak saat pengiriman, kena air, dll."></textarea>
+                </div>
+                <div id="do-form-msg" style="font-size:12px;min-height:16px;margin-bottom:10px;"></div>
+                <button class="do-btn-submit" id="do-btn-simpan" onclick="doSimpanRusak()">Simpan Laporan Rusak</button>
+              </div>
+
+              <!-- Panel: Riwayat -->
+              <div class="do-tab-panel" id="do-panel-riwayat">
+                <div id="do-riwayat-list" style="max-height:320px;overflow-y:auto;">
+                  <div class="do-state-box" style="padding:30px 0;">
+                    <span class="material-symbols-outlined" style="font-size:32px;">history</span>
+                    <p>Belum ada riwayat.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1863,6 +2116,510 @@
         });
       });
     });
+
+    // =============================================
+    // MODUL PUSAT INVENTORY — STOCK OPNAME VIEWER
+    // =============================================
+    const SO_ASSET_BASE = 'https://pdcgudang.et.r.appspot.com/v1/assets/get';
+    const SO_PER_HALAMAN = 50;
+
+    let soSemuaData  = [];
+    let soDataFilter = [];
+    let soHalamanAkt = 1;
+    let soStatusAkt  = 'Semua';
+    let soSesiAktif  = '';
+    let soSudahInit  = false;
+
+    async function initSoPage() {
+      if (soSudahInit) return;
+      soSudahInit = true;
+      await soMuatDaftarSesi();
+    }
+
+    async function soMuatDaftarSesi() {
+      const sel = document.getElementById('so-sesi-select');
+      sel.innerHTML = '<option value="">Memuat daftar sesi...</option>';
+      sel.disabled = true;
+      try {
+        const url = new URL(GAS_URL);
+        url.searchParams.set('action', 'soListSesi');
+        const res  = await fetch(url.toString());
+        const data = await res.json();
+        if (!data.success || !data.data || !data.data.length) {
+          sel.innerHTML = '<option value="">Tidak ada data SO</option>';
+          return;
+        }
+        const bulanMap = {1:'Januari',2:'Februari',3:'Maret',4:'April',5:'Mei',6:'Juni',7:'Juli',8:'Agustus',9:'September',10:'Oktober',11:'November',12:'Desember'};
+        sel.innerHTML = '<option value="">— Pilih Bulan SO —</option>';
+        data.data.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.nama;
+          opt.textContent = `${bulanMap[s.bulan] || s.bulan} ${s.tahun}`;
+          sel.appendChild(opt);
+        });
+        sel.disabled = false;
+        if (data.data.length) { sel.value = data.data[0].nama; soGantiSesi(); }
+      } catch (err) {
+        sel.innerHTML = '<option value="">Gagal memuat daftar sesi</option>';
+        console.error('SO list sesi error:', err);
+      }
+    }
+
+    async function soGantiSesi() {
+      const sesi = document.getElementById('so-sesi-select').value;
+      if (!sesi) return;
+      soSesiAktif  = sesi;
+      soSemuaData  = [];
+      soDataFilter = [];
+      soHalamanAkt = 1;
+      soStatusAkt  = 'Semua';
+      document.querySelectorAll('.so-chip').forEach(c => c.className = 'so-chip');
+      document.getElementById('so-chip-Semua').classList.add('aktif-Semua');
+      document.getElementById('so-cari').value = '';
+      document.getElementById('so-rak-filter').value = '';
+      document.getElementById('so-stats').style.display   = 'none';
+      document.getElementById('so-info-bar').style.display = 'none';
+      document.getElementById('so-pager').style.display   = 'none';
+      soTampilLoading('Memuat data SO...');
+      try {
+        const url = new URL(GAS_URL);
+        url.searchParams.set('action', 'soLoadData');
+        url.searchParams.set('sesi', sesi);
+        const res  = await fetch(url.toString());
+        const data = await res.json();
+        if (!data.success) { soTampilPesan('error', data.message || 'Gagal memuat data.'); return; }
+        soSemuaData = data.rows || [];
+        const selP = document.getElementById('so-personil-filter');
+        selP.innerHTML = '<option value="">Semua Personil</option>';
+        (data.personil || []).forEach(p => {
+          const o = document.createElement('option');
+          o.value = o.textContent = p;
+          selP.appendChild(o);
+        });
+        soHitungStats();
+        soFilter();
+      } catch (err) {
+        soTampilPesan('error', 'Gagal terhubung ke Apps Script.');
+        console.error('SO load error:', err);
+      }
+    }
+
+    function soSetStatus(status, el) {
+      soStatusAkt  = status;
+      soHalamanAkt = 1;
+      document.querySelectorAll('.so-chip').forEach(c => c.className = 'so-chip');
+      el.classList.add('aktif-' + status);
+      soFilter();
+    }
+
+    function soFilter() {
+      const cari     = (document.getElementById('so-cari').value || '').toLowerCase();
+      const personil = (document.getElementById('so-personil-filter').value || '').toLowerCase();
+      const rak      = (document.getElementById('so-rak-filter').value || '').toLowerCase();
+      soDataFilter = soSemuaData.filter(r => {
+        if (soStatusAkt !== 'Semua' && r.status !== soStatusAkt) return false;
+        if (rak      && !String(r.rak).toLowerCase().includes(rak))            return false;
+        if (personil && r.personil.toLowerCase() !== personil)                 return false;
+        if (cari     && !(r.sku + ' ' + r.namaProduk).toLowerCase().includes(cari)) return false;
+        return true;
+      });
+      soHalamanAkt = 1;
+      soRenderTabel();
+      soUpdateInfoBar();
+    }
+
+    function soRenderTabel() {
+      const tbody = document.getElementById('so-tbody');
+      const table = document.getElementById('so-table');
+      const pager = document.getElementById('so-pager');
+      if (!soDataFilter.length) {
+        table.style.display = 'none';
+        pager.style.display = 'none';
+        soTampilPesan('empty', 'Tidak ada data yang sesuai filter.');
+        return;
+      }
+      document.getElementById('so-state-box').style.display = 'none';
+      table.style.display = '';
+      const total   = soDataFilter.length;
+      const maxHal  = Math.ceil(total / SO_PER_HALAMAN);
+      soHalamanAkt  = Math.min(soHalamanAkt, maxHal);
+      const mulai   = (soHalamanAkt - 1) * SO_PER_HALAMAN;
+      const slice   = soDataFilter.slice(mulai, mulai + SO_PER_HALAMAN);
+
+      tbody.innerHTML = slice.map(r => {
+        const fotoHtml = r.kodeGambar
+          ? `<img class="so-thumb" loading="lazy"
+               src="${SO_ASSET_BASE}?id=${encodeURIComponent(r.kodeGambar)}&thumbnail=true"
+               onerror="this.outerHTML='<div class=\\'so-thumb-empty\\'><span class=\\'material-symbols-outlined\\' style=\\'font-size:18px;\\'>broken_image</span></div>'"
+               onclick="soOpenLightbox('${encodeURIComponent(r.kodeGambar)}')"
+               title="Klik untuk perbesar">`
+          : `<div class="so-thumb-empty"><span class="material-symbols-outlined" style="font-size:18px;">image_not_supported</span></div>`;
+
+        const badge = `<span class="so-badge so-badge-${r.status || 'Belum'}">${r.status || 'Belum'}</span>`;
+
+        const sel = r.selisih === '' ? '—'
+          : r.selisih < 0 ? `<span class="so-sel-minus">${r.selisih}</span>`
+          : r.selisih > 0 ? `<span class="so-sel-plus">+${r.selisih}</span>`
+          : '<span style="color:#64748b;">0</span>';
+
+        const real = (r.totalReal === '' || r.totalReal === null)
+          ? '<span style="color:#94a3b8;font-style:italic;">Belum</span>'
+          : r.totalReal;
+
+        return `<tr>
+          <td>${fotoHtml}</td>
+          <td style="font-family:monospace;font-size:11px;color:#475569;">${r.sku}</td>
+          <td style="max-width:200px;">${r.namaProduk}</td>
+          <td><span style="font-weight:600;color:#334155;">${r.rak}</span></td>
+          <td style="color:#64748b;">${r.tim}</td>
+          <td style="text-align:right;">${r.qtySistem}</td>
+          <td style="text-align:right;">${real}</td>
+          <td style="text-align:right;">${sel}</td>
+          <td>${badge}</td>
+          <td style="font-size:12px;">${r.personil || '—'}</td>
+          <td style="font-size:11px;color:#64748b;">${r.balancing || '—'}</td>
+          <td style="text-align:center;">
+            <button onclick="soOpenActions('${encodeURIComponent(JSON.stringify({sku:r.sku,nama:r.namaProduk,sesi:soSesiAktif}))}')"
+              style="border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;padding:4px 10px;cursor:pointer;font-size:13px;color:#475569;font-weight:700;transition:.15s;"
+              title="Aksi produk ini"
+              onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">···</button>
+          </td>
+        </tr>`;
+      }).join('');
+
+      if (maxHal > 1) {
+        pager.style.display = '';
+        document.getElementById('so-pager-info').textContent = `${soHalamanAkt} / ${maxHal}`;
+        document.getElementById('so-btn-prev').disabled = soHalamanAkt <= 1;
+        document.getElementById('so-btn-next').disabled = soHalamanAkt >= maxHal;
+      } else {
+        pager.style.display = 'none';
+      }
+    }
+
+    function soHalamanNav(arah) {
+      soHalamanAkt += arah;
+      soRenderTabel();
+      document.getElementById('so-table-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function soHitungStats() {
+      const h = { Balance: 0, Plus: 0, Minus: 0, Belum: 0 };
+      soSemuaData.forEach(r => { if (h[r.status] !== undefined) h[r.status]++; else h.Belum++; });
+      document.getElementById('so-n-balance').textContent = h.Balance;
+      document.getElementById('so-n-plus').textContent    = h.Plus;
+      document.getElementById('so-n-minus').textContent   = h.Minus;
+      document.getElementById('so-n-belum').textContent   = h.Belum;
+      document.getElementById('so-stats').style.display   = '';
+    }
+
+    function soUpdateInfoBar() {
+      document.getElementById('so-info-total').textContent  = soSemuaData.length;
+      document.getElementById('so-info-tampil').textContent = soDataFilter.length;
+      document.getElementById('so-info-sesi').textContent   = soSesiAktif;
+      document.getElementById('so-info-bar').style.display  = '';
+    }
+
+    function soTampilLoading(pesan) {
+      const box = document.getElementById('so-state-box');
+      box.innerHTML = `<span class="material-symbols-outlined" style="animation:spin 1s linear infinite;">sync</span><p>${pesan}</p>`;
+      box.style.display = '';
+      document.getElementById('so-table').style.display = 'none';
+      document.getElementById('so-pager').style.display = 'none';
+    }
+
+    function soTampilPesan(tipe, pesan) {
+      const ikon = tipe === 'error' ? 'error' : 'search_off';
+      const box  = document.getElementById('so-state-box');
+      box.innerHTML = `<span class="material-symbols-outlined">${ikon}</span><p>${pesan}</p>`;
+      box.style.display = '';
+      document.getElementById('so-table').style.display = 'none';
+      document.getElementById('so-pager').style.display = 'none';
+    }
+
+    function soOpenLightbox(kodeEncoded) {
+      const kode = decodeURIComponent(kodeEncoded);
+      document.getElementById('so-lightbox-img').src =
+        SO_ASSET_BASE + '?id=' + encodeURIComponent(kode) + '&thumbnail=false';
+      document.getElementById('so-lightbox').classList.add('open');
+    }
+
+    function soCloseLightbox() {
+      document.getElementById('so-lightbox').classList.remove('open');
+      document.getElementById('so-lightbox-img').src = '';
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') { soCloseLightbox(); document.getElementById('do-modal-overlay').classList.remove('open'); }
+    });
+
+    // =============================================
+    // SO ACTIONS — buka modal dari tabel Pusat Inventory
+    // =============================================
+    function soOpenActions(encodedData) {
+      const d = JSON.parse(decodeURIComponent(encodedData));
+      // Redirect ke Data Opname dan buka modal
+      const navItem = document.querySelector('.nav-item[onclick*="barang-bermasalah"]');
+      if (navItem) { switchTab('barang-bermasalah', navItem); initDataOpname(d.sesi); }
+      setTimeout(() => doOpenModal(d.sku, d.nama), 600);
+    }
+
+    // =============================================
+    // MODUL DATA OPNAME
+    // =============================================
+    let doSemuaData   = [];
+    let doDataFilter  = [];
+    let doRusakMap    = {};  // sku → data rusak terbaru
+    let doHalamanAkt  = 1;
+    let doSudahInit   = false;
+    let doSkuAktif    = '';
+    let doNamaAktif   = '';
+    const DO_PER_HAL  = 50;
+
+    async function initDataOpname(sesiAwal) {
+      if (!doSudahInit) {
+        doSudahInit = true;
+        await doMuatDaftarSesi();
+      }
+      if (sesiAwal) {
+        const sel = document.getElementById('do-sesi-select');
+        if (sel.value !== sesiAwal) { sel.value = sesiAwal; await doGantiSesi(); }
+      }
+    }
+
+    async function doMuatDaftarSesi() {
+      const sel = document.getElementById('do-sesi-select');
+      sel.innerHTML = '<option value="">Memuat...</option>';
+      sel.disabled = true;
+      try {
+        const url = new URL(GAS_URL);
+        url.searchParams.set('action', 'soListSesi');
+        const data = await (await fetch(url.toString())).json();
+        if (!data.success || !data.data.length) { sel.innerHTML = '<option value="">Tidak ada data SO</option>'; return; }
+        const bMap = {1:'Januari',2:'Februari',3:'Maret',4:'April',5:'Mei',6:'Juni',7:'Juli',8:'Agustus',9:'September',10:'Oktober',11:'November',12:'Desember'};
+        sel.innerHTML = '<option value="">— Pilih Bulan SO —</option>';
+        data.data.forEach(s => {
+          const o = document.createElement('option');
+          o.value = s.nama; o.textContent = `${bMap[s.bulan]||s.bulan} ${s.tahun}`;
+          sel.appendChild(o);
+        });
+        sel.disabled = false;
+        if (data.data.length) { sel.value = data.data[0].nama; await doGantiSesi(); }
+      } catch(e) { sel.innerHTML = '<option value="">Gagal memuat sesi</option>'; }
+    }
+
+    async function doGantiSesi() {
+      const sesi = document.getElementById('do-sesi-select').value;
+      if (!sesi) return;
+      doSemuaData = []; doDataFilter = []; doHalamanAkt = 1;
+      doTampilLoading();
+      try {
+        // Load data SO
+        const url = new URL(GAS_URL);
+        url.searchParams.set('action', 'soLoadData');
+        url.searchParams.set('sesi', sesi);
+        const dataSO = await (await fetch(url.toString())).json();
+        if (!dataSO.success) { doTampilPesan('error', dataSO.message||'Gagal.'); return; }
+        doSemuaData = dataSO.rows || [];
+
+        // Load data rusak dari server
+        const token = sessionStorage.getItem('sessionToken');
+        const res = await fetch('/api/so/rusak?sesi=' + encodeURIComponent(sesi), {
+          headers: { 'x-session-token': token }
+        });
+        const dataRusak = await res.json();
+        doRusakMap = {};
+        if (dataRusak.success) {
+          dataRusak.rows.forEach(r => { doRusakMap[r.sku] = r; });
+        }
+        doFilter();
+        document.getElementById('do-info-sesi').textContent = sesi;
+        document.getElementById('do-info-bar').style.display = '';
+      } catch(e) { doTampilPesan('error', 'Gagal terhubung.'); }
+    }
+
+    function doFilter() {
+      const cari   = (document.getElementById('do-cari').value||'').toLowerCase();
+      const status = document.getElementById('do-filter-status').value;
+      doDataFilter = doSemuaData.filter(r => {
+        const isRusak = !!doRusakMap[r.sku];
+        if (status === 'rusak' && !isRusak) return false;
+        if (status === 'ok'    && isRusak)  return false;
+        if (cari && !(r.sku+' '+r.namaProduk).toLowerCase().includes(cari)) return false;
+        return true;
+      });
+      doHalamanAkt = 1;
+      doRenderTabel();
+      document.getElementById('do-info-tampil').textContent = doDataFilter.length;
+    }
+
+    function doRenderTabel() {
+      const tbody = document.getElementById('do-tbody');
+      const table = document.getElementById('do-table');
+      const pager = document.getElementById('do-pager');
+      if (!doDataFilter.length) {
+        table.style.display = 'none'; pager.style.display = 'none';
+        doTampilPesan('empty', 'Tidak ada data yang sesuai filter.'); return;
+      }
+      document.getElementById('do-state-box').style.display = 'none';
+      table.style.display = '';
+      const total  = doDataFilter.length;
+      const maxHal = Math.ceil(total / DO_PER_HAL);
+      doHalamanAkt = Math.min(doHalamanAkt, maxHal);
+      const slice  = doDataFilter.slice((doHalamanAkt-1)*DO_PER_HAL, doHalamanAkt*DO_PER_HAL);
+
+      tbody.innerHTML = slice.map(r => {
+        const rusak = doRusakMap[r.sku];
+        const foto = r.kodeGambar
+          ? `<img class="so-thumb" loading="lazy"
+               src="${SO_ASSET_BASE}?id=${encodeURIComponent(r.kodeGambar)}&thumbnail=true"
+               onerror="this.outerHTML='<div class=\'so-thumb-empty\'><span class=\'material-symbols-outlined\' style=\'font-size:18px;\'>broken_image</span></div>'"
+               onclick="soOpenLightbox('${encodeURIComponent(r.kodeGambar)}')" title="Klik untuk perbesar">`
+          : `<div class="so-thumb-empty"><span class="material-symbols-outlined" style="font-size:18px;">image_not_supported</span></div>`;
+
+        const statusSO = `<span class="so-badge so-badge-${r.status||'Belum'}">${r.status||'Belum'}</span>`;
+
+        const statusBarang = rusak
+          ? `<div class="do-badge-rusak"><span class="material-symbols-outlined" style="font-size:13px;">warning</span>${rusak.jumlahRusak} pcs · ${rusak.oleh}</div>`
+          : `<span class="do-badge-ok">Normal</span>`;
+
+        const sel = r.selisih===''?'—':r.selisih<0?`<span class="so-sel-minus">${r.selisih}</span>`:r.selisih>0?`<span class="so-sel-plus">+${r.selisih}</span>`:'<span style="color:#64748b;">0</span>';
+        const real = (r.totalReal===''||r.totalReal===null)?'<span style="color:#94a3b8;font-style:italic;">Belum</span>':r.totalReal;
+
+        return `<tr>
+          <td>${foto}</td>
+          <td style="font-family:monospace;font-size:11px;color:#475569;">${r.sku}</td>
+          <td style="max-width:180px;">${r.namaProduk}</td>
+          <td><span style="font-weight:600;">${r.rak}</span></td>
+          <td style="text-align:right;">${r.qtySistem}</td>
+          <td style="text-align:right;">${real}</td>
+          <td style="text-align:right;">${sel}</td>
+          <td>${statusSO}</td>
+          <td>${statusBarang}</td>
+          <td style="text-align:center;">
+            <button onclick="doOpenModal('${r.sku.replace(/'/g,"\'")}','${r.namaProduk.replace(/'/g,"\'")}' )"
+              style="border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;padding:4px 10px;cursor:pointer;font-size:13px;color:#475569;font-weight:700;"
+              onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">···</button>
+          </td>
+        </tr>`;
+      }).join('');
+
+      if (maxHal > 1) {
+        pager.style.display = '';
+        document.getElementById('do-pager-info').textContent = `${doHalamanAkt} / ${maxHal}`;
+        document.getElementById('do-btn-prev').disabled = doHalamanAkt <= 1;
+        document.getElementById('do-btn-next').disabled = doHalamanAkt >= maxHal;
+      } else { pager.style.display = 'none'; }
+    }
+
+    function doHalamanNav(arah) { doHalamanAkt += arah; doRenderTabel(); }
+
+    function doTampilLoading() {
+      document.getElementById('do-state-box').innerHTML = '<span class="material-symbols-outlined" style="animation:spin 1s linear infinite;">sync</span><p>Memuat data...</p>';
+      document.getElementById('do-state-box').style.display = '';
+      document.getElementById('do-table').style.display = 'none';
+      document.getElementById('do-pager').style.display = 'none';
+    }
+
+    function doTampilPesan(tipe, pesan) {
+      document.getElementById('do-state-box').innerHTML = `<span class="material-symbols-outlined">${tipe==='error'?'error':'search_off'}</span><p>${pesan}</p>`;
+      document.getElementById('do-state-box').style.display = '';
+      document.getElementById('do-table').style.display = 'none';
+      document.getElementById('do-pager').style.display = 'none';
+    }
+
+    // ---- MODAL ----
+    function doOpenModal(sku, nama) {
+      doSkuAktif  = sku;
+      doNamaAktif = nama;
+      document.getElementById('do-modal-judul').textContent = nama || sku;
+      document.getElementById('do-form-sku').value  = sku;
+      document.getElementById('do-form-nama').value = nama;
+      document.getElementById('do-form-qty').value  = '';
+      document.getElementById('do-form-ket').value  = '';
+      document.getElementById('do-form-msg').textContent = '';
+      // Default tab ke Barang Rusak
+      doSwitchTab('rusak', document.querySelector('.do-tab'));
+      // Langsung load riwayat di background
+      doLoadRiwayat(sku);
+      document.getElementById('do-modal-overlay').classList.add('open');
+    }
+
+    function doTutupModal(e) {
+      if (e && e.target !== document.getElementById('do-modal-overlay') && e.type !== 'click') return;
+      if (e && e.currentTarget === document.getElementById('do-modal-overlay') && e.target !== e.currentTarget) return;
+      document.getElementById('do-modal-overlay').classList.remove('open');
+    }
+
+    function doSwitchTab(tab, el) {
+      document.querySelectorAll('.do-tab').forEach(t => t.classList.remove('aktif'));
+      document.querySelectorAll('.do-tab-panel').forEach(p => p.classList.remove('aktif'));
+      if (el) el.classList.add('aktif');
+      else { document.querySelectorAll('.do-tab').forEach(t => { if(t.textContent.toLowerCase().includes(tab)) t.classList.add('aktif'); }); }
+      document.getElementById('do-panel-' + tab).classList.add('aktif');
+    }
+
+    async function doLoadRiwayat(sku) {
+      const box = document.getElementById('do-riwayat-list');
+      box.innerHTML = '<div class="do-state-box" style="padding:20px 0;"><span class="material-symbols-outlined" style="animation:spin 1s linear infinite;font-size:28px;">sync</span><p>Memuat riwayat...</p></div>';
+      const sesi  = document.getElementById('do-sesi-select').value;
+      const token = sessionStorage.getItem('sessionToken');
+      try {
+        const res  = await fetch(`/api/so/riwayat?sku=${encodeURIComponent(sku)}&sesi=${encodeURIComponent(sesi)}`, {
+          headers: { 'x-session-token': token }
+        });
+        const data = await res.json();
+        if (!data.success || !data.rows.length) {
+          box.innerHTML = '<div class="do-state-box" style="padding:20px 0;"><span class="material-symbols-outlined" style="font-size:28px;">history</span><p>Belum ada riwayat untuk produk ini.</p></div>';
+          return;
+        }
+        box.innerHTML = data.rows.map(r => `
+          <div class="do-riwayat-item">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span class="qty">${r.jumlahRusak} pcs rusak</span>
+              <span class="tgl">${r.dicatatPada||'-'}</span>
+            </div>
+            <div class="user">👤 ${r.oleh} · ${r.sesi}</div>
+            <div class="ket">${r.keterangan||'—'}</div>
+          </div>
+        `).join('');
+      } catch(e) {
+        box.innerHTML = '<div class="do-state-box" style="padding:20px 0;"><p>Gagal memuat riwayat.</p></div>';
+      }
+    }
+
+    async function doSimpanRusak() {
+      const qty = parseInt(document.getElementById('do-form-qty').value);
+      const ket = document.getElementById('do-form-ket').value.trim();
+      const msg = document.getElementById('do-form-msg');
+      const btn = document.getElementById('do-btn-simpan');
+      if (!qty || qty < 1) { msg.style.color='#ef4444'; msg.textContent='Jumlah rusak wajib diisi (min. 1 pcs).'; return; }
+      const sesi  = document.getElementById('do-sesi-select').value;
+      const token = sessionStorage.getItem('sessionToken');
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+      msg.textContent = '';
+      try {
+        const res  = await fetch('/api/so/rusak', {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', 'x-session-token': token },
+          body: JSON.stringify({ sku: doSkuAktif, namaProduk: doNamaAktif, sesi, jumlahRusak: qty, keterangan: ket })
+        });
+        const data = await res.json();
+        if (data.success) {
+          msg.style.color = '#16a34a';
+          msg.textContent = '✅ Laporan rusak tersimpan.';
+          // Update doRusakMap lokal
+          doRusakMap[doSkuAktif] = { sku: doSkuAktif, jumlahRusak: qty, oleh: data.oleh||sessionStorage.getItem('sessionUser'), dicatatPada: data.dicatatPada||'', keterangan: ket, sesi };
+          doRenderTabel();
+          doLoadRiwayat(doSkuAktif);
+          document.getElementById('do-form-qty').value = '';
+          document.getElementById('do-form-ket').value = '';
+        } else {
+          msg.style.color = '#ef4444'; msg.textContent = data.message||'Gagal menyimpan.';
+        }
+      } catch(e) { msg.style.color='#ef4444'; msg.textContent='Gagal terhubung ke server.'; }
+      finally { btn.disabled = false; btn.textContent = 'Simpan Laporan Rusak'; }
+    }
 </script>
 </body>
 </html>
