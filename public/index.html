@@ -35,7 +35,13 @@
     .btn-logout { display: flex; align-items: center; gap: 6px; background: #fee2e2; color: #ef4444; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; }
     .btn-logout:hover { background: #fca5a5; }
 
-    .content-container { flex: 1; padding: 20px; overflow-y: auto; }
+    .content-container { flex: 1; padding: 20px; overflow-y: auto; scroll-behavior: smooth; }
+    .content-container::-webkit-scrollbar { width: 5px; }
+    .content-container::-webkit-scrollbar-track { background: transparent; }
+    .content-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .content-container::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    /* Data Opname page: override padding agar sticky bisa bekerja */
+    #page-barang-bermasalah.active { padding: 0 !important; }
     .page-content { display: none; }
     .page-content.active { display: block; }
 
@@ -581,94 +587,224 @@
 
       <section id="page-barang-bermasalah" class="page-content">
         <style>
-          .do-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin-bottom:14px;}
-          .do-toolbar select,.do-toolbar input[type=text]{border:1px solid #cbd5e1;border-radius:6px;padding:6px 10px;font-size:13px;color:#1e293b;background:#f8fafc;outline:none;}
-          .do-table-wrap{background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:auto;}
-          .do-table{width:100%;border-collapse:collapse;font-size:12.5px;}
-          .do-table thead th{background:#1e293b;color:#f8fafc;padding:9px 10px;text-align:left;font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:2;}
-          .do-table tbody tr{border-bottom:1px solid #f1f5f9;transition:background .1s;}
-          .do-table tbody tr:hover{background:#f8fafc;}
-          .do-table td{padding:8px 10px;vertical-align:middle;color:#334155;}
-          .do-badge-rusak{display:inline-flex;align-items:center;gap:4px;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;}
-          .do-badge-ok{display:inline-block;background:#dcfce7;color:#15803d;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;}
-          .do-state-box{padding:60px 20px;text-align:center;color:#94a3b8;}
-          .do-state-box .material-symbols-outlined{font-size:48px;margin-bottom:10px;display:block;}
-          /* Modal Actions */
-          #do-modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:9000;align-items:center;justify-content:center;}
-          #do-modal-overlay.open{display:flex;}
-          .do-modal{background:#fff;border-radius:12px;width:440px;max-width:94vw;box-shadow:0 12px 40px rgba(0,0,0,.2);overflow:hidden;}
-          .do-modal-header{padding:14px 18px;background:#1e293b;color:#fff;font-size:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center;}
-          .do-modal-body{padding:18px;}
-          .do-tab-bar{display:flex;gap:0;border-bottom:2px solid #f1f5f9;margin-bottom:16px;}
-          .do-tab{padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s;}
-          .do-tab.aktif{color:#e11d48;border-bottom-color:#e11d48;}
-          .do-tab-panel{display:none;}
-          .do-tab-panel.aktif{display:block;}
-          /* Form barang rusak */
-          .do-form-row{margin-bottom:12px;}
-          .do-form-row label{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:4px;}
-          .do-form-row input,.do-form-row textarea{width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;outline:none;transition:border-color .15s;}
-          .do-form-row input:focus,.do-form-row textarea:focus{border-color:#e11d48;}
-          .do-form-row textarea{resize:vertical;min-height:70px;font-family:inherit;}
-          .do-btn-submit{width:100%;padding:10px;background:#e11d48;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;}
-          .do-btn-submit:hover{background:#be123c;}
-          .do-btn-submit:disabled{background:#94a3b8;cursor:not-allowed;}
-          /* Riwayat */
-          .do-riwayat-item{padding:10px 12px;border:1px solid #f1f5f9;border-radius:8px;margin-bottom:8px;background:#fafafa;}
-          .do-riwayat-item .tgl{font-size:11px;color:#94a3b8;}
-          .do-riwayat-item .qty{font-size:16px;font-weight:700;color:#be123c;}
-          .do-riwayat-item .user{font-size:11px;font-weight:600;color:#475569;}
-          .do-riwayat-item .ket{font-size:12px;color:#64748b;margin-top:3px;}
-          .do-pager{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:10px 14px;border-top:1px solid #f1f5f9;font-size:13px;color:#475569;}
-          .do-pager button{border:1px solid #e2e8f0;border-radius:6px;padding:4px 12px;background:#f8fafc;cursor:pointer;font-size:12px;color:#334155;}
-          .do-pager button:disabled{opacity:.4;cursor:default;}
+          /* ---- WRAPPER LAYOUT ---- */
+          #page-barang-bermasalah { display:flex; flex-direction:column; height:calc(100vh - 55px); overflow:hidden; }
+
+          /* ---- TOOLBAR FREEZE ---- */
+          .do-sticky-top {
+            position:sticky; top:0; z-index:10;
+            background:#f8fafc; padding-bottom:10px;
+            flex-shrink:0;
+          }
+          .do-toolbar {
+            display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+            background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+            padding:10px 14px; box-shadow:0 1px 3px rgba(0,0,0,.04);
+          }
+          .do-toolbar select, .do-toolbar input[type=text] {
+            border:1px solid #e2e8f0; border-radius:7px; padding:7px 11px;
+            font-size:13px; color:#1e293b; background:#f8fafc; outline:none;
+            transition:border-color .15s, box-shadow .15s;
+          }
+          .do-toolbar select:focus, .do-toolbar input[type=text]:focus {
+            border-color:#e11d48; box-shadow:0 0 0 3px rgba(225,29,72,.08);
+          }
+          .do-info-strip {
+            font-size:12px; color:#64748b; padding:6px 2px 0;
+            display:flex; align-items:center; gap:8px;
+          }
+
+          /* ---- SCROLL AREA ---- */
+          .do-scroll-area {
+            flex:1; overflow-y:auto; overflow-x:auto;
+            scroll-behavior:smooth;
+            -webkit-overflow-scrolling:touch;
+          }
+          /* Custom scrollbar */
+          .do-scroll-area::-webkit-scrollbar { width:5px; height:5px; }
+          .do-scroll-area::-webkit-scrollbar-track { background:transparent; }
+          .do-scroll-area::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:10px; }
+          .do-scroll-area::-webkit-scrollbar-thumb:hover { background:#94a3b8; }
+
+          /* ---- TABEL ---- */
+          .do-table-wrap { background:#fff; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; min-width:900px; }
+          .do-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+          .do-table thead th {
+            background:#1e293b; color:#f1f5f9; padding:10px 12px;
+            text-align:left; font-weight:600; white-space:nowrap;
+            font-size:11px; letter-spacing:.4px; text-transform:uppercase;
+          }
+          .do-table thead th:first-child { border-radius:0; }
+          .do-table tbody tr {
+            border-bottom:1px solid #f1f5f9;
+            transition:background .12s ease;
+          }
+          .do-table tbody tr:last-child { border-bottom:none; }
+          .do-table tbody tr:hover { background:#fafbff; }
+          .do-table td { padding:9px 12px; vertical-align:middle; color:#334155; }
+
+          /* Status badges */
+          .do-badge-rusak {
+            display:inline-flex; align-items:center; gap:5px;
+            background:#fff1f2; color:#be123c; border:1px solid #fecdd3;
+            border-radius:20px; padding:3px 10px; font-size:11px; font-weight:700;
+          }
+          .do-badge-ok {
+            display:inline-block; background:#f0fdf4; color:#15803d;
+            border:1px solid #bbf7d0; border-radius:20px;
+            padding:3px 10px; font-size:11px; font-weight:700;
+          }
+          .do-badge-so { display:inline-block; border-radius:20px; padding:3px 10px; font-size:11px; font-weight:700; white-space:nowrap; }
+          .do-badge-so-balance { background:#dbeafe; color:#1d4ed8; }
+          .do-badge-so-plus    { background:#eff6ff; color:#1d4ed8; }
+          .do-badge-so-minus   { background:#fff1f2; color:#be123c; }
+          .do-badge-so-belum   { background:#fef9c3; color:#92400e; }
+          .do-badge-so-cocok   { background:#dbeafe; color:#1d4ed8; }
+
+          /* Selisih */
+          .do-sel-minus { color:#dc2626; font-weight:700; }
+          .do-sel-plus  { color:#2563eb; font-weight:700; }
+
+          /* State box */
+          .do-state-box { padding:60px 20px; text-align:center; color:#94a3b8; }
+          .do-state-box .material-symbols-outlined { font-size:48px; margin-bottom:10px; display:block; }
+          .do-state-box p { font-size:13px; margin:0; }
+
+          /* Pager */
+          .do-pager {
+            display:flex; align-items:center; gap:8px; justify-content:flex-end;
+            padding:10px 14px; border-top:1px solid #f1f5f9; font-size:13px; color:#475569;
+            background:#fff;
+          }
+          .do-pager button {
+            border:1px solid #e2e8f0; border-radius:7px; padding:5px 14px;
+            background:#f8fafc; cursor:pointer; font-size:12px; color:#334155;
+            transition:background .12s;
+          }
+          .do-pager button:not(:disabled):hover { background:#e2e8f0; }
+          .do-pager button:disabled { opacity:.35; cursor:default; }
+
+          /* ---- MODAL ---- */
+          #do-modal-overlay {
+            display:none; position:fixed; inset:0;
+            background:rgba(15,23,42,.55); z-index:9000;
+            align-items:center; justify-content:center;
+            backdrop-filter:blur(2px);
+          }
+          #do-modal-overlay.open { display:flex; animation:doFadeIn .18s ease; }
+          @keyframes doFadeIn { from{opacity:0;transform:scale(.97)} to{opacity:1;transform:scale(1)} }
+          .do-modal {
+            background:#fff; border-radius:14px; width:460px; max-width:94vw;
+            box-shadow:0 20px 60px rgba(0,0,0,.18); overflow:hidden;
+          }
+          .do-modal-header {
+            padding:15px 18px; background:#1e293b; color:#fff;
+            font-size:13px; font-weight:700;
+            display:flex; justify-content:space-between; align-items:center;
+          }
+          .do-modal-body { padding:18px; }
+          .do-tab-bar {
+            display:flex; gap:0; border-bottom:2px solid #f1f5f9; margin-bottom:16px;
+          }
+          .do-tab {
+            padding:8px 20px; font-size:13px; font-weight:600; cursor:pointer;
+            color:#64748b; border-bottom:2px solid transparent; margin-bottom:-2px;
+            transition:color .15s, border-color .15s;
+          }
+          .do-tab.aktif { color:#e11d48; border-bottom-color:#e11d48; }
+          .do-tab-panel { display:none; }
+          .do-tab-panel.aktif { display:block; }
+          .do-form-row { margin-bottom:13px; }
+          .do-form-row label { display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:5px; text-transform:uppercase; letter-spacing:.4px; }
+          .do-form-row input, .do-form-row textarea {
+            width:100%; padding:9px 11px; border:1px solid #e2e8f0;
+            border-radius:8px; font-size:13px; outline:none; transition:border-color .15s, box-shadow .15s;
+            color:#1e293b;
+          }
+          .do-form-row input:focus, .do-form-row textarea:focus {
+            border-color:#e11d48; box-shadow:0 0 0 3px rgba(225,29,72,.08);
+          }
+          .do-form-row input[readonly] { background:#f8fafc; color:#64748b; }
+          .do-form-row textarea { resize:vertical; min-height:72px; font-family:inherit; }
+          .do-btn-submit {
+            width:100%; padding:11px; background:#e11d48; color:#fff;
+            border:none; border-radius:8px; font-size:13px; font-weight:700;
+            cursor:pointer; transition:background .15s;
+          }
+          .do-btn-submit:hover:not(:disabled) { background:#be123c; }
+          .do-btn-submit:disabled { background:#94a3b8; cursor:not-allowed; }
+          .do-riwayat-item {
+            padding:11px 13px; border:1px solid #f1f5f9; border-radius:10px;
+            margin-bottom:8px; background:#fafafa; transition:background .12s;
+          }
+          .do-riwayat-item:hover { background:#f1f5f9; }
+          .do-riwayat-item .tgl { font-size:11px; color:#94a3b8; }
+          .do-riwayat-item .qty { font-size:17px; font-weight:800; color:#be123c; }
+          .do-riwayat-item .user { font-size:11px; font-weight:600; color:#475569; margin-top:2px; }
+          .do-riwayat-item .ket { font-size:12px; color:#64748b; margin-top:4px; }
         </style>
 
-        <!-- TOOLBAR -->
-        <div class="do-toolbar">
-          <select id="do-sesi-select" onchange="doGantiSesi()" style="min-width:160px;">
-            <option value="">— Pilih Bulan SO —</option>
-          </select>
-          <input type="text" id="do-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:200px;" oninput="doFilter()">
-          <select id="do-filter-status" onchange="doFilter()">
-            <option value="">Semua Status</option>
-            <option value="rusak">Dirusak</option>
-            <option value="ok">Normal</option>
-          </select>
-        </div>
-
-        <!-- INFO -->
-        <div id="do-info-bar" style="font-size:12px;color:#64748b;margin-bottom:10px;display:none;">
-          <b id="do-info-tampil">0</b> produk ditampilkan · <span style="color:#e11d48;font-weight:600;" id="do-info-sesi"></span>
-        </div>
-
-        <!-- TABEL -->
-        <div class="do-table-wrap" id="do-table-wrap">
-          <div class="do-state-box" id="do-state-box">
-            <span class="material-symbols-outlined">assignment</span>
-            <p>Pilih bulan SO untuk memuat data.</p>
+        <!-- STICKY TOP: TOOLBAR + INFO -->
+        <div class="do-sticky-top" style="padding:20px 20px 0;">
+          <div class="do-toolbar">
+            <select id="do-sesi-select" onchange="doGantiSesi()" style="min-width:155px;">
+              <option value="">— Pilih Bulan SO —</option>
+            </select>
+            <input type="text" id="do-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:190px;" oninput="doFilter()">
+            <select id="do-filter-tim" onchange="doFilter()" style="min-width:110px;">
+              <option value="">Semua Tim</option>
+            </select>
+            <select id="do-filter-status" onchange="doFilter()" style="min-width:130px;">
+              <option value="">Semua Status SO</option>
+              <option value="Balance">Balance</option>
+              <option value="Plus">Plus</option>
+              <option value="Minus">Minus</option>
+              <option value="Belum">Belum</option>
+            </select>
+            <select id="do-filter-barang" onchange="doFilter()" style="min-width:130px;">
+              <option value="">Semua Kondisi</option>
+              <option value="rusak">Dirusak</option>
+              <option value="ok">Normal</option>
+            </select>
           </div>
-          <table class="do-table" id="do-table" style="display:none;">
-            <thead>
-              <tr>
-                <th style="width:52px;">Foto</th>
-                <th>SKU</th>
-                <th>Nama Produk</th>
-                <th>Rak</th>
-                <th style="text-align:right;">Sistem</th>
-                <th style="text-align:right;">Real</th>
-                <th style="text-align:right;">Selisih</th>
-                <th>Status SO</th>
-                <th>Status Barang</th>
-                <th style="width:70px;text-align:center;">Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="do-tbody"></tbody>
-          </table>
-          <div class="do-pager" id="do-pager" style="display:none;">
-            <button onclick="doHalamanNav(-1)" id="do-btn-prev">‹ Prev</button>
-            <span id="do-pager-info">1 / 1</span>
-            <button onclick="doHalamanNav(1)" id="do-btn-next">Next ›</button>
+          <div class="do-info-strip" id="do-info-bar" style="display:none;">
+            <span><b id="do-info-tampil">0</b> produk</span>
+            <span style="color:#cbd5e1;">·</span>
+            <span style="color:#e11d48;font-weight:600;" id="do-info-sesi"></span>
+          </div>
+        </div>
+
+        <!-- SCROLL AREA -->
+        <div class="do-scroll-area" id="do-scroll-area" style="padding:0 20px 20px;">
+          <div class="do-table-wrap" id="do-table-wrap">
+            <div class="do-state-box" id="do-state-box">
+              <span class="material-symbols-outlined">assignment</span>
+              <p>Pilih bulan SO untuk memuat data.</p>
+            </div>
+            <table class="do-table" id="do-table" style="display:none;">
+              <thead>
+                <tr>
+                  <th style="width:54px;">Foto</th>
+                  <th style="min-width:160px;">SKU</th>
+                  <th style="min-width:200px;">Nama Produk</th>
+                  <th>Rak</th>
+                  <th>Tim</th>
+                  <th style="text-align:right;">Sistem</th>
+                  <th style="text-align:right;">Real</th>
+                  <th style="text-align:right;">Selisih</th>
+                  <th>Status SO</th>
+                  <th>Status Barang</th>
+                  <th style="width:60px;text-align:center;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="do-tbody"></tbody>
+            </table>
+            <div class="do-pager" id="do-pager" style="display:none;">
+              <span style="font-size:12px;color:#94a3b8;margin-right:auto;" id="do-pager-count"></span>
+              <button onclick="doHalamanNav(-1)" id="do-btn-prev">‹ Prev</button>
+              <span id="do-pager-info" style="font-size:13px;">1 / 1</span>
+              <button onclick="doHalamanNav(1)" id="do-btn-next">Next ›</button>
+            </div>
           </div>
         </div>
 
@@ -2414,7 +2550,6 @@
       doSemuaData = []; doDataFilter = []; doHalamanAkt = 1;
       doTampilLoading();
       try {
-        // Load data SO
         const url = new URL(GAS_URL);
         url.searchParams.set('action', 'soLoadData');
         url.searchParams.set('sesi', sesi);
@@ -2422,35 +2557,69 @@
         if (!dataSO.success) { doTampilPesan('error', dataSO.message||'Gagal.'); return; }
         doSemuaData = dataSO.rows || [];
 
-        // Load data rusak dari server
+        // Populate filter Tim dari data
+        const timSet = [...new Set(doSemuaData.map(r => String(r.tim||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+        const selTim = document.getElementById('do-filter-tim');
+        const prevTim = selTim.value;
+        selTim.innerHTML = '<option value="">Semua Tim</option>';
+        timSet.forEach(t => {
+          const o = document.createElement('option');
+          o.value = o.textContent = t;
+          selTim.appendChild(o);
+        });
+        if (timSet.includes(prevTim)) selTim.value = prevTim;
+
+        // Load data rusak
         const token = sessionStorage.getItem('sessionToken');
         const res = await fetch('/api/so/rusak?sesi=' + encodeURIComponent(sesi), {
           headers: { 'x-session-token': token }
         });
         const dataRusak = await res.json();
         doRusakMap = {};
-        if (dataRusak.success) {
-          dataRusak.rows.forEach(r => { doRusakMap[r.sku] = r; });
-        }
-        doFilter();
+        if (dataRusak.success) dataRusak.rows.forEach(r => { doRusakMap[r.sku] = r; });
+
         document.getElementById('do-info-sesi').textContent = sesi;
         document.getElementById('do-info-bar').style.display = '';
+        doFilter();
       } catch(e) { doTampilPesan('error', 'Gagal terhubung.'); }
     }
 
+    function doNormStatus(s) {
+      // Cocok di sheet → tampil sebagai Balance di web
+      const v = String(s||'').trim();
+      return v === 'Cocok' ? 'Balance' : v;
+    }
+
     function doFilter() {
-      const cari   = (document.getElementById('do-cari').value||'').toLowerCase();
-      const status = document.getElementById('do-filter-status').value;
+      const cari       = (document.getElementById('do-cari').value||'').toLowerCase();
+      const filterSO   = document.getElementById('do-filter-status').value;  // Balance/Plus/Minus/Belum
+      const filterTim  = (document.getElementById('do-filter-tim').value||'').trim();
+      const filterBrg  = document.getElementById('do-filter-barang').value;  // rusak/ok/''
       doDataFilter = doSemuaData.filter(r => {
+        const normSt = doNormStatus(r.status);
+        if (filterSO  && normSt !== filterSO)         return false;
+        if (filterTim && String(r.tim||'').trim() !== filterTim) return false;
         const isRusak = !!doRusakMap[r.sku];
-        if (status === 'rusak' && !isRusak) return false;
-        if (status === 'ok'    && isRusak)  return false;
+        if (filterBrg === 'rusak' && !isRusak) return false;
+        if (filterBrg === 'ok'    && isRusak)  return false;
         if (cari && !(r.sku+' '+r.namaProduk).toLowerCase().includes(cari)) return false;
         return true;
       });
       doHalamanAkt = 1;
       doRenderTabel();
       document.getElementById('do-info-tampil').textContent = doDataFilter.length;
+    }
+
+    function doStatusSOBadge(status) {
+      const norm = doNormStatus(status);
+      const map = {
+        'Balance': 'do-badge-so do-badge-so-balance',
+        'Plus'   : 'do-badge-so do-badge-so-plus',
+        'Minus'  : 'do-badge-so do-badge-so-minus',
+        'Belum'  : 'do-badge-so do-badge-so-belum',
+        'Cocok'  : 'do-badge-so do-badge-so-balance'
+      };
+      return `<span class="${map[norm]||'do-badge-so do-badge-so-belum'}">${norm||'Belum'}</span>`;
     }
 
     function doRenderTabel() {
@@ -2466,7 +2635,8 @@
       const total  = doDataFilter.length;
       const maxHal = Math.ceil(total / DO_PER_HAL);
       doHalamanAkt = Math.min(doHalamanAkt, maxHal);
-      const slice  = doDataFilter.slice((doHalamanAkt-1)*DO_PER_HAL, doHalamanAkt*DO_PER_HAL);
+      const mulai  = (doHalamanAkt-1)*DO_PER_HAL;
+      const slice  = doDataFilter.slice(mulai, mulai+DO_PER_HAL);
 
       tbody.innerHTML = slice.map(r => {
         const rusak = doRusakMap[r.sku];
@@ -2477,29 +2647,36 @@
                onclick="soOpenLightbox('${encodeURIComponent(r.kodeGambar)}')" title="Klik untuk perbesar">`
           : `<div class="so-thumb-empty"><span class="material-symbols-outlined" style="font-size:18px;">image_not_supported</span></div>`;
 
-        const statusSO = `<span class="so-badge so-badge-${r.status||'Belum'}">${r.status||'Belum'}</span>`;
-
         const statusBarang = rusak
-          ? `<div class="do-badge-rusak"><span class="material-symbols-outlined" style="font-size:13px;">warning</span>${rusak.jumlahRusak} pcs · ${rusak.oleh}</div>`
+          ? `<div class="do-badge-rusak"><span class="material-symbols-outlined" style="font-size:12px;">warning</span>${rusak.jumlahRusak} pcs · ${rusak.oleh}</div>`
           : `<span class="do-badge-ok">Normal</span>`;
 
-        const sel = r.selisih===''?'—':r.selisih<0?`<span class="so-sel-minus">${r.selisih}</span>`:r.selisih>0?`<span class="so-sel-plus">+${r.selisih}</span>`:'<span style="color:#64748b;">0</span>';
-        const real = (r.totalReal===''||r.totalReal===null)?'<span style="color:#94a3b8;font-style:italic;">Belum</span>':r.totalReal;
+        const sel = r.selisih===''?'<span style="color:#cbd5e1;">—</span>'
+          : r.selisih<0?`<span class="do-sel-minus">${r.selisih}</span>`
+          : r.selisih>0?`<span class="do-sel-plus">+${r.selisih}</span>`
+          : '<span style="color:#94a3b8;">0</span>';
+        const real = (r.totalReal===''||r.totalReal===null)
+          ? '<span style="color:#94a3b8;font-style:italic;font-size:11px;">Belum</span>'
+          : r.totalReal;
+        const skuEsc   = r.sku.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const namaEsc  = r.namaProduk.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 
         return `<tr>
-          <td>${foto}</td>
-          <td style="font-family:monospace;font-size:11px;color:#475569;">${r.sku}</td>
-          <td style="max-width:180px;">${r.namaProduk}</td>
-          <td><span style="font-weight:600;">${r.rak}</span></td>
-          <td style="text-align:right;">${r.qtySistem}</td>
-          <td style="text-align:right;">${real}</td>
+          <td style="padding:7px 10px;">${foto}</td>
+          <td style="font-family:monospace;font-size:11px;color:#64748b;white-space:nowrap;">${r.sku}</td>
+          <td style="font-size:13px;color:#1e293b;">${r.namaProduk}</td>
+          <td><span style="font-weight:700;color:#334155;font-size:12px;">${r.rak}</span></td>
+          <td style="color:#64748b;font-size:12px;">${r.tim||'—'}</td>
+          <td style="text-align:right;font-weight:600;color:#334155;">${r.qtySistem}</td>
+          <td style="text-align:right;color:#334155;">${real}</td>
           <td style="text-align:right;">${sel}</td>
-          <td>${statusSO}</td>
+          <td>${doStatusSOBadge(r.status)}</td>
           <td>${statusBarang}</td>
           <td style="text-align:center;">
-            <button onclick="doOpenModal('${r.sku.replace(/'/g,"\'")}','${r.namaProduk.replace(/'/g,"\'")}' )"
-              style="border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;padding:4px 10px;cursor:pointer;font-size:13px;color:#475569;font-weight:700;"
-              onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">···</button>
+            <button onclick="doOpenModal('${skuEsc}','${namaEsc}')"
+              style="border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:5px 12px;cursor:pointer;font-size:14px;color:#64748b;font-weight:700;transition:all .12s;line-height:1;"
+              onmouseover="this.style.background='#f1f5f9';this.style.color='#1e293b';"
+              onmouseout="this.style.background='#f8fafc';this.style.color='#64748b';">···</button>
           </td>
         </tr>`;
       }).join('');
@@ -2507,6 +2684,7 @@
       if (maxHal > 1) {
         pager.style.display = '';
         document.getElementById('do-pager-info').textContent = `${doHalamanAkt} / ${maxHal}`;
+        document.getElementById('do-pager-count').textContent = `${mulai+1}–${Math.min(mulai+DO_PER_HAL,total)} dari ${total}`;
         document.getElementById('do-btn-prev').disabled = doHalamanAkt <= 1;
         document.getElementById('do-btn-next').disabled = doHalamanAkt >= maxHal;
       } else { pager.style.display = 'none'; }
