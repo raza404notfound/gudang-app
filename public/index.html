@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PDCore.</title>
+  <title>PDC Warehouse Admin</title>
   <!-- Google Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -335,8 +335,8 @@
   <!-- MODAL LOGIN -->
 <div id="auth-modal" class="login-overlay">
     <div class="login-card">
-      <h3 id="auth-title">Login To PDCore</h3>
-      <p id="auth-subtitle">Silakan isi akun Anda untuk melanjutkan Analisis Data anda _< </p>
+      <h3 id="auth-title">Masuk Administrator</h3>
+      <p id="auth-subtitle">Silakan isi akun Anda untuk melanjutkan</p>
       <form id="auth-form" onsubmit="handleAuth(event)">
         <div class="form-group">
           <label>Username</label>
@@ -396,13 +396,13 @@
 <aside class="sidebar">
     <div class="brand-header">
       <span class="material-symbols-outlined">store</span>
-      <span>PDC<span style="color: #334155; font-weight: 500;">ore.</span></span>
+      <span>PDC <span style="color: #334155; font-weight: 500;">Warehouse Admin</span></span>
     </div>
     <div class="user-profile">
       <div class="avatar" id="user-avatar">U</div>
       <div class="user-info">
         <span class="user-name" id="user-name-display">Guest</span>
-        <span class="user-email">*********@gmail.com</span>
+        <span class="user-email">admin@pdc.com</span>
         <span class="user-badge">Warehouse Crew</span>
       </div>
     </div>
@@ -442,7 +442,7 @@
       <!-- PAGE: DASHBOARD -->
       <section id="page-dashboard" class="page-content active">
         <div class="dashboard-header">
-          <h2 style="font-size: 15px; font-weight: 700; color: #1e293b;">DASHBOARD WH-PDCore.</h2>
+          <h2 style="font-size: 15px; font-weight: 700; color: #1e293b;">DASHBOARD ADMINISTRATOR PDC</h2>
           <div class="summary-badges">
             <div class="badge">Total Inbound: <span class="inc" id="total-inbound">0</span> trx</div>
             <div class="badge">Total Outbound: <span class="out" id="total-outbound">0</span> trx</div>
@@ -492,6 +492,9 @@
           <div class="awb-toolbar-right">
             <button onclick="loadFromSheet()" id="btn-load-sheet" class="awb-btn awb-btn-dark">
               <span class="material-symbols-outlined">table_view</span> Ambil dari Sheet
+            </button>
+            <button onclick="cekResiDariSheet()" id="btn-cek-resi" class="awb-btn" style="background:#16a34a;color:#fff;border:none;">
+              <span class="material-symbols-outlined">search</span> Cek Resi
             </button>
             <button onclick="loadBelumJalan()" id="btn-load-belum-jalan" class="awb-btn awb-btn-yellow">
               <span class="material-symbols-outlined">filter_alt</span> Resi Belum Jalan
@@ -1556,7 +1559,7 @@
       speechSynthesis.cancel();
     }
 
-    // Load semua resi dari sheet berdasarkan tanggal
+    // AMBIL DARI SHEET — baca dari tab "Resi Harian", masukkan ke kotak input
     async function loadFromSheet() {
       const tanggal = document.getElementById('filter-tanggal').value;
       if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
@@ -1565,29 +1568,20 @@
       const msg = document.getElementById('sheet-status-msg');
       btn.disabled = true;
       btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Memuat...`;
-      msg.innerText = 'Mengambil data dari Sheet...';
+      msg.innerText = 'Mengambil data dari Resi Harian...';
       msg.style.color = '#0284c7';
       try {
         const token = sessionStorage.getItem('sessionToken');
-        const res = await fetch(`/api/sheet/load?tanggal=${tanggal}&gudang=${encodeURIComponent(gudang)}&onlyPending=true`, {
+        const res = await fetch(`/api/sheet/load?tanggal=${tanggal}&gudang=${encodeURIComponent(gudang)}`, {
           headers: { 'x-session-token': token }
         });
         const data = await res.json();
         if (!data.success) { msg.innerText = data.message || 'Gagal.'; msg.style.color = '#ef4444'; return; }
-        // Keamanan: hanya resi yang BELUM lanjut statusnya (bukan picked/dropping/delivered/cancel)
-        // yang otomatis dimasukkan ke kotak input untuk ditrack ulang.
         const resiList = data.rows.map(r => r.resi).filter(Boolean);
         document.getElementById('input-awb-bulk').value = resiList.join('\n');
         updateResiCount();
-        // Tampilkan data yang sudah ada dari sheet
-        allTrackedData = data.rows.map(r => ({
-          resi: r.resi, gudang: r.gudang || '', kurir: r.kurir || detectKurir(r.resi),
-          tanggal: r.tanggal, status: r.status || '', keterangan: r.keterangan || '',
-          tglInput: r.tglInput || r.tanggal || '', tglDicatat: r.tglDicatat || '',
-          category: kategorikanStatus(r.status, r.keterangan)
-        }));
+        allTrackedData = [];
         hitungSummary(); renderResultsTable();
-        document.getElementById('btn-sync-sheet').disabled = false;
         msg.innerText = `✅ ${resiList.length} resi dimuat dari Sheet.`;
         msg.style.color = '#16a34a';
       } catch (err) {
@@ -1598,7 +1592,50 @@
       }
     }
 
-    // Load hanya resi belum jalan (status manifest) dari sheet
+    // CEK RESI — baca dari tab "Tracking AWB", tampilkan di tabel (tanpa tracking API)
+    async function cekResiDariSheet() {
+      const tanggal = document.getElementById('filter-tanggal').value;
+      if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
+      const gudang = document.getElementById('filter-gudang').value;
+      const btn = document.getElementById('btn-cek-resi');
+      const msg = document.getElementById('sheet-status-msg');
+      btn.disabled = true;
+      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Memuat...`;
+      msg.innerText = 'Mengambil data dari Tracking AWB...';
+      msg.style.color = '#16a34a';
+      try {
+        const token = sessionStorage.getItem('sessionToken');
+        const res = await fetch(`/api/sheet/cek-resi?tanggal=${tanggal}&gudang=${encodeURIComponent(gudang)}`, {
+          headers: { 'x-session-token': token }
+        });
+        const data = await res.json();
+        if (!data.success) { msg.innerText = data.message || 'Gagal.'; msg.style.color = '#ef4444'; return; }
+        if (data.rows.length === 0) {
+          msg.innerText = 'Belum ada resi yang ditrack di tanggal ini.';
+          msg.style.color = '#64748b'; return;
+        }
+        allTrackedData = data.rows.map(r => ({
+          resi: r.resi, gudang: r.gudang || gudang || '',
+          kurir: r.kurir || detectKurir(r.resi),
+          tanggal: r.tanggal, status: r.status || '',
+          keterangan: r.keterangan || '',
+          tglInput: r.tglInput || tanggal, tglDicatat: r.tglDicatat || '',
+          batch: r.batch || '',
+          category: kategorikanStatus(r.status, r.keterangan)
+        }));
+        hitungSummary(); renderResultsTable();
+        document.getElementById('btn-sync-sheet').disabled = false;
+        msg.innerText = `✅ ${data.rows.length} resi ditampilkan dari Tracking AWB.`;
+        msg.style.color = '#16a34a';
+      } catch (err) {
+        msg.innerText = 'Gagal terhubung ke server.'; msg.style.color = '#ef4444';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;">search</span> Cek Resi`;
+      }
+    }
+
+    // RESI BELUM JALAN — baca dari "Resi Harian", filter yang belum ada di Tracking AWB
     async function loadBelumJalan() {
       const tanggal = document.getElementById('filter-tanggal').value;
       if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
@@ -1607,20 +1644,23 @@
       const msg = document.getElementById('sheet-status-msg');
       btn.disabled = true;
       btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Memuat...`;
-      msg.innerText = 'Mengambil resi belum jalan dari Sheet...';
+      msg.innerText = 'Mengambil resi belum jalan...';
       msg.style.color = '#d97706';
       try {
         const token = sessionStorage.getItem('sessionToken');
-        const res = await fetch(`/api/sheet/load?tanggal=${tanggal}&gudang=${encodeURIComponent(gudang)}&filter=belum_jalan`, {
+        const res = await fetch(`/api/sheet/resi-belum-jalan?tanggal=${tanggal}&gudang=${encodeURIComponent(gudang)}`, {
           headers: { 'x-session-token': token }
         });
         const data = await res.json();
         if (!data.success) { msg.innerText = data.message || 'Gagal.'; msg.style.color = '#ef4444'; return; }
         const resiList = data.rows.map(r => r.resi).filter(Boolean);
-        if (resiList.length === 0) { msg.innerText = '✅ Tidak ada resi belum jalan untuk tanggal ini.'; msg.style.color = '#16a34a'; return; }
+        if (resiList.length === 0) {
+          msg.innerText = '✅ Semua resi di tanggal ini sudah ditrack.';
+          msg.style.color = '#16a34a'; return;
+        }
         document.getElementById('input-awb-bulk').value = resiList.join('\n');
         updateResiCount();
-        msg.innerText = `⏳ ${resiList.length} resi belum jalan siap di-track ulang.`;
+        msg.innerText = `⏳ ${resiList.length} resi belum jalan siap di-track.`;
         msg.style.color = '#d97706';
       } catch (err) {
         msg.innerText = 'Gagal terhubung ke server.'; msg.style.color = '#ef4444';
