@@ -742,8 +742,6 @@
     </div>
 </main>
 <script>
-    let lastFetchTimeInbound = null;
-    let lastFetchTimeOutbound = null;
     let allTrackedData = [];
 
     const WAREHOUSE_LIST = [
@@ -1316,6 +1314,16 @@
     let cancelResiSet = new Set();     // semua resi berstatus cancel di tanggal terpilih
     let cancelScannedSet = new Set();  // resi yang sudah discan selama sesi popup ini terbuka
 
+    // URL Apps Script — fetch langsung dari browser tanpa lewat Railway
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwBaBiM08RtAuPayp-vtJINsO3li2blbVg1sbTJtKFPF3-xLN6zhBg5_UbUG_79mQoJ/exec';
+
+    async function gasGetDirect(params) {
+      const url = new URL(GAS_URL);
+      Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+      const res = await fetch(url.toString());
+      return await res.json();
+    }
+
     async function openLacakCancel() {
       const tanggal = document.getElementById('filter-tanggal').value;
       if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
@@ -1332,11 +1340,9 @@
       updateCancelCounts();
 
       try {
-        const token = sessionStorage.getItem('sessionToken');
-        const res = await fetch(`/api/sheet/cancel-list?tanggal=${tanggal}&gudang=${encodeURIComponent(gudang)}`, {
-          headers: { 'x-session-token': token }
-        });
-        const data = await res.json();
+        const params = { action: 'cancelList', tanggal };
+        if (gudang) params.gudang = gudang;
+        const data = await gasGetDirect(params);
         if (!data.success) {
           resultBox.innerText = data.message || 'Gagal memuat data.';
           return;
@@ -1348,7 +1354,7 @@
         document.getElementById('cancel-scan-input').value = '';
         document.getElementById('cancel-scan-input').focus();
       } catch (err) {
-        resultBox.innerText = 'Gagal terhubung ke server.';
+        resultBox.innerText = 'Gagal terhubung ke Apps Script.';
       }
     }
 
@@ -1560,6 +1566,7 @@
     }
 
     // AMBIL DARI SHEET — baca dari tab "Resi Harian", masukkan ke kotak input
+    // AMBIL DARI SHEET — langsung ke Apps Script (tanpa lewat Railway)
     async function loadFromSheet() {
       const tanggal = document.getElementById('filter-tanggal').value;
       if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
@@ -1571,11 +1578,9 @@
       msg.innerText = 'Mengambil data dari Resi Harian...';
       msg.style.color = '#0284c7';
       try {
-        const token = sessionStorage.getItem('sessionToken');
-        const res = await fetch(`/api/sheet/load?tanggal=${tanggal}&gudang=${encodeURIComponent(gudang)}`, {
-          headers: { 'x-session-token': token }
-        });
-        const data = await res.json();
+        const params = { action: 'loadResi', tanggal };
+        if (gudang) params.gudang = gudang;
+        const data = await gasGetDirect(params);
         if (!data.success) { msg.innerText = data.message || 'Gagal.'; msg.style.color = '#ef4444'; return; }
         const resiList = data.rows.map(r => r.resi).filter(Boolean);
         document.getElementById('input-awb-bulk').value = resiList.join('\n');
@@ -1585,14 +1590,14 @@
         msg.innerText = `✅ ${resiList.length} resi dimuat dari Sheet.`;
         msg.style.color = '#16a34a';
       } catch (err) {
-        msg.innerText = 'Gagal terhubung ke server.'; msg.style.color = '#ef4444';
+        msg.innerText = 'Gagal terhubung ke Apps Script.'; msg.style.color = '#ef4444';
       } finally {
         btn.disabled = false;
         btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;">table_view</span> Ambil dari Sheet`;
       }
     }
 
-    // CEK RESI — baca dari tab "Tracking AWB", tampilkan di tabel (tanpa tracking API)
+    // CEK RESI — langsung ke Apps Script, baca Tracking AWB (tanpa Biteship)
     async function cekResiDariSheet() {
       const tanggal = document.getElementById('filter-tanggal').value;
       if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
@@ -1604,11 +1609,9 @@
       msg.innerText = 'Mengambil data dari Tracking AWB...';
       msg.style.color = '#16a34a';
       try {
-        const token = sessionStorage.getItem('sessionToken');
-        const res = await fetch(`/api/sheet/cek-resi?tanggal=${tanggal}&gudang=${encodeURIComponent(gudang)}`, {
-          headers: { 'x-session-token': token }
-        });
-        const data = await res.json();
+        const params = { action: 'loadTracking', tanggal };
+        if (gudang) params.gudang = gudang;
+        const data = await gasGetDirect(params);
         if (!data.success) { msg.innerText = data.message || 'Gagal.'; msg.style.color = '#ef4444'; return; }
         if (data.rows.length === 0) {
           msg.innerText = 'Belum ada resi yang ditrack di tanggal ini.';
@@ -1619,7 +1622,8 @@
           kurir: r.kurir || detectKurir(r.resi),
           tanggal: r.tanggal, status: r.status || '',
           keterangan: r.keterangan || '',
-          tglInput: r.tglInput || tanggal, tglDicatat: r.tglDicatat || '',
+          tglInput: r.tglInput || tanggal,
+          tglDicatat: r.tglDicatat || '',
           batch: r.batch || '',
           category: kategorikanStatus(r.status, r.keterangan)
         }));
@@ -1628,14 +1632,14 @@
         msg.innerText = `✅ ${data.rows.length} resi ditampilkan dari Tracking AWB.`;
         msg.style.color = '#16a34a';
       } catch (err) {
-        msg.innerText = 'Gagal terhubung ke server.'; msg.style.color = '#ef4444';
+        msg.innerText = 'Gagal terhubung ke Apps Script.'; msg.style.color = '#ef4444';
       } finally {
         btn.disabled = false;
         btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;">search</span> Cek Resi`;
       }
     }
 
-    // RESI BELUM JALAN — baca dari "Resi Harian", filter yang belum ada di Tracking AWB
+    // RESI BELUM JALAN — langsung ke Apps Script, filter yang belum ada di Tracking AWB
     async function loadBelumJalan() {
       const tanggal = document.getElementById('filter-tanggal').value;
       if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
@@ -1647,11 +1651,9 @@
       msg.innerText = 'Mengambil resi belum jalan...';
       msg.style.color = '#d97706';
       try {
-        const token = sessionStorage.getItem('sessionToken');
-        const res = await fetch(`/api/sheet/resi-belum-jalan?tanggal=${tanggal}&gudang=${encodeURIComponent(gudang)}`, {
-          headers: { 'x-session-token': token }
-        });
-        const data = await res.json();
+        const params = { action: 'loadResi', tanggal, onlyPending: 'true' };
+        if (gudang) params.gudang = gudang;
+        const data = await gasGetDirect(params);
         if (!data.success) { msg.innerText = data.message || 'Gagal.'; msg.style.color = '#ef4444'; return; }
         const resiList = data.rows.map(r => r.resi).filter(Boolean);
         if (resiList.length === 0) {
@@ -1663,7 +1665,7 @@
         msg.innerText = `⏳ ${resiList.length} resi belum jalan siap di-track.`;
         msg.style.color = '#d97706';
       } catch (err) {
-        msg.innerText = 'Gagal terhubung ke server.'; msg.style.color = '#ef4444';
+        msg.innerText = 'Gagal terhubung ke Apps Script.'; msg.style.color = '#ef4444';
       } finally {
         btn.disabled = false;
         btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;">filter_alt</span> Resi Belum Jalan`;
