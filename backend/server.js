@@ -603,6 +603,101 @@ app.get('/api/sheet/cancel-list', requireAuth, async (req, res) => {
   }
 });
 
+// =============================================
+// STOCK OPNAME — endpoint fallback via Railway
+// (frontend memanggil Apps Script langsung,
+//  endpoint ini hanya dipakai jika CORS gagal)
+// =============================================
+
+// GET /api/so/sesi — daftar tab SO YYYY-MM
+app.get('/api/so/sesi', requireAuth, async (req, res) => {
+  try {
+    const data = await gasGet({ action: 'soListSesi' });
+    if (!data.success) return res.json({ success: false, message: data.message || 'Gagal ambil daftar sesi SO.' });
+    res.json({ success: true, data: data.data || [] });
+  } catch (err) {
+    console.error('SO list sesi error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal terhubung ke Apps Script.' });
+  }
+});
+
+// GET /api/so/data?sesi=SO+2026-09 — baris SO satu bulan
+app.get('/api/so/data', requireAuth, async (req, res) => {
+  const { sesi } = req.query;
+  if (!sesi) return res.status(400).json({ success: false, message: 'Parameter sesi wajib diisi.' });
+  try {
+    const data = await gasGet({ action: 'soLoadData', sesi });
+    if (!data.success) return res.json({ success: false, message: data.message || 'Gagal ambil data SO.' });
+    res.json({ success: true, rows: data.rows || [], personil: data.personil || [] });
+  } catch (err) {
+    console.error('SO data error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal terhubung ke Apps Script.' });
+  }
+});
+
+// =============================================
+// STOCK OPNAME — RUSAK
+// Tab _SO_RUSAK di sheet DATABASE GUDANG
+// =============================================
+
+// GET /api/so/rusak?sesi=SO+2026-09
+// Load semua data rusak untuk sesi tertentu (data terbaru per SKU)
+app.get('/api/so/rusak', requireAuth, async (req, res) => {
+  const { sesi } = req.query;
+  if (!sesi) return res.status(400).json({ success: false, message: 'Parameter sesi wajib.' });
+  try {
+    const data = await gasGet({ action: 'soGetRusak', sesi });
+    res.json(data.success ? { success: true, rows: data.rows||[] } : { success: false, message: data.message });
+  } catch(err) {
+    console.error('SO rusak load error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal terhubung ke Apps Script.' });
+  }
+});
+
+// GET /api/so/riwayat?sku=XXX&sesi=SO+2026-09
+// Semua riwayat rusak untuk satu SKU (semua sesi atau filter sesi)
+app.get('/api/so/riwayat', requireAuth, async (req, res) => {
+  const { sku, sesi } = req.query;
+  if (!sku) return res.status(400).json({ success: false, message: 'Parameter sku wajib.' });
+  try {
+    const data = await gasGet({ action: 'soGetRiwayat', sku, sesi: sesi||'' });
+    res.json(data.success ? { success: true, rows: data.rows||[] } : { success: false, message: data.message });
+  } catch(err) {
+    console.error('SO riwayat error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal terhubung ke Apps Script.' });
+  }
+});
+
+// POST /api/so/rusak
+// Simpan laporan barang rusak — username diambil dari session
+app.post('/api/so/rusak', requireAuth, async (req, res) => {
+  const { sku, namaProduk, sesi, jumlahRusak, keterangan } = req.body;
+  if (!sku || !sesi || !jumlahRusak) {
+    return res.status(400).json({ success: false, message: 'sku, sesi, dan jumlahRusak wajib diisi.' });
+  }
+  const oleh = req.sessionUser.username;
+  // Timestamp WIB
+  const now = new Date();
+  const wib = new Date(now.getTime() + 7*60*60*1000);
+  const pad = n => String(n).padStart(2,'0');
+  const dicatatPada = `${wib.getUTCFullYear()}-${pad(wib.getUTCMonth()+1)}-${pad(wib.getUTCDate())} ${pad(wib.getUTCHours())}:${pad(wib.getUTCMinutes())}`;
+  try {
+    const data = await gasPost({
+      action: 'soSimpanRusak',
+      sku, namaProduk: namaProduk||'', sesi,
+      jumlahRusak: Number(jumlahRusak),
+      keterangan: keterangan||'',
+      oleh, dicatatPada
+    });
+    res.json(data.success
+      ? { success: true, message: data.message, oleh, dicatatPada }
+      : { success: false, message: data.message||'Gagal simpan.' });
+  } catch(err) {
+    console.error('SO simpan rusak error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal terhubung ke Apps Script.' });
+  }
+});
+
 // Fallback route
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
