@@ -489,24 +489,36 @@ app.put('/api/users/:username/password', requireSuperuser, async (req, res) => {
 });
 
 // =============================================
-// PROXY KE GOOGLE APPS SCRIPT
+// PROXY KE GOOGLE APPS SCRIPT — 2 TAB
 // =============================================
 
+// Helper proxy umum untuk GET ke Apps Script
+async function gasGet(params, timeout = 15000) {
+  if (!SHEET_SCRIPT_URL) throw new Error('SHEET_SCRIPT_URL belum dikonfigurasi di Railway Variables.');
+  const response = await axios.get(SHEET_SCRIPT_URL, { params, timeout });
+  return response.data;
+}
+
+// Helper proxy umum untuk POST ke Apps Script
+async function gasPost(body, timeout = 30000) {
+  if (!SHEET_SCRIPT_URL) throw new Error('SHEET_SCRIPT_URL belum dikonfigurasi di Railway Variables.');
+  const response = await axios.post(SHEET_SCRIPT_URL, body, {
+    headers: { 'Content-Type': 'application/json' }, timeout
+  });
+  return response.data;
+}
+
 // GET /api/sheet/load
+// Dipakai tombol "Ambil dari Sheet" — baca dari tab Resi Harian
 app.get('/api/sheet/load', requireAuth, async (req, res) => {
-  const { tanggal, gudang, filter, onlyPending } = req.query;
+  const { tanggal, gudang, onlyPending } = req.query;
   if (!tanggal) return res.status(400).json({ success: false, message: 'Parameter tanggal wajib diisi.' });
-  if (!SHEET_SCRIPT_URL) return res.status(500).json({ success: false, message: 'SHEET_SCRIPT_URL belum dikonfigurasi di Railway Variables.' });
-
   try {
-    const params = { action: 'load', tanggal };
+    const params = { action: 'loadResi', tanggal };
     if (gudang)      params.gudang      = gudang;
-    if (filter)      params.filter      = filter;
     if (onlyPending) params.onlyPending = onlyPending;
-
-    const response = await axios.get(SHEET_SCRIPT_URL, { params, timeout: 15000 });
-    const data = response.data;
-    if (!data.success) return res.json({ success: false, message: data.message || 'Gagal ambil data dari Sheet.' });
+    const data = await gasGet(params);
+    if (!data.success) return res.json({ success: false, message: data.message || 'Gagal ambil data dari Resi Harian.' });
     res.json({ success: true, rows: data.rows || [] });
   } catch (err) {
     console.error('Sheet load error:', err.message);
@@ -514,15 +526,48 @@ app.get('/api/sheet/load', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/sheet/resi-belum-jalan
+// Dipakai tombol "Resi Belum Jalan" — baca Resi Harian, filter yang belum ada di Tracking AWB
+app.get('/api/sheet/resi-belum-jalan', requireAuth, async (req, res) => {
+  const { tanggal, gudang } = req.query;
+  if (!tanggal) return res.status(400).json({ success: false, message: 'Parameter tanggal wajib diisi.' });
+  try {
+    const params = { action: 'loadResi', tanggal, onlyPending: 'true' };
+    if (gudang) params.gudang = gudang;
+    const data = await gasGet(params);
+    if (!data.success) return res.json({ success: false, message: data.message || 'Gagal ambil data.' });
+    res.json({ success: true, rows: data.rows || [] });
+  } catch (err) {
+    console.error('Resi belum jalan error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal terhubung ke Google Apps Script.' });
+  }
+});
+
+// GET /api/sheet/cek-resi
+// Dipakai tombol "Cek Resi" — baca dari tab Tracking AWB (tanpa Biteship)
+app.get('/api/sheet/cek-resi', requireAuth, async (req, res) => {
+  const { tanggal, gudang } = req.query;
+  if (!tanggal) return res.status(400).json({ success: false, message: 'Parameter tanggal wajib diisi.' });
+  try {
+    const params = { action: 'loadTracking', tanggal };
+    if (gudang) params.gudang = gudang;
+    const data = await gasGet(params);
+    if (!data.success) return res.json({ success: false, message: data.message || 'Gagal ambil data tracking.' });
+    res.json({ success: true, rows: data.rows || [] });
+  } catch (err) {
+    console.error('Cek resi error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal terhubung ke Google Apps Script.' });
+  }
+});
+
 // POST /api/sheet/sync
+// Dipakai tombol "Simpan ke Sheet" — tulis ke tab Tracking AWB
 app.post('/api/sheet/sync', requireAuth, async (req, res) => {
   const { tanggal, data: trackData } = req.body;
   if (!tanggal || !Array.isArray(trackData)) return res.status(400).json({ success: false, message: 'Data tidak valid.' });
-  if (!SHEET_SCRIPT_URL) return res.status(500).json({ success: false, message: 'SHEET_SCRIPT_URL belum dikonfigurasi di Railway Variables.' });
-
   try {
-    const response = await axios.post(SHEET_SCRIPT_URL, {
-      action: 'sync',
+    const result = await gasPost({
+      action: 'syncTracking',
       tanggal,
       rows: trackData.map(item => ({
         gudang     : item.gudang      || '',
@@ -533,9 +578,7 @@ app.post('/api/sheet/sync', requireAuth, async (req, res) => {
         tglInput   : item.tglInput    || tanggal,
         tglDicatat : item.tglDicatat  || ''
       }))
-    }, { headers: { 'Content-Type': 'application/json' }, timeout: 30000 });
-
-    const result = response.data;
+    });
     res.json({ success: result.success, message: result.message || 'Selesai.' });
   } catch (err) {
     console.error('Sheet sync error:', err.message);
@@ -543,18 +586,15 @@ app.post('/api/sheet/sync', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/sheet/cancel-list (untuk fitur Lacak Cancel)
+// GET /api/sheet/cancel-list
+// Dipakai tombol "Lacak Cancel" — baca dari Tracking AWB
 app.get('/api/sheet/cancel-list', requireAuth, async (req, res) => {
   const { tanggal, gudang } = req.query;
   if (!tanggal) return res.status(400).json({ success: false, message: 'Parameter tanggal wajib diisi.' });
-  if (!SHEET_SCRIPT_URL) return res.status(500).json({ success: false, message: 'SHEET_SCRIPT_URL belum dikonfigurasi di Railway Variables.' });
-
   try {
     const params = { action: 'cancelList', tanggal };
     if (gudang) params.gudang = gudang;
-
-    const response = await axios.get(SHEET_SCRIPT_URL, { params, timeout: 15000 });
-    const data = response.data;
+    const data = await gasGet(params);
     if (!data.success) return res.json({ success: false, message: data.message || 'Gagal ambil data cancel.' });
     res.json({ success: true, rows: data.rows || [] });
   } catch (err) {
