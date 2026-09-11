@@ -40,8 +40,7 @@
     .content-container::-webkit-scrollbar-track { background: transparent; }
     .content-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     .content-container::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    /* Data Opname page: override padding agar sticky bisa bekerja */
-    #page-barang-bermasalah.active { padding: 0 !important; }
+    /* Data Opname: padding dihandle oleh do-sticky-top dan do-scroll-area */
     .page-content { display: none; }
     .page-content.active { display: block; }
 
@@ -588,7 +587,8 @@
       <section id="page-barang-bermasalah" class="page-content">
         <style>
           /* ---- WRAPPER LAYOUT ---- */
-          #page-barang-bermasalah { display:flex; flex-direction:column; height:calc(100vh - 55px); overflow:hidden; }
+          #page-barang-bermasalah.active { display:flex !important; flex-direction:column; height:calc(100vh - 55px); overflow:hidden; }
+          #page-barang-bermasalah { display:none; }
 
           /* ---- TOOLBAR FREEZE ---- */
           .do-sticky-top {
@@ -633,6 +633,7 @@
             background:#1e293b; color:#f1f5f9; padding:10px 12px;
             text-align:left; font-weight:600; white-space:nowrap;
             font-size:11px; letter-spacing:.4px; text-transform:uppercase;
+            position:sticky; top:0; z-index:3;
           }
           .do-table thead th:first-child { border-radius:0; }
           .do-table tbody tr {
@@ -756,9 +757,9 @@
             </select>
             <select id="do-filter-status" onchange="doFilter()" style="min-width:130px;">
               <option value="">Semua Status SO</option>
-              <option value="Balance">Balance</option>
-              <option value="Plus">Plus</option>
-              <option value="Minus">Minus</option>
+              <option value="Balance">Balance (Cocok)</option>
+              <option value="Plus">Plus (Lebih)</option>
+              <option value="Minus">Minus (Kurang)</option>
               <option value="Belum">Belum</option>
             </select>
             <select id="do-filter-barang" onchange="doFilter()" style="min-width:130px;">
@@ -2528,20 +2529,27 @@
       sel.innerHTML = '<option value="">Memuat...</option>';
       sel.disabled = true;
       try {
-        const url = new URL(GAS_URL);
-        url.searchParams.set('action', 'soListSesi');
-        const data = await (await fetch(url.toString())).json();
-        if (!data.success || !data.data.length) { sel.innerHTML = '<option value="">Tidak ada data SO</option>'; return; }
-        const bMap = {1:'Januari',2:'Februari',3:'Maret',4:'April',5:'Mei',6:'Juni',7:'Juli',8:'Agustus',9:'September',10:'Oktober',11:'November',12:'Desember'};
+        // Langsung dari browser ke Apps Script
+        const data = await gasGetDirect({ action: 'soListSesi' });
+        if (!data.success || !data.data || !data.data.length) {
+          sel.innerHTML = '<option value="">Tidak ada data SO</option>';
+          sel.disabled = false; return;
+        }
+        const bMap = {1:'Januari',2:'Februari',3:'Maret',4:'April',5:'Mei',6:'Juni',
+                      7:'Juli',8:'Agustus',9:'September',10:'Oktober',11:'November',12:'Desember'};
         sel.innerHTML = '<option value="">— Pilih Bulan SO —</option>';
         data.data.forEach(s => {
           const o = document.createElement('option');
-          o.value = s.nama; o.textContent = `${bMap[s.bulan]||s.bulan} ${s.tahun}`;
+          o.value = s.nama;
+          o.textContent = `${bMap[s.bulan]||s.bulan} ${s.tahun}`;
           sel.appendChild(o);
         });
         sel.disabled = false;
         if (data.data.length) { sel.value = data.data[0].nama; await doGantiSesi(); }
-      } catch(e) { sel.innerHTML = '<option value="">Gagal memuat sesi</option>'; }
+      } catch(e) {
+        sel.innerHTML = '<option value="">Gagal memuat sesi</option>';
+        sel.disabled = false;
+      }
     }
 
     async function doGantiSesi() {
@@ -2550,15 +2558,17 @@
       doSemuaData = []; doDataFilter = []; doHalamanAkt = 1;
       doTampilLoading();
       try {
-        const url = new URL(GAS_URL);
-        url.searchParams.set('action', 'soLoadData');
-        url.searchParams.set('sesi', sesi);
-        const dataSO = await (await fetch(url.toString())).json();
-        if (!dataSO.success) { doTampilPesan('error', dataSO.message||'Gagal.'); return; }
+        // Load data SO langsung dari browser ke Apps Script (tanpa lewat Railway)
+        const dataSO = await gasGetDirect({ action: 'soLoadData', sesi });
+        if (!dataSO.success) { doTampilPesan('error', dataSO.message||'Gagal memuat data SO.'); return; }
         doSemuaData = dataSO.rows || [];
 
-        // Populate filter Tim dari data
-        const timSet = [...new Set(doSemuaData.map(r => String(r.tim||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+        // Populate filter Tim dari data (sort numerik)
+        const timSet = [...new Set(doSemuaData.map(r => String(r.tim||'').trim()).filter(Boolean))]
+          .sort((a,b) => {
+            const na = parseInt(a), nb = parseInt(b);
+            return (!isNaN(na) && !isNaN(nb)) ? na - nb : a.localeCompare(b);
+          });
         const selTim = document.getElementById('do-filter-tim');
         const prevTim = selTim.value;
         selTim.innerHTML = '<option value="">Semua Tim</option>';
@@ -2569,25 +2579,31 @@
         });
         if (timSet.includes(prevTim)) selTim.value = prevTim;
 
-        // Load data rusak
+        // Load data rusak tetap lewat Railway (butuh session token untuk username)
         const token = sessionStorage.getItem('sessionToken');
-        const res = await fetch('/api/so/rusak?sesi=' + encodeURIComponent(sesi), {
-          headers: { 'x-session-token': token }
-        });
-        const dataRusak = await res.json();
-        doRusakMap = {};
-        if (dataRusak.success) dataRusak.rows.forEach(r => { doRusakMap[r.sku] = r; });
+        try {
+          const res = await fetch('/api/so/rusak?sesi=' + encodeURIComponent(sesi), {
+            headers: { 'x-session-token': token }
+          });
+          const dataRusak = await res.json();
+          doRusakMap = {};
+          if (dataRusak.success) dataRusak.rows.forEach(r => { doRusakMap[r.sku] = r; });
+        } catch(e) { doRusakMap = {}; }
 
         document.getElementById('do-info-sesi').textContent = sesi;
         document.getElementById('do-info-bar').style.display = '';
         doFilter();
-      } catch(e) { doTampilPesan('error', 'Gagal terhubung.'); }
+      } catch(e) {
+        console.error('doGantiSesi error:', e);
+        doTampilPesan('error', 'Gagal terhubung ke Apps Script.');
+      }
     }
 
     function doNormStatus(s) {
-      // Cocok di sheet → tampil sebagai Balance di web
+      // Mapping nilai sheet → tampilan web
       const v = String(s||'').trim();
-      return v === 'Cocok' ? 'Balance' : v;
+      const map = { 'Cocok':'Balance', 'Kurang':'Minus', 'Lebih':'Plus' };
+      return map[v] || v;
     }
 
     function doFilter() {
