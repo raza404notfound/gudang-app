@@ -51,37 +51,30 @@
     .badge span.inc { color: #dc2626; font-weight: 700; }
     .badge span.out { color: #2563eb; font-weight: 700; }
     
-    .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-    .wh-card { background: #fff; border-radius: 8px; border: 1px solid #cbd5e1; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
-    .wh-title { background: #0f172a; color: #ffffff; padding: 10px 16px; font-weight: 700; font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase; border-bottom: 1px solid #1e293b; }
-    
-    .tables-flex { display: flex; background: #cbd5e1; gap: 1px; }
+    /* ---- DASHBOARD ---- */
+    .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .wh-card { background: #fff; border-radius: 10px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+    .wh-title { background: #1e293b; color: #f8fafc; padding: 9px 14px; font-weight: 700; font-size: 12px; letter-spacing: .6px; text-transform: uppercase; }
+    .tables-flex { display: flex; background: #f1f5f9; gap: 1px; }
     .table-box { flex: 1; background: #fff; display: flex; flex-direction: column; justify-content: space-between; }
-    .table-header { padding: 8px 12px; font-size: 11px; font-weight: 700; color: #1e293b; display: flex; justify-content: space-between; align-items: center; background: #e2e8f0; border-bottom: 1px solid #cbd5e1; }
-    
-    .total-chip-inc { background-color: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; }
-    .total-chip-out { background-color: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; }
-    
-    table { width: 100%; border-collapse: collapse; font-size: 11px; }
-    th, td { padding: 7px 10px; text-align: left; border-bottom: 1px solid #f1f5f9; }
-    th { color: #64748b; font-weight: 600; background-color: #f8fafc; font-size: 10px; text-transform: uppercase; }
-    .status-name { font-weight: 500; color: #334155; }
-    
-    /* Chip Status Batal */
-    .status-chip { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
-    .status-batal { background-color: #fee2e2; color: #ef4444; }
-
-    .num { text-align: left; color: #475569; }
-    .num span { font-size: 9px; color: #94a3b8; margin-left: 2px; }
-    .pct { text-align: left; color: #64748b; font-size: 10px; font-weight: 600; width: 95px; }
-
-    .table-footer { padding: 8px 12px; font-size: 11px; color: #64748b; border-top: 1px solid #f1f5f9; display: flex; align-items: center; gap: 4px; background: #ffffff; }
-    .table-footer .material-symbols-outlined { font-size: 14px; color: #94a3b8; }
-
-    .progress-bar-container { display: flex; align-items: center; gap: 6px; width: 100%; }
-    .progress-track { flex: 1; height: 5px; background: #f1f5f9; border-radius: 3px; overflow: hidden; }
-    .progress-fill-inc { height: 100%; background: #e11d48; border-radius: 3px; }
-    .progress-fill-out { height: 100%; background: #4f46e5; border-radius: 3px; }
+    .table-header { padding: 7px 12px; font-size: 10px; font-weight: 700; color: #475569; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-bottom: 1px solid #f1f5f9; letter-spacing:.4px; text-transform:uppercase; }
+    .total-chip-inc { background:#dcfce7; color:#15803d; padding:2px 7px; border-radius:20px; font-size:10px; font-weight:700; }
+    .total-chip-out { background:#dbeafe; color:#1d4ed8; padding:2px 7px; border-radius:20px; font-size:10px; font-weight:700; }
+    table { width:100%; border-collapse:collapse; font-size:11px; }
+    th, td { padding:6px 10px; text-align:left; border-bottom:1px solid #f8fafc; }
+    th { color:#94a3b8; font-weight:700; background:#fff; font-size:9px; text-transform:uppercase; letter-spacing:.5px; }
+    .status-name { font-weight:500; color:#334155; font-size:11px; }
+    .status-chip { display:inline-block; padding:1px 7px; border-radius:20px; font-weight:600; font-size:10px; }
+    .status-batal { background:#fee2e2; color:#ef4444; }
+    .num { text-align:left; color:#475569; font-size:11px; }
+    .num span { font-size:9px; color:#94a3b8; margin-left:2px; }
+    .pct { text-align:left; color:#64748b; font-size:10px; font-weight:600; width:90px; }
+    .table-footer { padding:6px 12px; font-size:10px; color:#94a3b8; border-top:1px solid #f8fafc; display:flex; align-items:center; gap:4px; background:#fff; }
+    .table-footer .material-symbols-outlined { font-size:12px; }
+    .progress-bar-container { display:flex; align-items:center; gap:6px; width:100%; }
+    .progress-track { flex:1; height:4px; background:#f1f5f9; border-radius:3px; overflow:hidden; }
+    .progress-fill-inc { height:100%; background:#e11d48; border-radius:3px; transition:width .3s ease; }
+    .progress-fill-out { height:100%; background:#3b82f6; border-radius:3px; transition:width .3s ease; }
 
     /* LAYOUT LACAK AWB 2 KOLOM */
     .tracking-layout { display: flex; gap: 20px; align-items: flex-start; }
@@ -413,19 +406,19 @@
     </div>
     <div class="nav-section">
       <div class="section-title">UTAMA</div>
-      <a class="nav-item active" onclick="switchTab('dashboard', this)"><span class="material-symbols-outlined">home</span><span>Dashboard</span></a>
+      <a class="nav-item" onclick="switchTab('dashboard', this)"><span class="material-symbols-outlined">home</span><span>Dashboard</span></a>
     </div>
 
     <div class="nav-section">
       <div class="section-title">PRODUK</div>
-      <a class="nav-item" onclick="switchTab('pusat-inventory', this); initSoPage();"><span class="material-symbols-outlined">inventory_2</span><span>Pusat Inventory</span></a>
-      <a class="nav-item" onclick="switchTab('barang-bermasalah', this); initDataOpname();"><span class="material-symbols-outlined">assignment</span><span>Data Opname</span></a>
+      <a class="nav-item" onclick="switchTab('pusat-inventory', this)"><span class="material-symbols-outlined">inventory_2</span><span>Pusat Inventory</span></a>
+      <a class="nav-item" onclick="switchTab('barang-bermasalah', this)"><span class="material-symbols-outlined">assignment</span><span>Data Opname</span></a>
       <a class="nav-item" onclick="switchTab('lacak-awb', this)"><span class="material-symbols-outlined">local_shipping</span><span>Lacak AWB</span></a>
     </div>
 
     <div class="nav-section">
       <div class="section-title">PENGATURAN</div>
-      <a class="nav-item" id="nav-kelola-akun" style="display:none;" onclick="switchTab('kelola-akun', this); loadUserList();"><span class="material-symbols-outlined">manage_accounts</span><span>Kelola Akun</span></a>
+      <a class="nav-item" id="nav-kelola-akun" style="display:none;" onclick="switchTab('kelola-akun', this)"><span class="material-symbols-outlined">manage_accounts</span><span>Kelola Akun</span></a>
     </div>
 </aside>
   <!-- MAIN WRAPPER -->
@@ -445,7 +438,7 @@
     <div class="content-container">
       
       <!-- PAGE: DASHBOARD -->
-      <section id="page-dashboard" class="page-content active">
+      <section id="page-dashboard" class="page-content">
         <div class="dashboard-header">
           <h2 style="font-size: 15px; font-weight: 700; color: #1e293b;">DASHBOARD ADMINISTRATOR PDC</h2>
           <div class="summary-badges">
@@ -785,7 +778,7 @@
             <table class="do-table" id="do-table" style="display:none;">
               <thead>
                 <tr>
-                  <th style="width:54px;">Foto</th>
+                  <th style="width:40px;">#</th>
                   <th style="min-width:160px;">SKU</th>
                   <th style="min-width:200px;">Nama Produk</th>
                   <th>Rak</th>
@@ -1244,7 +1237,7 @@
             document.getElementById('nav-kelola-akun').style.display = 'flex';
           }
 
-          loadDashboard();
+          initRouterFromHash();
           startRealtimeTimer();
         } else {
           sessionStorage.clear();
@@ -1382,20 +1375,63 @@
       }, 1000);
     }
 
-    function switchTab(pageId, element) {
-      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-      element.classList.add('active');
-      document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
+    // ============================================================
+    // HASH ROUTER — URL berubah saat pindah menu
+    // Refresh = hanya load data halaman aktif, sidebar tidak reload
+    // ============================================================
+    const PAGE_DATA_LOADERS = {
+      'dashboard'         : () => loadDashboard(),
+      'pusat-inventory'   : () => initSoPage(),
+      'barang-bermasalah' : () => initDataOpname(),
+      'lacak-awb'         : () => null,
+      'kelola-akun'       : () => loadUserList()
+    };
 
-      document.getElementById('page-title').innerText = element.querySelector('span:not(.material-symbols-outlined)').innerText;
-      document.getElementById('page-icon').innerText = element.querySelector('.material-symbols-outlined').innerText;
+    function switchTab(pageId, element, pushState = true) {
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      if (element) element.classList.add('active');
+      else {
+        // Aktifkan nav item berdasarkan pageId
+        document.querySelectorAll('.nav-item').forEach(i => {
+          if (i.getAttribute('onclick') && i.getAttribute('onclick').includes(`'${pageId}'`)) i.classList.add('active');
+        });
+      }
+
+      document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+      const titleEl = element || document.querySelector(`.nav-item[onclick*="'${pageId}'"]`);
+      if (titleEl) {
+        document.getElementById('page-title').innerText = titleEl.querySelector('span:not(.material-symbols-outlined)').innerText;
+        document.getElementById('page-icon').innerText = titleEl.querySelector('.material-symbols-outlined').innerText;
+      }
 
       const targetPage = document.getElementById(`page-${pageId}`);
       if (targetPage) targetPage.classList.add('active');
       else {
-        document.getElementById('generic-title').innerText = element.querySelector('span:not(.material-symbols-outlined)').innerText;
+        if (titleEl) document.getElementById('generic-title').innerText = titleEl.querySelector('span:not(.material-symbols-outlined)').innerText;
         document.getElementById('page-generic').classList.add('active');
       }
+
+      // Update URL hash tanpa reload
+      if (pushState) history.pushState({ page: pageId }, '', `#${pageId}`);
+
+      // Lazy load: panggil loader data hanya untuk halaman ini
+      if (PAGE_DATA_LOADERS[pageId]) PAGE_DATA_LOADERS[pageId]();
+    }
+
+    // Handle tombol back/forward browser
+    window.addEventListener('popstate', e => {
+      const pageId = e.state?.page || 'dashboard';
+      switchTab(pageId, null, false);
+    });
+
+    // Handle refresh: baca hash dari URL saat pertama load
+    function initRouterFromHash() {
+      const hash = window.location.hash.replace('#', '') || 'dashboard';
+      const validPages = Object.keys(PAGE_DATA_LOADERS);
+      const pageId = validPages.includes(hash) ? hash : 'dashboard';
+      // Set state awal tanpa pushState
+      history.replaceState({ page: pageId }, '', `#${pageId}`);
+      switchTab(pageId, null, false);
     }
 
     function getFormattedStatus(rawStatus, type) {
@@ -2656,12 +2692,8 @@
 
       tbody.innerHTML = slice.map(r => {
         const rusak = doRusakMap[r.sku];
-        const foto = r.kodeGambar
-          ? `<img class="so-thumb" loading="lazy"
-               src="${SO_ASSET_BASE}?id=${encodeURIComponent(r.kodeGambar)}&thumbnail=true"
-               onerror="this.outerHTML='<div class=\'so-thumb-empty\'><span class=\'material-symbols-outlined\' style=\'font-size:18px;\'>broken_image</span></div>'"
-               onclick="soOpenLightbox('${encodeURIComponent(r.kodeGambar)}')" title="Klik untuk perbesar">`
-          : `<div class="so-thumb-empty"><span class="material-symbols-outlined" style="font-size:18px;">image_not_supported</span></div>`;
+        // Data Opname: tidak tampilkan foto, ganti dengan nomor urut
+        const foto = `<span style="font-size:11px;color:#cbd5e1;font-weight:600;">${mulai + slice.indexOf(r) + 1}</span>`;
 
         const statusBarang = rusak
           ? `<div class="do-badge-rusak"><span class="material-symbols-outlined" style="font-size:12px;">warning</span>${rusak.jumlahRusak} pcs · ${rusak.oleh}</div>`
