@@ -22,69 +22,85 @@
     }
     .sidebar::-webkit-scrollbar { width: 0; }
 
-    /* Brand / Logo */
+    /* Brand */
     .brand-header {
-      padding: 20px 20px 16px;
-      display: flex; align-items: center; gap: 10px;
+      padding: 18px 16px 14px;
+      display: flex; align-items: center; gap: 12px;
       border-bottom: 1px solid #f1f5f9;
     }
     .brand-logo {
-      width: 34px; height: 34px; border-radius: 8px;
-      background: #e11d48; color: #fff;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg,#e11d48,#9f1239);
+      color: #fff; display: flex; align-items: center;
+      justify-content: center; flex-shrink: 0;
+      box-shadow: 0 3px 10px rgba(225,29,72,.3);
     }
-    .brand-logo .material-symbols-outlined { font-size: 20px; }
-    .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
-    .brand-name { font-size: 15px; font-weight: 800; color: #e11d48; letter-spacing: -.2px; }
-    .brand-sub  { font-size: 10px; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: .6px; }
+    .brand-text { display: flex; flex-direction: column; line-height: 1.25; }
+    .brand-name { font-size: 16px; font-weight: 900; color: #e11d48; letter-spacing: -.3px; }
+    .brand-sub  { font-size: 9.5px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: .7px; }
 
     /* User Profile */
     .user-profile {
-      padding: 14px 20px 16px;
-      border-bottom: 1px solid #f1f5f9;
+      margin: 10px 12px;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, #fff1f2, #fff5f5);
+      border: 1px solid #fecdd3;
+      border-radius: 12px;
+      display: flex; align-items: center; gap: 11px;
     }
-    .user-profile-inner { display: flex; align-items: center; gap: 11px; }
     .avatar {
-      width: 38px; height: 38px; border-radius: 10px;
+      width: 40px; height: 40px; border-radius: 10px;
       background: linear-gradient(135deg, #e11d48, #be123c);
       color: #fff; display: flex; align-items: center;
-      justify-content: center; font-weight: 800; font-size: 16px;
-      flex-shrink: 0; box-shadow: 0 2px 8px rgba(225,29,72,.25);
+      justify-content: center; font-weight: 800; font-size: 17px;
+      flex-shrink: 0; box-shadow: 0 2px 8px rgba(225,29,72,.3);
     }
     .user-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
     .user-name {
-      font-size: 13px; font-weight: 700; color: #1e293b;
+      font-size: 13px; font-weight: 800; color: #1e293b;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .user-badge {
       font-size: 10px; font-weight: 600;
-      background: #fff1f2; color: #e11d48;
-      padding: 2px 7px; border-radius: 20px;
-      width: max-content; letter-spacing: .2px;
+      background: #e11d48; color: #fff;
+      padding: 2px 8px; border-radius: 20px;
+      width: max-content;
     }
     .user-email { display: none; }
 
-    /* Nav */
-    .nav-section { padding: 18px 12px 4px; }
+    /* Nav body — flex grow */
+    .nav-body { flex: 1; }
+    .nav-section { padding: 16px 10px 4px; }
     .section-title {
-      font-size: 10px; font-weight: 700; color: #b0bec5;
-      text-transform: uppercase; letter-spacing: .8px;
-      padding: 0 10px 10px;
+      font-size: 9.5px; font-weight: 700; color: #b0bec5;
+      text-transform: uppercase; letter-spacing: 1px;
+      padding: 0 10px 8px;
     }
     .nav-item {
       display: flex; align-items: center; gap: 11px;
-      padding: 10px 12px; border-radius: 8px;
+      padding: 9px 12px; border-radius: 8px;
       color: #64748b; text-decoration: none;
-      font-size: 13.5px; font-weight: 500;
+      font-size: 13px; font-weight: 500;
       cursor: pointer; transition: all .15s;
-      margin-bottom: 1px;
+      margin-bottom: 2px;
     }
-    .nav-item .material-symbols-outlined { font-size: 19px; flex-shrink: 0; }
+    .nav-item .material-symbols-outlined { font-size: 18px; flex-shrink: 0; transition: color .15s; }
     .nav-item:hover { background: #f8fafc; color: #1e293b; }
     .nav-item:hover .material-symbols-outlined { color: #e11d48; }
-    .nav-item.active { background: #fff1f2; color: #e11d48; font-weight: 600; }
+    .nav-item.active { background: #fff1f2; color: #e11d48; font-weight: 700; }
     .nav-item.active .material-symbols-outlined { color: #e11d48; }
+
+    /* Sidebar footer - keluar */
+    .sidebar-footer {
+      padding: 10px 10px 16px;
+      border-top: 1px solid #f1f5f9;
+      margin-top: auto;
+    }
+    .sidebar-logout {
+      color: #94a3b8 !important; font-weight: 500 !important;
+    }
+    .sidebar-logout:hover { color: #ef4444 !important; background: #fff1f2 !important; }
+    .sidebar-logout:hover .material-symbols-outlined { color: #ef4444 !important; }
 
     /* MAIN WRAPPER */
     .main-wrapper { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
@@ -499,39 +515,60 @@
 
   <!-- SIDEBAR -->
 <aside class="sidebar">
+    <!-- BRAND -->
     <div class="brand-header">
       <div class="brand-logo">
-        <span class="material-symbols-outlined">local_shipping</span>
+        <span class="material-symbols-outlined" style="font-size:22px;">local_shipping</span>
       </div>
       <div class="brand-text">
         <span class="brand-name">PDC</span>
         <span class="brand-sub">Warehouse Admin</span>
       </div>
     </div>
+
+    <!-- USER PROFILE -->
     <div class="user-profile">
-      <div class="user-profile-inner">
-        <div class="avatar" id="user-avatar">U</div>
-        <div class="user-info">
-          <span class="user-name" id="user-name-display">Guest</span>
-          <span class="user-badge">Warehouse Crew</span>
-        </div>
+      <div class="avatar" id="user-avatar">U</div>
+      <div class="user-info">
+        <span class="user-name" id="user-name-display">Guest</span>
+        <span class="user-badge" id="user-role-badge">Warehouse Crew</span>
       </div>
     </div>
-    <div class="nav-section">
-      <div class="section-title">UTAMA</div>
-      <a class="nav-item" href="#dashboard" onclick="switchTab('dashboard', this); return false;"><span class="material-symbols-outlined">home</span><span>Dashboard</span></a>
-    </div>
 
-    <div class="nav-section">
-      <div class="section-title">PRODUK</div>
-      <a class="nav-item" href="#pusat-inventory" onclick="switchTab('pusat-inventory', this); return false;"><span class="material-symbols-outlined">inventory_2</span><span>Pusat Inventory</span></a>
-      <a class="nav-item" href="#barang-bermasalah" onclick="switchTab('barang-bermasalah', this); return false;"><span class="material-symbols-outlined">assignment</span><span>Data Opname</span></a>
-      <a class="nav-item" href="#lacak-awb" onclick="switchTab('lacak-awb', this); return false;"><span class="material-symbols-outlined">local_shipping</span><span>Lacak AWB</span></a>
-    </div>
+    <!-- NAV -->
+    <nav class="nav-body">
+      <div class="nav-section">
+        <div class="section-title">UTAMA</div>
+        <a class="nav-item" href="#dashboard" onclick="switchTab('dashboard', this); return false;">
+          <span class="material-symbols-outlined">home</span><span>Dashboard</span>
+        </a>
+      </div>
+      <div class="nav-section">
+        <div class="section-title">PRODUK</div>
+        <a class="nav-item" href="#pusat-inventory" onclick="switchTab('pusat-inventory', this); return false;">
+          <span class="material-symbols-outlined">inventory_2</span><span>Pusat Inventory</span>
+        </a>
+        <a class="nav-item" href="#barang-bermasalah" onclick="switchTab('barang-bermasalah', this); return false;">
+          <span class="material-symbols-outlined">assignment</span><span>Data Opname</span>
+        </a>
+        <a class="nav-item" href="#lacak-awb" onclick="switchTab('lacak-awb', this); return false;">
+          <span class="material-symbols-outlined">local_shipping</span><span>Lacak AWB</span>
+        </a>
+      </div>
+      <div class="nav-section">
+        <div class="section-title">PENGATURAN</div>
+        <a class="nav-item" href="#kelola-akun" id="nav-kelola-akun" style="display:none;" onclick="switchTab('kelola-akun', this); return false;">
+          <span class="material-symbols-outlined">manage_accounts</span><span>Kelola Akun</span>
+        </a>
+      </div>
+    </nav>
 
-    <div class="nav-section">
-      <div class="section-title">PENGATURAN</div>
-      <a class="nav-item" href="#kelola-akun" id="nav-kelola-akun" style="display:none;" onclick="switchTab('kelola-akun', this); return false;"><span class="material-symbols-outlined">manage_accounts</span><span>Kelola Akun</span></a>
+    <!-- KELUAR DI SIDEBAR BAWAH -->
+    <div class="sidebar-footer">
+      <button class="nav-item sidebar-logout" onclick="logout()" style="width:100%;background:none;border:none;cursor:pointer;text-align:left;">
+        <span class="material-symbols-outlined">logout</span>
+        <span>Keluar</span>
+      </button>
     </div>
 </aside>
   <!-- MAIN WRAPPER -->
@@ -541,12 +578,9 @@
         <button class="btn-hamburger" id="btn-hamburger" onclick="toggleSidebar()" aria-label="Toggle menu">
           <span class="material-symbols-outlined">menu</span>
         </button>
-        <span class="material-symbols-outlined" id="page-icon">home</span>
-        <span id="page-title">Dashboard</span>
+        <span class="material-symbols-outlined" id="page-icon" style="color:#94a3b8;font-size:20px;">home</span>
+        <span id="page-title" style="font-size:15px;font-weight:700;color:#1e293b;">Dashboard</span>
       </div>
-      <button class="btn-logout" onclick="logout()">
-        <span class="material-symbols-outlined" style="font-size: 16px;">logout</span> Keluar
-      </button>
     </header>
     <div class="content-container" style="position:relative;">
       <!-- Loading overlay — tampil saat verifikasi token, sidebar tetap freeze -->
@@ -576,7 +610,14 @@
       <!-- MENU PLACEHOLDERS -->
       <section id="page-pusat-inventory" class="page-content">
         <style>
-          .so-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin-bottom:14px;}
+          /* PI freeze layout */
+          #page-pusat-inventory.active { display:flex !important; flex-direction:column; height:calc(100vh - 54px); overflow:hidden; }
+          .so-sticky-header { position:sticky; top:0; z-index:10; background:#f1f5f9; padding-bottom:8px; flex-shrink:0; }
+          .so-scroll-body { flex:1; overflow-y:auto; overflow-x:hidden; scroll-behavior:smooth; }
+          .so-scroll-body::-webkit-scrollbar { width:5px; }
+          .so-scroll-body::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:10px; }
+
+          .so-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin-bottom:8px;}
           .so-toolbar select,.so-toolbar input[type=text]{border:1px solid #cbd5e1;border-radius:6px;padding:6px 10px;font-size:13px;color:#1e293b;background:#f8fafc;outline:none;transition:border-color .15s;}
           .so-toolbar select:focus,.so-toolbar input[type=text]:focus{border-color:#e11d48;}
           .so-sesi-select{min-width:160px;}
@@ -631,6 +672,8 @@
           .so-info-bar{font-size:12px;color:#64748b;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
         </style>
 
+        <!-- STICKY HEADER: toolbar + stats -->
+        <div class="so-sticky-header">
         <!-- TOOLBAR -->
         <div class="so-toolbar">
           <select class="so-sesi-select" id="so-sesi-select" onchange="soGantiSesi()">
@@ -661,12 +704,19 @@
         </div>
 
         <!-- INFO BAR -->
-        <div class="so-info-bar" id="so-info-bar" style="display:none;">
-          <span><b id="so-info-total">0</b> produk total</span>
-          <span>·</span>
-          <span>Menampilkan <b id="so-info-tampil">0</b></span>
-          <span>·</span>
-          <span style="color:#e11d48;font-weight:600;" id="so-info-sesi"></span>
+        <div class="so-info-bar" id="so-info-bar" style="display:none;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span><b id="so-info-total">0</b> produk total</span>
+            <span>·</span>
+            <span>Menampilkan <b id="so-info-tampil">0</b></span>
+            <span>·</span>
+            <span style="color:#e11d48;font-weight:600;" id="so-info-sesi"></span>
+          </div>
+          <button onclick="soExportCSV()"
+            style="display:flex;align-items:center;gap:5px;padding:4px 12px;background:#f0fdf4;color:#15803d;border:1.5px solid #86efac;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap;"
+            onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
+            <span class="material-symbols-outlined" style="font-size:13px;">download</span> Export CSV
+          </button>
         </div>
 
         <!-- STATS -->
@@ -677,6 +727,10 @@
           <div class="so-stat-card c-belum">  <div class="num" id="so-n-belum">0</div>  <div class="lbl">Belum dihitung</div></div>
         </div>
 
+        </div><!-- /so-sticky-header -->
+
+        <!-- SCROLL BODY: tabel -->
+        <div class="so-scroll-body">
         <!-- TABEL -->
         <div class="so-table-wrap" id="so-table-wrap">
           <div class="so-state-box" id="so-state-box">
@@ -709,10 +763,25 @@
           </div>
         </div>
 
+        </div><!-- /so-scroll-body -->
+
         <!-- LIGHTBOX -->
         <div id="so-lightbox" onclick="soCloseLightbox()">
           <button id="so-lightbox-close" onclick="soCloseLightbox()">✕</button>
           <img id="so-lightbox-img" src="" alt="Foto produk">
+        </div>
+
+        <!-- MODAL URAIAN RUSAK (Pusat Inventory) -->
+        <div id="so-rusak-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9998;align-items:center;justify-content:center;" onclick="soTutupRusakModal(event)">
+          <div style="background:#fff;border-radius:14px;width:420px;max-width:94vw;box-shadow:0 20px 60px rgba(0,0,0,.18);overflow:hidden;" onclick="event.stopPropagation()">
+            <div style="background:#1e293b;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;">
+              <span id="so-rusak-modal-judul" style="font-size:13px;font-weight:700;">Uraian Kerusakan</span>
+              <button onclick="soTutupRusakModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;">✕</button>
+            </div>
+            <div id="so-rusak-modal-body" style="padding:18px;min-height:80px;">
+              <div style="text-align:center;color:#94a3b8;padding:20px 0;">Memuat...</div>
+            </div>
+          </div>
         </div>
 
       </section>
@@ -720,7 +789,7 @@
       <section id="page-barang-bermasalah" class="page-content">
         <style>
           /* ---- WRAPPER LAYOUT ---- */
-          #page-barang-bermasalah.active { display:flex !important; flex-direction:column; height:calc(100vh - 55px); overflow:hidden; }
+          #page-barang-bermasalah.active { display:flex !important; flex-direction:column; height:calc(100vh - 54px); overflow:hidden; }
           #page-barang-bermasalah { display:none; }
 
           /* ---- TOOLBAR FREEZE ---- */
@@ -2955,19 +3024,120 @@
       document.getElementById('so-lightbox-img').src = '';
     }
 
+    // Export CSV Pusat Inventory — download langsung ke perangkat
+    function soExportCSV() {
+      if (!soDataFilter.length) return alert('Tidak ada data untuk diekspor.');
+      const sesi        = soSesiAktif || 'SO';
+      const tglEksport  = new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' });
+      const baris = [['Tanggal Eksport','SKU','Nama Produk','Selisih']];
+      soDataFilter.forEach(r => {
+        baris.push([
+          tglEksport,
+          r.sku,
+          r.namaProduk,
+          r.selisih === '' ? '' : r.selisih
+        ]);
+      });
+      const csv = baris.map(row =>
+        row.map(v => {
+          const s = String(v == null ? '' : v).replace(/"/g, '""');
+          return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s;
+        }).join(',')
+      ).join('\n');
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `${sesi}_export_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') { soCloseLightbox(); document.getElementById('do-modal-overlay').classList.remove('open'); }
+      if (e.key === 'Escape') {
+        soCloseLightbox();
+        document.getElementById('do-modal-overlay').classList.remove('open');
+        document.getElementById('so-rusak-modal').style.display = 'none';
+      }
     });
 
     // =============================================
-    // SO ACTIONS — buka modal dari tabel Pusat Inventory
+    // SO ACTIONS — popup uraian rusak dari _SO_RUSAK
     // =============================================
-    function soOpenActions(encodedData) {
+    async function soOpenActions(encodedData) {
       const d = JSON.parse(decodeURIComponent(encodedData));
-      // Redirect ke Data Opname dan buka modal
-      const navItem = document.querySelector('.nav-item[href="#barang-bermasalah"]');
-      if (navItem) { switchTab('barang-bermasalah', navItem); initDataOpname(d.sesi); }
-      setTimeout(() => doOpenModal(d.sku, d.nama), 600);
+      const modal = document.getElementById('so-rusak-modal');
+      const body  = document.getElementById('so-rusak-modal-body');
+      const judul = document.getElementById('so-rusak-modal-judul');
+
+      judul.textContent = d.nama || d.sku;
+      body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px 0;"><span class="material-symbols-outlined" style="font-size:32px;animation:spin 1s linear infinite;display:block;margin-bottom:8px;">sync</span>Memuat data...</div>';
+      modal.style.display = 'flex';
+
+      const token = sessionStorage.getItem('sessionToken');
+      try {
+        const res  = await fetch(`/api/so/riwayat?sku=${encodeURIComponent(d.sku)}&sesi=${encodeURIComponent(d.sesi)}`, {
+          headers: { 'x-session-token': token }
+        });
+        const data = await res.json();
+
+        if (!data.success || !data.rows || !data.rows.length) {
+          body.innerHTML = `
+            <div style="text-align:center;padding:28px 0;">
+              <span class="material-symbols-outlined" style="font-size:40px;color:#d1d5db;display:block;margin-bottom:10px;">check_circle</span>
+              <p style="color:#64748b;font-size:13px;font-weight:600;">Belum pernah dirusak</p>
+              <p style="color:#94a3b8;font-size:12px;margin-top:4px;">Tidak ada catatan kerusakan untuk produk ini.</p>
+            </div>`;
+          return;
+        }
+
+        const latest = data.rows[0];
+        const history = data.rows.slice(1);
+
+        body.innerHTML = `
+          <!-- Info terbaru -->
+          <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:10px;padding:14px;margin-bottom:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+              <span style="font-size:11px;font-weight:700;color:#e11d48;text-transform:uppercase;letter-spacing:.4px;">Laporan Terbaru</span>
+              <span style="font-size:11px;color:#94a3b8;">${latest.dicatatPada||'-'}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="font-size:26px;font-weight:800;color:#be123c;">${latest.jumlahRusak}</span>
+              <span style="font-size:12px;color:#64748b;">pcs rusak</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#64748b;">person</span>
+              <span style="font-size:12px;font-weight:600;color:#334155;">${latest.oleh||'—'}</span>
+              <span style="font-size:11px;color:#94a3b8;">· ${latest.sesi||''}</span>
+            </div>
+            ${latest.keterangan ? `<div style="font-size:12px;color:#64748b;background:#fff;border-radius:6px;padding:8px 10px;border:1px solid #f1f5f9;">${latest.keterangan}</div>` : ''}
+          </div>
+          <!-- Riwayat sebelumnya -->
+          ${history.length ? `
+            <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Riwayat Sebelumnya</div>
+            <div style="max-height:160px;overflow-y:auto;">
+              ${history.map(r => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border:1px solid #f1f5f9;border-radius:7px;margin-bottom:5px;background:#fafafa;">
+                  <div>
+                    <span style="font-weight:700;color:#be123c;">${r.jumlahRusak} pcs</span>
+                    <span style="font-size:11px;color:#64748b;margin-left:6px;">· ${r.oleh||'—'} · ${r.sesi||''}</span>
+                  </div>
+                  <span style="font-size:10px;color:#94a3b8;">${r.dicatatPada||''}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        `;
+      } catch(e) {
+        body.innerHTML = '<div style="text-align:center;color:#ef4444;padding:20px;">Gagal memuat data.</div>';
+      }
+    }
+
+    function soTutupRusakModal(e) {
+      if (e && e.target !== document.getElementById('so-rusak-modal')) return;
+      document.getElementById('so-rusak-modal').style.display = 'none';
     }
 
     // =============================================
