@@ -97,10 +97,12 @@
       margin-top: auto;
     }
     .sidebar-logout {
-      color: #94a3b8 !important; font-weight: 500 !important;
+      color: #fff !important; font-weight: 700 !important;
+      background: #e11d48 !important; border-radius: 8px !important;
+      margin: 0 2px !important;
     }
-    .sidebar-logout:hover { color: #ef4444 !important; background: #fff1f2 !important; }
-    .sidebar-logout:hover .material-symbols-outlined { color: #ef4444 !important; }
+    .sidebar-logout:hover { background: #be123c !important; }
+    .sidebar-logout .material-symbols-outlined { color: #fff !important; }
 
     /* MAIN WRAPPER */
     .main-wrapper { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
@@ -3076,16 +3078,30 @@
       body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px 0;"><span class="material-symbols-outlined" style="font-size:32px;animation:spin 1s linear infinite;display:block;margin-bottom:8px;">sync</span>Memuat data...</div>';
       modal.style.display = 'flex';
 
-      const token = sessionStorage.getItem('sessionToken');
       try {
-        const res  = await fetch(`/api/so/riwayat?sku=${encodeURIComponent(d.sku)}&sesi=${encodeURIComponent(d.sesi)}`, {
-          headers: { 'x-session-token': token }
-        });
-        const data = await res.json();
+        // Langsung ke Apps Script — tidak lewat Railway
+        const data = await gasGetDirect({ action: 'soGetRiwayat', sku: d.sku, sesi: d.sesi });
+
+        // Foto produk (pakai kodeGambar dari data SO yang sudah di-load)
+        const rowData  = soSemuaData.find(r => r.sku === d.sku);
+        const fotoHtml = (rowData && rowData.kodeGambar)
+          ? `<img src="${SO_ASSET_BASE}?id=${encodeURIComponent(rowData.kodeGambar)}&thumbnail=true"
+               style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0;background:#f1f5f9;"
+               onerror="this.style.display='none'">`
+          : `<div style="width:60px;height:60px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+               <span class="material-symbols-outlined" style="color:#cbd5e1;font-size:24px;">image_not_supported</span>
+             </div>`;
 
         if (!data.success || !data.rows || !data.rows.length) {
           body.innerHTML = `
-            <div style="text-align:center;padding:28px 0;">
+            <div style="display:flex;gap:12px;align-items:center;padding:0 0 14px;border-bottom:1px solid #f1f5f9;margin-bottom:14px;">
+              ${fotoHtml}
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#1e293b;">${d.nama}</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:2px;font-family:monospace;">${d.sku}</div>
+              </div>
+            </div>
+            <div style="text-align:center;padding:20px 0;">
               <span class="material-symbols-outlined" style="font-size:40px;color:#d1d5db;display:block;margin-bottom:10px;">check_circle</span>
               <p style="color:#64748b;font-size:13px;font-weight:600;">Belum pernah dirusak</p>
               <p style="color:#94a3b8;font-size:12px;margin-top:4px;">Tidak ada catatan kerusakan untuk produk ini.</p>
@@ -3093,10 +3109,18 @@
           return;
         }
 
-        const latest = data.rows[0];
+        const latest  = data.rows[0];
         const history = data.rows.slice(1);
 
         body.innerHTML = `
+          <!-- Foto + nama produk -->
+          <div style="display:flex;gap:12px;align-items:center;padding:0 0 14px;border-bottom:1px solid #f1f5f9;margin-bottom:14px;">
+            ${fotoHtml}
+            <div style="min-width:0;">
+              <div style="font-size:12px;font-weight:700;color:#1e293b;line-height:1.3;">${d.nama}</div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:2px;font-family:monospace;">${d.sku}</div>
+            </div>
+          </div>
           <!-- Info terbaru -->
           <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:10px;padding:14px;margin-bottom:14px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
@@ -3117,7 +3141,7 @@
           <!-- Riwayat sebelumnya -->
           ${history.length ? `
             <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Riwayat Sebelumnya</div>
-            <div style="max-height:160px;overflow-y:auto;">
+            <div style="max-height:140px;overflow-y:auto;">
               ${history.map(r => `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border:1px solid #f1f5f9;border-radius:7px;margin-bottom:5px;background:#fafafa;">
                   <div>
@@ -3218,13 +3242,9 @@
         });
         if (timSet.includes(prevTim)) selTim.value = prevTim;
 
-        // Load data rusak tetap lewat Railway (butuh session token untuk username)
-        const token = sessionStorage.getItem('sessionToken');
+        // Load data rusak langsung ke Apps Script (baca _SO_RUSAK, tidak perlu Railway)
         try {
-          const res = await fetch('/api/so/rusak?sesi=' + encodeURIComponent(sesi), {
-            headers: { 'x-session-token': token }
-          });
-          const dataRusak = await res.json();
+          const dataRusak = await gasGetDirect({ action: 'soGetRusak', sesi });
           doRusakMap = {};
           if (dataRusak.success) dataRusak.rows.forEach(r => { doRusakMap[r.sku] = r; });
         } catch(e) { doRusakMap = {}; }
@@ -3391,13 +3411,10 @@
     async function doLoadRiwayat(sku) {
       const box = document.getElementById('do-riwayat-list');
       box.innerHTML = '<div class="do-state-box" style="padding:20px 0;"><span class="material-symbols-outlined" style="animation:spin 1s linear infinite;font-size:28px;">sync</span><p>Memuat riwayat...</p></div>';
-      const sesi  = document.getElementById('do-sesi-select').value;
-      const token = sessionStorage.getItem('sessionToken');
+      const sesi = document.getElementById('do-sesi-select').value;
       try {
-        const res  = await fetch(`/api/so/riwayat?sku=${encodeURIComponent(sku)}&sesi=${encodeURIComponent(sesi)}`, {
-          headers: { 'x-session-token': token }
-        });
-        const data = await res.json();
+        // Langsung ke Apps Script
+        const data = await gasGetDirect({ action: 'soGetRiwayat', sku, sesi });
         if (!data.success || !data.rows.length) {
           box.innerHTML = '<div class="do-state-box" style="padding:20px 0;"><span class="material-symbols-outlined" style="font-size:28px;">history</span><p>Belum ada riwayat untuk produk ini.</p></div>';
           return;
