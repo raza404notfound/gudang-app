@@ -11,31 +11,103 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
 <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; }
-    body { display: flex; background-color: #f8fafc; color: #334155; height: 100vh; overflow: hidden; }
+    body { display: flex; background-color: #f1f5f9; color: #334155; height: 100vh; overflow: hidden; }
 
-    /* SIDEBAR */
-    .sidebar { width: 260px; background: #ffffff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; height: 100%; flex-shrink: 0; overflow-y: auto; }
-    .brand-header { padding: 18px 20px; display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: #e11d48; border-bottom: 1px solid #f1f5f9; }
-    .user-profile { padding: 15px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #f1f5f9; }
-    .avatar { width: 42px; height: 42px; border-radius: 6px; background: #e11d48; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-    .user-info { display: flex; flex-direction: column; }
-    .user-name { font-size: 13px; font-weight: 700; color: #1e293b; word-break: break-all; }
-    .user-email { font-size: 11px; color: #64748b; margin-bottom: 4px; }
-    .user-badge { font-size: 10px; background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px; width: max-content; }
-    .nav-section { padding: 15px 12px 5px 12px; }
-    .section-title { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; padding: 0 10px 8px 10px; }
-    .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; color: #475569; text-decoration: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: 0.2s; margin-bottom: 2px; }
-    .nav-item:hover { background: #f8fafc; color: #e11d48; }
-    .nav-item.active { background: #fff1f2; color: #e11d48; }
+    /* ---- SIDEBAR ---- */
+    .sidebar {
+      width: 256px; background: #fff;
+      border-right: 1px solid #e8edf2;
+      display: flex; flex-direction: column;
+      height: 100%; flex-shrink: 0; overflow-y: auto;
+    }
+    .sidebar::-webkit-scrollbar { width: 0; }
+
+    /* Brand / Logo */
+    .brand-header {
+      padding: 20px 20px 16px;
+      display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .brand-logo {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: #e11d48; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .brand-logo .material-symbols-outlined { font-size: 20px; }
+    .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+    .brand-name { font-size: 15px; font-weight: 800; color: #e11d48; letter-spacing: -.2px; }
+    .brand-sub  { font-size: 10px; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: .6px; }
+
+    /* User Profile */
+    .user-profile {
+      padding: 14px 20px 16px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .user-profile-inner { display: flex; align-items: center; gap: 11px; }
+    .avatar {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, #e11d48, #be123c);
+      color: #fff; display: flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: 16px;
+      flex-shrink: 0; box-shadow: 0 2px 8px rgba(225,29,72,.25);
+    }
+    .user-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .user-name {
+      font-size: 13px; font-weight: 700; color: #1e293b;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .user-badge {
+      font-size: 10px; font-weight: 600;
+      background: #fff1f2; color: #e11d48;
+      padding: 2px 7px; border-radius: 20px;
+      width: max-content; letter-spacing: .2px;
+    }
+    .user-email { display: none; }
+
+    /* Nav */
+    .nav-section { padding: 18px 12px 4px; }
+    .section-title {
+      font-size: 10px; font-weight: 700; color: #b0bec5;
+      text-transform: uppercase; letter-spacing: .8px;
+      padding: 0 10px 10px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 11px;
+      padding: 10px 12px; border-radius: 8px;
+      color: #64748b; text-decoration: none;
+      font-size: 13.5px; font-weight: 500;
+      cursor: pointer; transition: all .15s;
+      margin-bottom: 1px;
+    }
+    .nav-item .material-symbols-outlined { font-size: 19px; flex-shrink: 0; }
+    .nav-item:hover { background: #f8fafc; color: #1e293b; }
+    .nav-item:hover .material-symbols-outlined { color: #e11d48; }
+    .nav-item.active { background: #fff1f2; color: #e11d48; font-weight: 600; }
+    .nav-item.active .material-symbols-outlined { color: #e11d48; }
 
     /* MAIN WRAPPER */
     .main-wrapper { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-    .top-header { height: 55px; background: #fff; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; font-size: 16px; font-weight: 600; color: #334155; }
+    .top-header {
+      height: 54px; background: #fff;
+      border-bottom: 1px solid #e8edf2;
+      display: flex; align-items: center;
+      justify-content: space-between; padding: 0 22px;
+      font-size: 15px; font-weight: 700; color: #1e293b;
+      box-shadow: 0 1px 0 #e8edf2;
+    }
     .top-header-left { display: flex; align-items: center; gap: 8px; }
-    .btn-logout { display: flex; align-items: center; gap: 6px; background: #fee2e2; color: #ef4444; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-    .btn-logout:hover { background: #fca5a5; }
+    .top-header-left .material-symbols-outlined { font-size: 20px; color: #94a3b8; }
+    .btn-logout {
+      display: flex; align-items: center; gap: 6px;
+      background: #fff1f2; color: #e11d48;
+      border: 1.5px solid #fecdd3; padding: 6px 14px;
+      border-radius: 8px; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: .15s;
+    }
+    .btn-logout:hover { background: #fee2e2; border-color: #fca5a5; }
 
-    .content-container { flex: 1; padding: 20px; overflow-y: auto; scroll-behavior: smooth; }
+    .content-container { flex: 1; padding: 22px 24px; overflow-y: auto; scroll-behavior: smooth; }
     .content-container::-webkit-scrollbar { width: 5px; }
     .content-container::-webkit-scrollbar-track { background: transparent; }
     .content-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -43,6 +115,26 @@
     /* Data Opname: padding dihandle oleh do-sticky-top dan do-scroll-area */
     .page-content { display: none; }
     .page-content.active { display: block; }
+
+    /* ---- PAGE LOADING OVERLAY (bukan login) ---- */
+    #page-loading {
+      position: absolute; inset: 0;
+      background: #fff;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px; z-index: 50;
+    }
+    #page-loading.hidden { display: none; }
+    .page-loading-spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #f1f5f9;
+      border-top-color: #e11d48;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    .page-loading-text {
+      font-size: 13px; color: #94a3b8; font-weight: 500;
+    }
 
     /* DASHBOARD LAYOUT & CARDS */
     .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink:0; }
@@ -229,6 +321,10 @@
       .wh-card { overflow-x: auto; }
       table { min-width: 360px; }
 
+      /* Brand lebih compact di mobile */
+      .brand-name { font-size: 13px; }
+      .brand-sub { display: none; }
+      .user-profile { padding: 10px 14px 12px; }
       /* Login card lebih kecil */
       .login-card { width: calc(100vw - 32px); padding: 24px 20px; }
 
@@ -404,32 +500,38 @@
   <!-- SIDEBAR -->
 <aside class="sidebar">
     <div class="brand-header">
-      <span class="material-symbols-outlined">store</span>
-      <span>PDC <span style="color: #334155; font-weight: 500;">Warehouse Admin</span></span>
+      <div class="brand-logo">
+        <span class="material-symbols-outlined">local_shipping</span>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">PDC</span>
+        <span class="brand-sub">Warehouse Admin</span>
+      </div>
     </div>
     <div class="user-profile">
-      <div class="avatar" id="user-avatar">U</div>
-      <div class="user-info">
-        <span class="user-name" id="user-name-display">Guest</span>
-        <span class="user-email">admin@pdc.com</span>
-        <span class="user-badge">Warehouse Crew</span>
+      <div class="user-profile-inner">
+        <div class="avatar" id="user-avatar">U</div>
+        <div class="user-info">
+          <span class="user-name" id="user-name-display">Guest</span>
+          <span class="user-badge">Warehouse Crew</span>
+        </div>
       </div>
     </div>
     <div class="nav-section">
       <div class="section-title">UTAMA</div>
-      <a class="nav-item" onclick="switchTab('dashboard', this)"><span class="material-symbols-outlined">home</span><span>Dashboard</span></a>
+      <a class="nav-item" href="#dashboard" onclick="switchTab('dashboard', this); return false;"><span class="material-symbols-outlined">home</span><span>Dashboard</span></a>
     </div>
 
     <div class="nav-section">
       <div class="section-title">PRODUK</div>
-      <a class="nav-item" onclick="switchTab('pusat-inventory', this)"><span class="material-symbols-outlined">inventory_2</span><span>Pusat Inventory</span></a>
-      <a class="nav-item" onclick="switchTab('barang-bermasalah', this)"><span class="material-symbols-outlined">assignment</span><span>Data Opname</span></a>
-      <a class="nav-item" onclick="switchTab('lacak-awb', this)"><span class="material-symbols-outlined">local_shipping</span><span>Lacak AWB</span></a>
+      <a class="nav-item" href="#pusat-inventory" onclick="switchTab('pusat-inventory', this); return false;"><span class="material-symbols-outlined">inventory_2</span><span>Pusat Inventory</span></a>
+      <a class="nav-item" href="#barang-bermasalah" onclick="switchTab('barang-bermasalah', this); return false;"><span class="material-symbols-outlined">assignment</span><span>Data Opname</span></a>
+      <a class="nav-item" href="#lacak-awb" onclick="switchTab('lacak-awb', this); return false;"><span class="material-symbols-outlined">local_shipping</span><span>Lacak AWB</span></a>
     </div>
 
     <div class="nav-section">
       <div class="section-title">PENGATURAN</div>
-      <a class="nav-item" id="nav-kelola-akun" style="display:none;" onclick="switchTab('kelola-akun', this)"><span class="material-symbols-outlined">manage_accounts</span><span>Kelola Akun</span></a>
+      <a class="nav-item" href="#kelola-akun" id="nav-kelola-akun" style="display:none;" onclick="switchTab('kelola-akun', this); return false;"><span class="material-symbols-outlined">manage_accounts</span><span>Kelola Akun</span></a>
     </div>
 </aside>
   <!-- MAIN WRAPPER -->
@@ -446,7 +548,12 @@
         <span class="material-symbols-outlined" style="font-size: 16px;">logout</span> Keluar
       </button>
     </header>
-    <div class="content-container">
+    <div class="content-container" style="position:relative;">
+      <!-- Loading overlay — tampil saat verifikasi token, sidebar tetap freeze -->
+      <div id="page-loading">
+        <div class="page-loading-spinner"></div>
+        <span class="page-loading-text">Memuat halaman...</span>
+      </div>
       
       <!-- PAGE: DASHBOARD -->
       <section id="page-dashboard" class="page-content">
@@ -886,209 +993,335 @@
 
       <!-- PAGE: LACAK AWB BULK SYSTEM -->
       <section id="page-lacak-awb" class="page-content">
+        <style>
+          /* ---- LACAK AWB REDESIGN ---- */
+          .awb-top-bar {
+            display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+            background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+            padding:12px 16px; margin-bottom:12px;
+            box-shadow:0 1px 3px rgba(0,0,0,.04);
+          }
+          .awb-top-bar .awb-date-wrap {
+            display:flex; align-items:center; gap:8px; flex:1; min-width:200px;
+          }
+          .awb-top-bar label { font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.4px; white-space:nowrap; }
+          .awb-top-bar input[type=date], .awb-top-bar select {
+            border:1px solid #e2e8f0; border-radius:7px; padding:7px 10px;
+            font-size:13px; color:#1e293b; background:#f8fafc; outline:none;
+            transition:border-color .15s;
+          }
+          .awb-top-bar input[type=date]:focus, .awb-top-bar select:focus { border-color:#e11d48; }
+          .awb-apply-btn {
+            background:#1e293b; color:#fff; border:none; border-radius:7px;
+            padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer;
+            display:flex; align-items:center; gap:6px; transition:.15s; white-space:nowrap;
+          }
+          .awb-apply-btn:hover { background:#0f172a; }
+          .awb-apply-btn:disabled { background:#94a3b8; cursor:not-allowed; }
+          .awb-cek-btn {
+            background:#fff; color:#1e293b; border:1.5px solid #e2e8f0; border-radius:7px;
+            padding:7px 14px; font-size:13px; font-weight:600; cursor:pointer;
+            display:flex; align-items:center; gap:6px; transition:.15s; white-space:nowrap;
+          }
+          .awb-cek-btn:hover { border-color:#1e293b; background:#f8fafc; }
+          .awb-cancel-btn {
+            background:#fff1f2; color:#dc2626; border:1.5px solid #fecdd3; border-radius:7px;
+            padding:7px 14px; font-size:13px; font-weight:600; cursor:pointer;
+            display:flex; align-items:center; gap:6px; transition:.15s; white-space:nowrap; margin-left:auto;
+          }
+          .awb-cancel-btn:hover { background:#fee2e2; }
+          #awb-top-status { font-size:12px; color:#64748b; width:100%; padding-top:4px; }
 
-        <!-- TOOLBAR -->
-        <div class="awb-toolbar">
-          <div class="awb-toolbar-left">
-            <div class="awb-filter-group">
-              <label class="awb-label">Tanggal</label>
-              <input type="date" id="filter-tanggal" class="awb-date-input">
-            </div>
-            <div class="awb-filter-group">
-              <label class="awb-label">Gudang</label>
-              <select id="filter-gudang" class="awb-select">
-                <option value="">Semua Gudang</option>
-                <option value="GUDANG 1">Gudang 1</option>
-                <option value="GUDANG 2">Gudang 2</option>
-                <option value="GUDANG 3">Gudang 3</option>
-                <option value="GUDANG 4">Gudang 4</option>
-              </select>
-            </div>
+          /* Layout utama */
+          .awb-new-layout { display:flex; gap:12px; align-items:flex-start; }
+          .awb-new-left { flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; }
+          .awb-new-right { width:260px; flex-shrink:0; display:flex; flex-direction:column; gap:10px; }
+
+          /* Status panel kanan atas */
+          .awb-status-panel {
+            background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+            overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04);
+          }
+          .awb-status-panel-header {
+            background:#1e293b; color:#f8fafc; padding:9px 14px;
+            font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+            display:flex; justify-content:space-between; align-items:center;
+          }
+          .awb-status-row {
+            display:flex; justify-content:space-between; align-items:center;
+            padding:8px 14px; border-bottom:1px solid #f8fafc;
+            cursor:pointer; transition:background .1s; font-size:13px;
+          }
+          .awb-status-row:last-child { border-bottom:none; }
+          .awb-status-row:hover { background:#f8fafc; }
+          .awb-status-row .lbl { color:#475569; display:flex; align-items:center; gap:6px; }
+          .awb-status-row .val { font-weight:700; font-size:14px; }
+
+          /* Tombol kanan */
+          .awb-action-panel {
+            background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+            overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04);
+          }
+          .awb-action-panel-header {
+            background:#1e293b; color:#f8fafc; padding:9px 14px;
+            font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+          }
+          .awb-action-btn-row {
+            padding:10px 14px; border-bottom:1px solid #f8fafc;
+          }
+          .awb-action-btn-row:last-child { border-bottom:none; }
+          .awb-side-btn {
+            width:100%; padding:9px 12px; border-radius:7px; font-size:13px;
+            font-weight:600; cursor:pointer; display:flex; align-items:center;
+            gap:8px; transition:.15s; border:1.5px solid transparent;
+          }
+          .awb-side-btn-lacak {
+            background:#e11d48; color:#fff; border-color:#e11d48;
+          }
+          .awb-side-btn-lacak:hover { background:#be123c; }
+          .awb-side-btn-lacak:disabled { background:#94a3b8; border-color:#94a3b8; cursor:not-allowed; }
+          .awb-side-btn-belum {
+            background:#fef9c3; color:#92400e; border-color:#fde68a;
+          }
+          .awb-side-btn-belum:hover { background:#fef08a; }
+          .awb-side-btn-simpan {
+            background:#dbeafe; color:#1d4ed8; border-color:#bfdbfe;
+          }
+          .awb-side-btn-simpan:hover:not(:disabled) { background:#bfdbfe; }
+          .awb-side-btn-simpan:disabled { opacity:.4; cursor:not-allowed; }
+
+          /* Input & progress */
+          .awb-input-card {
+            background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+            overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04);
+          }
+          .awb-input-header {
+            padding:10px 14px; border-bottom:1px solid #f1f5f9;
+            display:flex; justify-content:space-between; align-items:center;
+            font-size:13px; font-weight:600; color:#1e293b;
+          }
+
+          /* Progress */
+          .awb-progress-card {
+            background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+            padding:12px 16px; box-shadow:0 1px 3px rgba(0,0,0,.04);
+          }
+
+          /* Tabel */
+          .awb-table-card {
+            background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+            overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04);
+          }
+          .awb-table-filter-bar {
+            padding:10px 14px; border-bottom:1px solid #f1f5f9;
+            display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;
+          }
+          .awb-tbl { width:100%; border-collapse:collapse; font-size:12.5px; }
+          .awb-tbl thead th {
+            background:#1e293b; color:#f1f5f9; padding:9px 12px;
+            text-align:left; font-size:10px; font-weight:700;
+            text-transform:uppercase; letter-spacing:.4px; white-space:nowrap;
+            position:sticky; top:0; z-index:2;
+          }
+          .awb-tbl tbody tr { border-bottom:1px solid #f8fafc; transition:background .1s; }
+          .awb-tbl tbody tr:hover { background:#fafbff; }
+          .awb-tbl td { padding:8px 12px; vertical-align:middle; color:#334155; }
+          .awb-tbl-wrap { max-height:420px; overflow-y:auto; }
+          .awb-tbl-wrap::-webkit-scrollbar { width:4px; }
+          .awb-tbl-wrap::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:4px; }
+
+          @media(max-width:900px) {
+            .awb-new-layout { flex-direction:column; }
+            .awb-new-right { width:100%; flex-direction:row; flex-wrap:wrap; }
+            .awb-status-panel, .awb-action-panel { flex:1; min-width:240px; }
+          }
+        </style>
+
+        <!-- TOP BAR: Tanggal + Terapkan + Cek Resi + Lacak Cancel -->
+        <div class="awb-top-bar">
+          <div class="awb-date-wrap">
+            <label>Tanggal</label>
+            <input type="date" id="filter-tanggal" onchange="awbOnTanggalChange()">
+            <select id="filter-gudang" style="min-width:130px;">
+              <option value="">Semua Gudang</option>
+              <option value="GUDANG 1">Gudang 1</option>
+              <option value="GUDANG 2">Gudang 2</option>
+              <option value="GUDANG 3">Gudang 3</option>
+              <option value="GUDANG 4">Gudang 4</option>
+            </select>
+            <button class="awb-apply-btn" id="btn-terapkan" onclick="awbTerapkan()">
+              <span class="material-symbols-outlined" style="font-size:16px;">check_circle</span>
+              Terapkan
+            </button>
           </div>
-          <div class="awb-toolbar-right">
-            <button onclick="loadFromSheet()" id="btn-load-sheet" class="awb-btn awb-btn-dark">
-              <span class="material-symbols-outlined">table_view</span> Ambil dari Sheet
-            </button>
-            <button onclick="cekResiDariSheet()" id="btn-cek-resi" class="awb-btn" style="background:#16a34a;color:#fff;border:none;">
-              <span class="material-symbols-outlined">search</span> Cek Resi
-            </button>
-            <button onclick="loadBelumJalan()" id="btn-load-belum-jalan" class="awb-btn awb-btn-yellow">
-              <span class="material-symbols-outlined">filter_alt</span> Resi Belum Jalan
-            </button>
-            <button onclick="syncToSheet()" id="btn-sync-sheet" class="awb-btn awb-btn-blue" disabled>
-              <span class="material-symbols-outlined">cloud_upload</span> Simpan ke Sheet
-            </button>
-            <button onclick="openLacakCancel()" id="btn-lacak-cancel" class="awb-btn" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;">
-              <span class="material-symbols-outlined">report</span> Lacak Cancel
-            </button>
-          </div>
+          <!-- Cek Resi — sendiri agar tidak salah pencet -->
+          <button class="awb-cek-btn" id="btn-cek-resi" onclick="cekResiDariSheet()">
+            <span class="material-symbols-outlined" style="font-size:16px;">manage_search</span>
+            Cek Resi
+          </button>
+          <button class="awb-cancel-btn" id="btn-lacak-cancel" onclick="openLacakCancel()">
+            <span class="material-symbols-outlined" style="font-size:16px;">report_problem</span>
+            Lacak Cancel
+          </button>
         </div>
-        <div id="sheet-status-msg" class="awb-status-msg"></div>
+        <div id="awb-top-status" class="awb-status-msg"></div>
 
-        <!-- STAT CARDS -->
-        <div class="awb-stat-grid">
-          <div class="awb-stat-card stat-total">
-            <div class="awb-stat-icon"><span class="material-symbols-outlined">inventory</span></div>
-            <div class="awb-stat-body">
-              <div class="awb-stat-val" id="cnt-total">0</div>
-              <div class="awb-stat-label">Total Resi</div>
-            </div>
-          </div>
-          <div class="awb-stat-card stat-proses">
-            <div class="awb-stat-icon"><span class="material-symbols-outlined">pending</span></div>
-            <div class="awb-stat-body">
-              <div class="awb-stat-val" id="cnt-belum-cek">0</div>
-              <div class="awb-stat-label">Antrian</div>
-            </div>
-          </div>
-          <div class="awb-stat-card stat-jalan">
-            <div class="awb-stat-icon"><span class="material-symbols-outlined">local_shipping</span></div>
-            <div class="awb-stat-body">
-              <div class="awb-stat-val" id="cnt-sudah-jalan">0</div>
-              <div class="awb-stat-label">Sudah Jalan</div>
-            </div>
-          </div>
-          <div class="awb-stat-card stat-belum">
-            <div class="awb-stat-icon"><span class="material-symbols-outlined">schedule</span></div>
-            <div class="awb-stat-body">
-              <div class="awb-stat-val" id="cnt-belum-jalan">0</div>
-              <div class="awb-stat-label">Belum Jalan</div>
-            </div>
-          </div>
-          <div class="awb-stat-card stat-cancel">
-            <div class="awb-stat-icon"><span class="material-symbols-outlined">cancel</span></div>
-            <div class="awb-stat-body">
-              <div class="awb-stat-val" id="cnt-cancel">0</div>
-              <div class="awb-stat-label">Cancel</div>
-            </div>
-          </div>
-          <div class="awb-stat-card stat-gagal">
-            <div class="awb-stat-icon"><span class="material-symbols-outlined">error</span></div>
-            <div class="awb-stat-body">
-              <div class="awb-stat-val" id="cnt-gagal-cek">0</div>
-              <div class="awb-stat-label">Gagal Cek</div>
-            </div>
-          </div>
-        </div>
+        <!-- MAIN LAYOUT -->
+        <div class="awb-new-layout">
 
-        <div class="awb-main-layout">
-          <!-- KIRI: Input + Tabel -->
-          <div class="awb-main-left">
+          <!-- KIRI: Input + Progress + Tabel -->
+          <div class="awb-new-left">
 
             <!-- Input Resi -->
-            <div class="awb-card">
-              <div class="awb-card-header">
-                <div style="display:flex;align-items:center;gap:8px;">
-                  <span class="material-symbols-outlined" style="color:#e11d48;font-size:18px;">qr_code_scanner</span>
-                  <span>Input Resi</span>
+            <div class="awb-input-card">
+              <div class="awb-input-header">
+                <div style="display:flex;align-items:center;gap:7px;">
+                  <span class="material-symbols-outlined" style="color:#e11d48;font-size:17px;">qr_code_scanner</span>
+                  Input Resi
                 </div>
-                <span id="resi-count-label" class="awb-count-badge">0 resi</span>
+                <span id="resi-count-label" style="background:#f1f5f9;color:#64748b;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;">0 resi</span>
               </div>
-              <div class="awb-card-body">
-                <textarea id="input-awb-bulk" class="awb-textarea" oninput="updateResiCount()" placeholder="Paste nomor resi (1 per baris)&#10;JX1234567890&#10;JX0987654321&#10;&#10;Atau klik tombol di atas untuk ambil dari Sheet"></textarea>
-                <div style="display:flex;gap:8px;margin-top:10px;">
-                  <button onclick="handleTrackAwbBulk()" id="btn-lacak-now" class="awb-btn-lacak">
-                    <span class="material-symbols-outlined" style="font-size:18px;">search</span>
-                    <span id="btn-lacak-text">Lacak Sekarang</span>
-                  </button>
-                  <button onclick="trackBelumJalanSaja()" id="btn-lacak-belum-jalan" class="awb-btn-lacak-secondary" title="Track ulang hanya resi yang statusnya Belum Jalan">
-                    <span class="material-symbols-outlined" style="font-size:16px;">replay</span>
-                    <span>Track Ulang Belum Jalan</span>
-                  </button>
-                </div>
+              <div style="padding:12px 14px;">
+                <textarea id="input-awb-bulk" class="awb-textarea" oninput="updateResiCount()"
+                  placeholder="Paste nomor resi (1 per baris)&#10;JX1234567890&#10;JX0987654321&#10;&#10;Atau pilih tanggal lalu klik Terapkan untuk load otomatis"></textarea>
               </div>
             </div>
 
             <!-- Progress Bar -->
-            <div id="awb-progress-wrap" style="display:none;" class="awb-card" style="padding:12px 16px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div id="awb-progress-wrap" style="display:none;" class="awb-progress-card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <span style="font-size:12px;font-weight:600;color:#475569;" id="progress-label">Memproses...</span>
                 <span style="font-size:11px;color:#94a3b8;" id="chunk-progress-text"></span>
               </div>
-              <div style="background:#f1f5f9;border-radius:4px;height:6px;overflow:hidden;">
+              <div style="background:#f1f5f9;border-radius:4px;height:5px;overflow:hidden;">
                 <div id="awb-progress-bar" style="height:100%;background:#e11d48;border-radius:4px;width:0%;transition:width 0.3s;"></div>
               </div>
             </div>
 
-            <!-- Filter Tampilan Tabel -->
-            <div class="awb-table-toolbar">
-              <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <button class="awb-filter-btn active" onclick="setTableFilter('semua', this)">Semua</button>
-                <button class="awb-filter-btn filter-jalan" onclick="setTableFilter('sudah_jalan', this)">✅ Sudah Jalan</button>
-                <button class="awb-filter-btn filter-belum" onclick="setTableFilter('belum_jalan', this)">⏳ Belum Jalan</button>
-                <button class="awb-filter-btn filter-cancel" onclick="setTableFilter('cancel', this)">❌ Cancel</button>
-                <button class="awb-filter-btn filter-gagal" onclick="setTableFilter('gagal', this)">⚠️ Gagal</button>
-              </div>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <input type="text" id="search-resi" oninput="renderResultsTable()" placeholder="Cari resi..." style="padding:5px 10px;border:1px solid #e2e8f0;border-radius:5px;font-size:12px;outline:none;width:140px;">
-                <span style="font-size:11px;color:#94a3b8;" id="table-count-label"></span>
-              </div>
-            </div>
-
             <!-- Tabel Hasil -->
-            <div class="table-container-track" style="margin-top:0;">
-              <table class="track-table">
-                <thead>
-                  <tr>
-                    <th style="width:36px;">No</th>
-                    <th>Gudang</th>
-                    <th>No Resi</th>
-                    <th>Kurir</th>
-                    <th>Status</th>
-                    <th>Keterangan</th>
-                    <th>Tgl Input</th>
-                    <th>Tgl Dicatat</th>
-                  </tr>
-                </thead>
-                <tbody id="track-results-body">
-                  <tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:40px;">
-                    <span class="material-symbols-outlined" style="font-size:36px;display:block;margin-bottom:8px;color:#cbd5e1;">search</span>
-                    Belum ada data. Ambil dari Sheet atau input resi manual.
-                  </td></tr>
-                </tbody>
-              </table>
+            <div class="awb-table-card">
+              <div class="awb-table-filter-bar">
+                <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                  <button class="awb-filter-btn active" onclick="setTableFilter('semua', this)">Semua</button>
+                  <button class="awb-filter-btn filter-jalan" onclick="setTableFilter('sudah_jalan', this)">✅ Sudah Jalan</button>
+                  <button class="awb-filter-btn filter-belum" onclick="setTableFilter('belum_jalan', this)">⏳ Belum Jalan</button>
+                  <button class="awb-filter-btn filter-cancel" onclick="setTableFilter('cancel', this)">❌ Cancel</button>
+                  <button class="awb-filter-btn filter-gagal" onclick="setTableFilter('gagal', this)">⚠️ Gagal</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <input type="text" id="search-resi" oninput="renderResultsTable()" placeholder="Cari resi..."
+                    style="padding:5px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;outline:none;width:130px;">
+                  <span style="font-size:11px;color:#94a3b8;" id="table-count-label"></span>
+                </div>
+              </div>
+              <div class="awb-tbl-wrap">
+                <table class="awb-tbl">
+                  <thead>
+                    <tr>
+                      <th style="width:36px;">#</th>
+                      <th>Status</th>
+                      <th>No Resi</th>
+                      <th>Kurir</th>
+                      <th>Gudang</th>
+                      <th>Keterangan</th>
+                      <th>Tgl Input</th>
+                      <th>Tgl Dicatat</th>
+                    </tr>
+                  </thead>
+                  <tbody id="track-results-body">
+                    <tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:40px;">
+                      <span class="material-symbols-outlined" style="font-size:36px;display:block;margin-bottom:8px;color:#cbd5e1;">local_shipping</span>
+                      Pilih tanggal dan klik Terapkan untuk memuat resi.
+                    </td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
-          <!-- KANAN: Ringkasan & History -->
-          <div class="awb-main-right">
-            <div class="awb-card">
-              <div class="awb-card-header">
-                <span>Ringkasan Sesi</span>
-                <button onclick="resetTrackingSummary()" style="background:none;border:none;cursor:pointer;font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:3px;">
-                  <span class="material-symbols-outlined" style="font-size:13px;">refresh</span> Reset
+          <!-- KANAN: Status + Aksi -->
+          <div class="awb-new-right">
+
+            <!-- Ringkasan Status -->
+            <div class="awb-status-panel">
+              <div class="awb-status-panel-header">
+                <span>Ringkasan</span>
+                <button onclick="resetTrackingSummary()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:3px;">
+                  <span class="material-symbols-outlined" style="font-size:12px;">refresh</span> Reset
                 </button>
               </div>
-              <div class="awb-card-body" style="padding:0;">
-                <div class="awb-summary-row"><span>Sedang Diproses</span><span id="cnt-sedang-cek" style="color:#0284c7;font-weight:700;">0</span></div>
-                <div class="awb-summary-row highlight-jalan" onclick="setTableFilter('sudah_jalan')">
-                  <span>✅ Sudah Jalan</span><span id="cnt-sudah-jalan2" style="color:#16a34a;font-weight:700;">0</span>
-                </div>
-                <div class="awb-summary-row highlight-belum" onclick="setTableFilter('belum_jalan')">
-                  <span>⏳ Belum Jalan</span><span id="cnt-belum-jalan2" style="color:#d97706;font-weight:700;">0</span>
-                </div>
-                <div class="awb-summary-row highlight-cancel" onclick="setTableFilter('cancel')">
-                  <span>❌ Cancel</span><span id="cnt-cancel2" style="color:#dc2626;font-weight:700;">0</span>
-                </div>
-                <div class="awb-summary-row" onclick="setTableFilter('gagal')">
-                  <span>⚠️ Gagal Cek</span><span id="cnt-gagal2" style="color:#64748b;font-weight:700;">0</span>
-                </div>
+              <div class="awb-status-row">
+                <span class="lbl"><span class="material-symbols-outlined" style="font-size:15px;color:#64748b;">inventory_2</span>Total Resi</span>
+                <span class="val" id="cnt-total" style="color:#1e293b;">0</span>
+              </div>
+              <div class="awb-status-row">
+                <span class="lbl"><span class="material-symbols-outlined" style="font-size:15px;color:#0284c7;">pending</span>Antrian</span>
+                <span class="val" id="cnt-belum-cek" style="color:#0284c7;">0</span>
+              </div>
+              <div class="awb-status-row" onclick="setTableFilter('sudah_jalan')">
+                <span class="lbl"><span class="material-symbols-outlined" style="font-size:15px;color:#16a34a;">local_shipping</span>Sudah Jalan</span>
+                <span class="val" id="cnt-sudah-jalan" style="color:#16a34a;">0</span>
+              </div>
+              <div class="awb-status-row" onclick="setTableFilter('belum_jalan')">
+                <span class="lbl"><span class="material-symbols-outlined" style="font-size:15px;color:#d97706;">schedule</span>Belum Jalan</span>
+                <span class="val" id="cnt-belum-jalan" style="color:#d97706;">0</span>
+              </div>
+              <div class="awb-status-row" onclick="setTableFilter('cancel')">
+                <span class="lbl"><span class="material-symbols-outlined" style="font-size:15px;color:#dc2626;">cancel</span>Cancel</span>
+                <span class="val" id="cnt-cancel" style="color:#dc2626;">0</span>
+              </div>
+              <div class="awb-status-row" onclick="setTableFilter('gagal')">
+                <span class="lbl"><span class="material-symbols-outlined" style="font-size:15px;color:#94a3b8;">error</span>Gagal Cek</span>
+                <span class="val" id="cnt-gagal-cek" style="color:#94a3b8;">0</span>
               </div>
             </div>
 
-            <!-- Info Box -->
-            <div class="awb-card" style="margin-top:12px;">
-              <div class="awb-card-header"><span>ℹ️ Panduan</span></div>
-              <div class="awb-card-body" style="font-size:12px;color:#64748b;line-height:1.7;">
-                <p style="margin-bottom:6px;"><b>1.</b> Pilih tanggal → <b>Ambil dari Sheet</b></p>
-                <p style="margin-bottom:6px;"><b>2.</b> Klik <b>Lacak Sekarang</b> untuk track semua resi</p>
-                <p style="margin-bottom:6px;"><b>3.</b> Atau klik <b>Resi Belum Jalan</b> untuk filter otomatis resi manifest dari sheet</p>
-                <p style="margin-bottom:6px;"><b>4.</b> Klik <b>Track Ulang Belum Jalan</b> untuk track hanya resi yang belum jalan</p>
-                <p><b>5.</b> <b>Simpan ke Sheet</b> untuk update data ke Google Sheets</p>
+            <!-- Tombol Aksi -->
+            <div class="awb-action-panel">
+              <div class="awb-action-panel-header">Aksi</div>
+              <div class="awb-action-btn-row">
+                <button onclick="handleTrackAwbBulk()" id="btn-lacak-now" class="awb-side-btn awb-side-btn-lacak">
+                  <span class="material-symbols-outlined" style="font-size:17px;">search</span>
+                  <span id="btn-lacak-text">Lacak Sekarang</span>
+                </button>
+              </div>
+              <div class="awb-action-btn-row">
+                <button onclick="trackBelumJalanSaja()" id="btn-lacak-belum-jalan" class="awb-side-btn awb-side-btn-belum">
+                  <span class="material-symbols-outlined" style="font-size:17px;">replay</span>
+                  Track Ulang Belum Jalan
+                </button>
+              </div>
+              <div class="awb-action-btn-row">
+                <button onclick="syncToSheet()" id="btn-sync-sheet" class="awb-side-btn awb-side-btn-simpan" disabled>
+                  <span class="material-symbols-outlined" style="font-size:17px;">cloud_upload</span>
+                  Simpan ke Sheet
+                </button>
               </div>
             </div>
+
+            <!-- Panduan ringkas -->
+            <div class="awb-status-panel">
+              <div class="awb-status-panel-header">Panduan</div>
+              <div style="padding:12px 14px;font-size:12px;color:#64748b;line-height:1.8;">
+                <p><b>1.</b> Pilih tanggal → klik <b>Terapkan</b></p>
+                <p><b>2.</b> Klik <b>Lacak Sekarang</b></p>
+                <p><b>3.</b> Klik <b>Simpan ke Sheet</b></p>
+                <p style="margin-top:8px;color:#94a3b8;font-size:11px;">Gunakan <b>Track Ulang</b> untuk retry resi belum jalan saja.</p>
+              </div>
+            </div>
+
           </div>
         </div>
+
+        <!-- ID duplikat untuk ringkasan (cnt-sudah-jalan2 dst) — hidden, sync dari cnt utama -->
+        <span id="cnt-sudah-jalan2" style="display:none;">0</span>
+        <span id="cnt-belum-jalan2" style="display:none;">0</span>
+        <span id="cnt-cancel2" style="display:none;">0</span>
+        <span id="cnt-gagal2" style="display:none;">0</span>
+        <span id="cnt-sedang-cek" style="display:none;">0</span>
+        <span id="btn-load-sheet" style="display:none;"></span>
+        <span id="btn-load-belum-jalan" style="display:none;"></span>
+
       </section>
 
       <section id="page-generic" class="page-content">
@@ -1241,17 +1474,38 @@
       }
     }
 
+    function showPageLoading(show) {
+      const el = document.getElementById('page-loading');
+      if (!el) return;
+      if (show) el.classList.remove('hidden');
+      else el.classList.add('hidden');
+    }
+
     async function checkAuthStatus() {
       const token     = sessionStorage.getItem('sessionToken');
       const savedUser = sessionStorage.getItem('sessionUser');
 
-      // Tidak ada token/user → langsung tampil login
+      // Tidak ada sesi sama sekali → tampil login langsung
       if (!token || !savedUser) {
+        showPageLoading(false);
         document.getElementById('auth-modal').style.display = 'flex';
         return;
       }
 
-      // Verifikasi token ke server dulu sebelum render apapun
+      // Ada sesi → sidebar sudah tampil (tidak kedip),
+      // area konten tampil spinner putih sampai verifikasi selesai
+      showPageLoading(true);
+
+      // Isi sidebar dari cache supaya tidak berubah selama loading
+      const cachedUser = sessionStorage.getItem('sessionUser') || 'U';
+      document.getElementById('user-name-display').innerText = cachedUser.toUpperCase();
+      document.getElementById('user-avatar').innerText       = cachedUser.charAt(0).toUpperCase();
+      const cachedRole = sessionStorage.getItem('sessionRole') || '';
+      if (cachedRole === 'superuser') {
+        document.getElementById('nav-kelola-akun').style.display = 'flex';
+      }
+
+      // Verifikasi token ke server
       try {
         const res  = await fetch('/api/auth/me', { headers: { 'x-session-token': token } });
         const data = await res.json();
@@ -1260,28 +1514,31 @@
           currentSessionToken = token;
           currentUserRole     = data.role;
           sessionStorage.setItem('sessionRole', data.role);
+          sessionStorage.setItem('sessionUser', data.username);
 
-          document.getElementById('auth-modal').style.display = 'none';
+          // Update sidebar dengan data fresh dari server
           document.getElementById('user-name-display').innerText = data.username.toUpperCase();
           document.getElementById('user-avatar').innerText       = data.username.charAt(0).toUpperCase();
-
           if (data.role === 'superuser') {
             document.getElementById('nav-kelola-akun').style.display = 'flex';
           }
 
-          // Render halaman sesuai hash URL
+          // Sembunyikan loading, render halaman
+          showPageLoading(false);
+          document.getElementById('auth-modal').style.display = 'none';
           initRouterFromHash();
           startRealtimeTimer();
         } else {
-          // Token tidak valid
+          // Token tidak valid → tampil login
           sessionStorage.clear();
+          showPageLoading(false);
           document.getElementById('auth-modal').style.display = 'flex';
         }
       } catch (err) {
-        // Kalau Railway down/network error, tetap tampilkan login
-        // supaya user tidak terjebak di halaman kosong
+        // Network error — tetap tampil login, jangan biarkan spinner selamanya
         console.error('Auth check error:', err.message);
         sessionStorage.clear();
+        showPageLoading(false);
         document.getElementById('auth-modal').style.display = 'flex';
       }
     }
@@ -1435,7 +1692,7 @@
       }
 
       document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
-      const titleEl = element || document.querySelector(`.nav-item[onclick*="'${pageId}'"]`);
+      const titleEl = element || document.querySelector(`.nav-item[href="#${pageId}"]`);
       if (titleEl) {
         document.getElementById('page-title').innerText = titleEl.querySelector('span:not(.material-symbols-outlined)').innerText;
         document.getElementById('page-icon').innerText = titleEl.querySelector('.material-symbols-outlined').innerText;
@@ -1766,7 +2023,7 @@
       });
       document.getElementById('track-results-body').innerHTML = `<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:40px;">Data direset.</td></tr>`;
       document.getElementById('btn-sync-sheet').disabled = true;
-      document.getElementById('sheet-status-msg').innerText = '';
+      document.getElementById('awb-top-status').innerText = '';
       document.getElementById('awb-progress-wrap').style.display = 'none';
       if (document.getElementById('table-count-label')) document.getElementById('table-count-label').innerText = '';
     }
@@ -2030,33 +2287,56 @@
 
     // AMBIL DARI SHEET — baca dari tab "Resi Harian", masukkan ke kotak input
     // AMBIL DARI SHEET — langsung ke Apps Script (tanpa lewat Railway)
+    // Fungsi lama tetap ada (dipakai awbTerapkan)
     async function loadFromSheet() {
       const tanggal = document.getElementById('filter-tanggal').value;
-      if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
-      const gudang = document.getElementById('filter-gudang').value;
-      const btn = document.getElementById('btn-load-sheet');
-      const msg = document.getElementById('sheet-status-msg');
-      btn.disabled = true;
-      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Memuat...`;
-      msg.innerText = 'Mengambil data dari Resi Harian...';
+      if (!tanggal) return;
+      const gudang  = document.getElementById('filter-gudang').value;
+      const msg     = document.getElementById('awb-top-status');
+      msg.innerText = 'Mengambil resi dari Sheet...';
       msg.style.color = '#0284c7';
       try {
         const params = { action: 'loadResi', tanggal };
         if (gudang) params.gudang = gudang;
         const data = await gasGetDirect(params);
-        if (!data.success) { msg.innerText = data.message || 'Gagal.'; msg.style.color = '#ef4444'; return; }
+        if (!data.success) { msg.innerText = data.message || 'Gagal.'; msg.style.color = '#ef4444'; return null; }
         const resiList = data.rows.map(r => r.resi).filter(Boolean);
         document.getElementById('input-awb-bulk').value = resiList.join('\n');
         updateResiCount();
-        allTrackedData = [];
-        hitungSummary(); renderResultsTable();
-        msg.innerText = `✅ ${resiList.length} resi dimuat dari Sheet.`;
+        allTrackedData = []; hitungSummary(); renderResultsTable();
+        msg.innerText = `✅ ${resiList.length} resi dimuat (${tanggal}).`;
         msg.style.color = '#16a34a';
+        return resiList;
       } catch (err) {
         msg.innerText = 'Gagal terhubung ke Apps Script.'; msg.style.color = '#ef4444';
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;">table_view</span> Ambil dari Sheet`;
+        return null;
+      }
+    }
+
+    // Terapkan: pilih tanggal → otomatis load resi
+    async function awbTerapkan() {
+      const tanggal = document.getElementById('filter-tanggal').value;
+      if (!tanggal) {
+        const msg = document.getElementById('awb-top-status');
+        msg.innerText = '⚠️ Pilih tanggal terlebih dahulu.';
+        msg.style.color = '#d97706'; return;
+      }
+      const btn = document.getElementById('btn-terapkan');
+      btn.disabled = true;
+      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px;animation:spin 1s linear infinite;">sync</span> Memuat...`;
+      await loadFromSheet();
+      btn.disabled = false;
+      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px;">check_circle</span> Terapkan`;
+    }
+
+    function awbOnTanggalChange() {
+      const msg = document.getElementById('awb-top-status');
+      const tgl = document.getElementById('filter-tanggal').value;
+      if (tgl) {
+        msg.innerText = 'Klik Terapkan untuk memuat resi tanggal ' + tgl + '.';
+        msg.style.color = '#64748b';
+      } else {
+        msg.innerText = '';
       }
     }
 
@@ -2066,7 +2346,7 @@
       if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
       const gudang = document.getElementById('filter-gudang').value;
       const btn = document.getElementById('btn-cek-resi');
-      const msg = document.getElementById('sheet-status-msg');
+      const msg = document.getElementById('awb-top-status');
       btn.disabled = true;
       btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Memuat...`;
       msg.innerText = 'Mengambil data dari Tracking AWB...';
@@ -2108,7 +2388,7 @@
       if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
       const gudang = document.getElementById('filter-gudang').value;
       const btn = document.getElementById('btn-load-belum-jalan');
-      const msg = document.getElementById('sheet-status-msg');
+      const msg = document.getElementById('awb-top-status');
       btn.disabled = true;
       btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Memuat...`;
       msg.innerText = 'Mengambil resi belum jalan...';
@@ -2130,8 +2410,7 @@
       } catch (err) {
         msg.innerText = 'Gagal terhubung ke Apps Script.'; msg.style.color = '#ef4444';
       } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;">filter_alt</span> Resi Belum Jalan`;
+        if (btn && btn.style) btn.disabled = false;
       }
     }
 
@@ -2151,7 +2430,7 @@
       const tanggal = document.getElementById('filter-tanggal').value;
       if (!tanggal) return alert('Pilih tanggal terlebih dahulu!');
       const btn = document.getElementById('btn-sync-sheet');
-      const msg = document.getElementById('sheet-status-msg');
+      const msg = document.getElementById('awb-top-status');
       btn.disabled = true;
       btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Menyimpan...`;
       msg.innerText = 'Mengirim ke Sheet...'; msg.style.color = '#0284c7';
@@ -2188,8 +2467,8 @@
 
       document.getElementById('cnt-total').innerText = totalResi;
       document.getElementById('cnt-belum-cek').innerText = totalResi;
-      ['cnt-sedang-cek','cnt-sudah-jalan','cnt-belum-jalan','cnt-cancel','cnt-gagal-cek',
-       'cnt-sudah-jalan2','cnt-belum-jalan2','cnt-cancel2','cnt-gagal2'].forEach(id => {
+      ['cnt-sedang-cek','cnt-total','cnt-belum-cek','cnt-sudah-jalan','cnt-belum-jalan',
+       'cnt-cancel','cnt-gagal-cek','cnt-sudah-jalan2','cnt-belum-jalan2','cnt-cancel2','cnt-gagal2'].forEach(id => {
         const el = document.getElementById(id); if (el) el.innerText = '0';
       });
 
@@ -2282,12 +2561,12 @@
         const kurirBadge = item.kurir ? `<span class="badge-kurir">${item.kurir}</span>` : '-';
 
         return `<tr>
-          <td style="color:#94a3b8;">${idx + 1}</td>
-          <td style="font-size:11px;color:#64748b;font-weight:600;">${item.gudang || '-'}</td>
+          <td style="color:#cbd5e1;font-size:11px;">${idx + 1}</td>
+          <td>${badge}</td>
           <td style="font-family:monospace;font-weight:700;font-size:12px;">${item.resi}</td>
           <td>${kurirBadge}</td>
-          <td>${badge}</td>
-          <td style="font-size:11px;color:#64748b;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.keterangan}">${item.keterangan || '-'}</td>
+          <td style="font-size:11px;color:#64748b;">${item.gudang || '-'}</td>
+          <td style="font-size:11px;color:#64748b;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.keterangan}">${item.keterangan || '-'}</td>
           <td style="font-size:11px;color:#94a3b8;">${item.tglInput || item.tanggal || '-'}</td>
           <td style="font-size:11px;color:#475569;font-weight:500;">${formatTglDisplay(item.tglDicatat) || '-'}</td>
         </tr>`;
@@ -2686,7 +2965,7 @@
     function soOpenActions(encodedData) {
       const d = JSON.parse(decodeURIComponent(encodedData));
       // Redirect ke Data Opname dan buka modal
-      const navItem = document.querySelector('.nav-item[onclick*="barang-bermasalah"]');
+      const navItem = document.querySelector('.nav-item[href="#barang-bermasalah"]');
       if (navItem) { switchTab('barang-bermasalah', navItem); initDataOpname(d.sesi); }
       setTimeout(() => doOpenModal(d.sku, d.nama), 600);
     }
