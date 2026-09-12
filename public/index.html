@@ -1244,49 +1244,45 @@
     async function checkAuthStatus() {
       const token     = sessionStorage.getItem('sessionToken');
       const savedUser = sessionStorage.getItem('sessionUser');
-      const savedRole = sessionStorage.getItem('sessionRole');
 
+      // Tidak ada token/user → langsung tampil login
       if (!token || !savedUser) {
         document.getElementById('auth-modal').style.display = 'flex';
         return;
       }
 
-      // Tampilkan UI dari cache dulu supaya tidak blank saat fetch
-      const cachedUserObj = (() => { try { return JSON.parse(savedUser); } catch { return null; } })();
-      const cachedUsername = cachedUserObj?.username || savedUser;
-      currentSessionToken = token;
-      currentUserRole     = savedRole || 'user';
-      document.getElementById('auth-modal').style.display = 'none';
-      document.getElementById('user-name-display').innerText = cachedUsername.toUpperCase();
-      document.getElementById('user-avatar').innerText       = cachedUsername.charAt(0).toUpperCase();
-      if (savedRole === 'superuser') {
-        document.getElementById('nav-kelola-akun').style.display = 'flex';
-      }
-      // Render halaman dari hash langsung — tidak tunggu verifikasi
-      initRouterFromHash();
-      startRealtimeTimer();
-
-      // Verifikasi token ke server di background
+      // Verifikasi token ke server dulu sebelum render apapun
       try {
         const res  = await fetch('/api/auth/me', { headers: { 'x-session-token': token } });
         const data = await res.json();
+
         if (data.success) {
-          // Update info jika ada perubahan role
-          currentUserRole = data.role;
+          currentSessionToken = token;
+          currentUserRole     = data.role;
           sessionStorage.setItem('sessionRole', data.role);
+
+          document.getElementById('auth-modal').style.display = 'none';
           document.getElementById('user-name-display').innerText = data.username.toUpperCase();
           document.getElementById('user-avatar').innerText       = data.username.charAt(0).toUpperCase();
+
           if (data.role === 'superuser') {
             document.getElementById('nav-kelola-akun').style.display = 'flex';
           }
+
+          // Render halaman sesuai hash URL
+          initRouterFromHash();
+          startRealtimeTimer();
         } else {
-          // Token tidak valid — logout
+          // Token tidak valid
           sessionStorage.clear();
           document.getElementById('auth-modal').style.display = 'flex';
         }
       } catch (err) {
-        // Network error — biarkan user tetap di halaman, jangan paksa logout
-        console.warn('Auth verify failed (network):', err.message);
+        // Kalau Railway down/network error, tetap tampilkan login
+        // supaya user tidak terjebak di halaman kosong
+        console.error('Auth check error:', err.message);
+        sessionStorage.clear();
+        document.getElementById('auth-modal').style.display = 'flex';
       }
     }
 
@@ -2371,8 +2367,11 @@
 
       dd.innerHTML = hits.map((nama, i) => {
         // Bold bagian yang cocok
-        const re  = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\]/g,'\$&')})`, 'gi');
-        const hl  = nama.replace(re, '<b style="color:#e11d48;">$1</b>');
+        // Highlight tanpa RegExp dinamis — aman dari special char
+        const idxH = nama.toLowerCase().indexOf(q);
+        const hl = idxH >= 0
+          ? nama.slice(0, idxH) + '<b style="color:#e11d48;">' + nama.slice(idxH, idxH + q.length) + '</b>' + nama.slice(idxH + q.length)
+          : nama;
         return `<div class="so-personil-item" data-nama="${nama}" data-idx="${i}"
           style="padding:8px 13px;cursor:pointer;font-size:13px;color:#334155;
                  border-bottom:1px solid #f8fafc;transition:background .1s;"
