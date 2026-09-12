@@ -45,7 +45,12 @@
     .page-content.active { display: block; }
 
     /* DASHBOARD LAYOUT & CARDS */
-    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink:0; }
+    #page-dashboard.active { display:flex !important; flex-direction:column; height:calc(100vh - 55px); overflow:hidden; }
+    .dashboard-scroll { flex:1; overflow-y:auto; overflow-x:hidden; scroll-behavior:smooth; padding-bottom:20px; }
+    .dashboard-scroll::-webkit-scrollbar { width:5px; }
+    .dashboard-scroll::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:10px; }
+    .dashboard-sticky { position:sticky; top:0; z-index:5; background:#f8fafc; padding-bottom:10px; flex-shrink:0; }
     .summary-badges { display: flex; gap: 12px; font-size: 13px; font-weight: 600; }
     .badge { background: #fff; border: 1px solid #e2e8f0; padding: 6px 14px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); color: #334155; }
     .badge span.inc { color: #dc2626; font-weight: 700; }
@@ -158,6 +163,9 @@
       .grid-container { grid-template-columns: 1fr; }
       .tracking-layout { flex-direction: column; }
       .tracking-sidebar-right { width: 100%; }
+      #page-dashboard.active { height:auto; overflow:visible; }
+      .dashboard-scroll { overflow:visible; }
+      .dashboard-sticky { position:relative; }
     }
 
     /* ---- MOBILE (max 768px) ---- */
@@ -213,6 +221,9 @@
       .dashboard-header { flex-direction: column; align-items: flex-start; gap: 8px; }
       .summary-badges { flex-wrap: wrap; gap: 8px; }
       .badge { font-size: 12px; padding: 5px 10px; }
+      #page-dashboard.active { height:auto; overflow:visible; }
+      .dashboard-scroll { overflow:visible; }
+      .dashboard-sticky { position:relative; padding-bottom:0; }
 
       /* Tabel warehouse horizontal scroll */
       .wh-card { overflow-x: auto; }
@@ -439,14 +450,20 @@
       
       <!-- PAGE: DASHBOARD -->
       <section id="page-dashboard" class="page-content">
-        <div class="dashboard-header">
-          <h2 style="font-size: 15px; font-weight: 700; color: #1e293b;">DASHBOARD ADMINISTRATOR PDC</h2>
-          <div class="summary-badges">
-            <div class="badge">Total Inbound: <span class="inc" id="total-inbound">0</span> trx</div>
-            <div class="badge">Total Outbound: <span class="out" id="total-outbound">0</span> trx</div>
+        <!-- Sticky header dashboard -->
+        <div class="dashboard-sticky">
+          <div class="dashboard-header">
+            <h2 style="font-size:14px;font-weight:700;color:#1e293b;letter-spacing:.3px;">DASHBOARD ADMINISTRATOR PDC</h2>
+            <div class="summary-badges">
+              <div class="badge">Total Inbound: <span class="inc" id="total-inbound">0</span> trx</div>
+              <div class="badge">Total Outbound: <span class="out" id="total-outbound">0</span> trx</div>
+            </div>
           </div>
         </div>
-        <div class="grid-container" id="warehouse-grid"></div>
+        <!-- Scrollable grid -->
+        <div class="dashboard-scroll">
+          <div class="grid-container" id="warehouse-grid"></div>
+        </div>
       </section>
 
       <!-- MENU PLACEHOLDERS -->
@@ -483,6 +500,12 @@
           .so-badge-Plus{background:#dbeafe;color:#1d4ed8;}
           .so-badge-Minus{background:#ffe4e6;color:#be123c;}
           .so-badge-Belum{background:#fef9c3;color:#92400e;}
+          .so-badge-Balance{background:#dcfce7;color:#15803d;}
+          .so-badge-Plus{background:#dbeafe;color:#1d4ed8;}
+          .so-badge-Minus{background:#ffe4e6;color:#be123c;}
+          .so-badge-Cocok{background:#dcfce7;color:#15803d;}
+          .so-badge-Kurang{background:#ffe4e6;color:#be123c;}
+          .so-badge-Lebih{background:#dbeafe;color:#1d4ed8;}
           .so-sel-minus{color:#dc2626;font-weight:700;}
           .so-sel-plus{color:#2563eb;font-weight:700;}
           .so-thumb{width:44px;height:44px;object-fit:cover;border-radius:6px;cursor:pointer;background:#f1f5f9;display:block;}
@@ -507,9 +530,19 @@
             <option value="">— Pilih Bulan SO —</option>
           </select>
           <input type="text" id="so-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:200px;" oninput="soFilter()">
-          <select id="so-personil-filter" onchange="soFilter()">
-            <option value="">Semua Personil</option>
-          </select>
+          <!-- Personil autocomplete -->
+          <div style="position:relative;" id="so-personil-wrap">
+            <input type="text" id="so-personil-input"
+              placeholder="Cari personil..."
+              style="min-width:150px;"
+              oninput="soPersonilInput()"
+              onkeydown="soPersonilKeydown(event)"
+              autocomplete="off">
+            <div id="so-personil-dropdown"
+              style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:200px;max-width:300px;
+                     background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.1);
+                     z-index:999;max-height:240px;overflow-y:auto;"></div>
+          </div>
           <input type="text" id="so-rak-filter" placeholder="Filter Rak..." style="min-width:110px;" oninput="soFilter()">
           <div class="so-status-group">
             <div class="so-chip aktif-Semua" onclick="soSetStatus('Semua',this)" id="so-chip-Semua">Semua</div>
@@ -1209,7 +1242,7 @@
     }
 
     async function checkAuthStatus() {
-      const token = sessionStorage.getItem('sessionToken');
+      const token     = sessionStorage.getItem('sessionToken');
       const savedUser = sessionStorage.getItem('sessionUser');
       const savedRole = sessionStorage.getItem('sessionRole');
 
@@ -1218,34 +1251,42 @@
         return;
       }
 
-      // Verifikasi token ke server
+      // Tampilkan UI dari cache dulu supaya tidak blank saat fetch
+      const cachedUserObj = (() => { try { return JSON.parse(savedUser); } catch { return null; } })();
+      const cachedUsername = cachedUserObj?.username || savedUser;
+      currentSessionToken = token;
+      currentUserRole     = savedRole || 'user';
+      document.getElementById('auth-modal').style.display = 'none';
+      document.getElementById('user-name-display').innerText = cachedUsername.toUpperCase();
+      document.getElementById('user-avatar').innerText       = cachedUsername.charAt(0).toUpperCase();
+      if (savedRole === 'superuser') {
+        document.getElementById('nav-kelola-akun').style.display = 'flex';
+      }
+      // Render halaman dari hash langsung — tidak tunggu verifikasi
+      initRouterFromHash();
+      startRealtimeTimer();
+
+      // Verifikasi token ke server di background
       try {
-        const res = await fetch('/api/auth/me', {
-          headers: { 'x-session-token': token }
-        });
+        const res  = await fetch('/api/auth/me', { headers: { 'x-session-token': token } });
         const data = await res.json();
-
         if (data.success) {
-          currentSessionToken = token;
+          // Update info jika ada perubahan role
           currentUserRole = data.role;
-          document.getElementById('auth-modal').style.display = 'none';
+          sessionStorage.setItem('sessionRole', data.role);
           document.getElementById('user-name-display').innerText = data.username.toUpperCase();
-          document.getElementById('user-avatar').innerText = data.username.charAt(0).toUpperCase();
-
-          // Tampilkan menu Kelola Akun hanya untuk superuser
+          document.getElementById('user-avatar').innerText       = data.username.charAt(0).toUpperCase();
           if (data.role === 'superuser') {
             document.getElementById('nav-kelola-akun').style.display = 'flex';
           }
-
-          initRouterFromHash();
-          startRealtimeTimer();
         } else {
+          // Token tidak valid — logout
           sessionStorage.clear();
           document.getElementById('auth-modal').style.display = 'flex';
         }
       } catch (err) {
-        sessionStorage.clear();
-        document.getElementById('auth-modal').style.display = 'flex';
+        // Network error — biarkan user tetap di halaman, jangan paksa logout
+        console.warn('Auth verify failed (network):', err.message);
       }
     }
 
@@ -2296,12 +2337,106 @@
     const SO_ASSET_BASE = 'https://pdcgudang.et.r.appspot.com/v1/assets/get';
     const SO_PER_HALAMAN = 50;
 
-    let soSemuaData  = [];
-    let soDataFilter = [];
-    let soHalamanAkt = 1;
-    let soStatusAkt  = 'Semua';
-    let soSesiAktif  = '';
-    let soSudahInit  = false;
+    let soSemuaData   = [];
+    let soDataFilter  = [];
+    let soHalamanAkt  = 1;
+    let soStatusAkt   = 'Semua';
+    let soSesiAktif   = '';
+    let soSudahInit   = false;
+    let soPersonilList = [];   // daftar nama unik dari data
+    let soPersonilAktif = '';  // kata kunci filter aktif (dari klik dropdown)
+    let soPersonilIdx   = -1;  // keyboard nav index
+
+    // ---- AUTOCOMPLETE PERSONIL ----
+    function soPersonilInput() {
+      const q   = (document.getElementById('so-personil-input').value || '').toLowerCase().trim();
+      const dd  = document.getElementById('so-personil-dropdown');
+      soPersonilIdx = -1;
+
+      // Kalau input dikosongkan, reset filter
+      if (!q) {
+        soPersonilAktif = '';
+        document.getElementById('so-personil-input').style.borderColor = '';
+        dd.style.display = 'none';
+        soFilter();
+        return;
+      }
+
+      // Cari nama yang mengandung kata kunci (tiap kata dalam nama dicek)
+      const hits = soPersonilList.filter(nama =>
+        nama.toLowerCase().includes(q)
+      );
+
+      if (!hits.length) { dd.style.display = 'none'; return; }
+
+      dd.innerHTML = hits.map((nama, i) => {
+        // Bold bagian yang cocok
+        const re  = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\]/g,'\$&')})`, 'gi');
+        const hl  = nama.replace(re, '<b style="color:#e11d48;">$1</b>');
+        return `<div class="so-personil-item" data-nama="${nama}" data-idx="${i}"
+          style="padding:8px 13px;cursor:pointer;font-size:13px;color:#334155;
+                 border-bottom:1px solid #f8fafc;transition:background .1s;"
+          onmouseenter="this.style.background='#f8fafc'"
+          onmouseleave="this.style.background=''"
+          onclick="soPersonilPilih('${nama.replace(/'/g,"\'")}')">
+          ${hl}
+        </div>`;
+      }).join('');
+      dd.style.display = '';
+
+      // Tutup saat klik di luar
+      setTimeout(() => {
+        document.addEventListener('click', soPersonilTutupDd, { once: true });
+      }, 0);
+    }
+
+    function soPersonilKeydown(e) {
+      const dd    = document.getElementById('so-personil-dropdown');
+      const items = dd.querySelectorAll('.so-personil-item');
+      if (!items.length) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        soPersonilIdx = Math.min(soPersonilIdx + 1, items.length - 1);
+        soPersonilHighlight(items);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        soPersonilIdx = Math.max(soPersonilIdx - 1, 0);
+        soPersonilHighlight(items);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (soPersonilIdx >= 0 && items[soPersonilIdx]) {
+          soPersonilPilih(items[soPersonilIdx].dataset.nama);
+        }
+      } else if (e.key === 'Escape') {
+        soPersonilTutupDd();
+      }
+    }
+
+    function soPersonilHighlight(items) {
+      items.forEach((el, i) => {
+        el.style.background = i === soPersonilIdx ? '#fff1f2' : '';
+        el.style.color      = i === soPersonilIdx ? '#e11d48' : '#334155';
+      });
+      if (items[soPersonilIdx]) {
+        items[soPersonilIdx].scrollIntoView({ block:'nearest' });
+      }
+    }
+
+    function soPersonilPilih(nama) {
+      soPersonilAktif = nama;
+      const input = document.getElementById('so-personil-input');
+      input.value = nama;
+      input.style.borderColor = '#e11d48';
+      document.getElementById('so-personil-dropdown').style.display = 'none';
+      soFilter();
+    }
+
+    function soPersonilTutupDd(e) {
+      const wrap = document.getElementById('so-personil-wrap');
+      if (e && wrap && wrap.contains(e.target)) return;
+      document.getElementById('so-personil-dropdown').style.display = 'none';
+    }
 
     async function initSoPage() {
       if (soSudahInit) return;
@@ -2341,15 +2476,19 @@
     async function soGantiSesi() {
       const sesi = document.getElementById('so-sesi-select').value;
       if (!sesi) return;
-      soSesiAktif  = sesi;
-      soSemuaData  = [];
-      soDataFilter = [];
-      soHalamanAkt = 1;
-      soStatusAkt  = 'Semua';
+      soSesiAktif     = sesi;
+      soSemuaData     = [];
+      soDataFilter    = [];
+      soHalamanAkt    = 1;
+      soStatusAkt     = 'Semua';
+      soPersonilAktif = '';
       document.querySelectorAll('.so-chip').forEach(c => c.className = 'so-chip');
       document.getElementById('so-chip-Semua').classList.add('aktif-Semua');
       document.getElementById('so-cari').value = '';
       document.getElementById('so-rak-filter').value = '';
+      document.getElementById('so-personil-input').value = '';
+      document.getElementById('so-personil-input').style.borderColor = '';
+      document.getElementById('so-personil-dropdown').style.display = 'none';
       document.getElementById('so-stats').style.display   = 'none';
       document.getElementById('so-info-bar').style.display = 'none';
       document.getElementById('so-pager').style.display   = 'none';
@@ -2362,13 +2501,19 @@
         const data = await res.json();
         if (!data.success) { soTampilPesan('error', data.message || 'Gagal memuat data.'); return; }
         soSemuaData = data.rows || [];
-        const selP = document.getElementById('so-personil-filter');
-        selP.innerHTML = '<option value="">Semua Personil</option>';
-        (data.personil || []).forEach(p => {
-          const o = document.createElement('option');
-          o.value = o.textContent = p;
-          selP.appendChild(o);
+        // Build daftar personil deduplicate case-insensitive
+        soPersonilList = [];
+        const seen = {};
+        (data.rows || []).forEach(r => {
+          const raw = String(r.personil || '').trim();
+          if (!raw) return;
+          const key = raw.toLowerCase();
+          if (!seen[key]) { seen[key] = true; soPersonilList.push(raw); }
         });
+        soPersonilList.sort((a,b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        soPersonilAktif = '';
+        document.getElementById('so-personil-input').value = '';
+        document.getElementById('so-personil-input').style.borderColor = '';
         soHitungStats();
         soFilter();
       } catch (err) {
@@ -2385,15 +2530,22 @@
       soFilter();
     }
 
+    function soNormStatus(s) {
+      const v = String(s||'').trim();
+      const map = { 'Cocok':'Balance', 'Kurang':'Minus', 'Lebih':'Plus' };
+      return map[v] || v;
+    }
+
     function soFilter() {
-      const cari     = (document.getElementById('so-cari').value || '').toLowerCase();
-      const personil = (document.getElementById('so-personil-filter').value || '').toLowerCase();
-      const rak      = (document.getElementById('so-rak-filter').value || '').toLowerCase();
+      const cari       = (document.getElementById('so-cari').value || '').toLowerCase();
+      const rak        = (document.getElementById('so-rak-filter').value || '').toLowerCase();
+      const personilKw = (soPersonilAktif || '').toLowerCase();
       soDataFilter = soSemuaData.filter(r => {
-        if (soStatusAkt !== 'Semua' && r.status !== soStatusAkt) return false;
-        if (rak      && !String(r.rak).toLowerCase().includes(rak))            return false;
-        if (personil && r.personil.toLowerCase() !== personil)                 return false;
-        if (cari     && !(r.sku + ' ' + r.namaProduk).toLowerCase().includes(cari)) return false;
+        const normSt = soNormStatus(r.status);
+        if (soStatusAkt !== 'Semua' && normSt !== soStatusAkt) return false;
+        if (rak       && !String(r.rak).toLowerCase().includes(rak)) return false;
+        if (personilKw && !String(r.personil || '').toLowerCase().includes(personilKw)) return false;
+        if (cari      && !(r.sku + ' ' + r.namaProduk).toLowerCase().includes(cari)) return false;
         return true;
       });
       soHalamanAkt = 1;
@@ -2428,7 +2580,7 @@
                title="Klik untuk perbesar">`
           : `<div class="so-thumb-empty"><span class="material-symbols-outlined" style="font-size:18px;">image_not_supported</span></div>`;
 
-        const badge = `<span class="so-badge so-badge-${r.status || 'Belum'}">${r.status || 'Belum'}</span>`;
+        const badge = `<span class="so-badge so-badge-${soNormStatus(r.status)||'Belum'}">${soNormStatus(r.status)||'Belum'}</span>`;
 
         const sel = r.selisih === '' ? '—'
           : r.selisih < 0 ? `<span class="so-sel-minus">${r.selisih}</span>`
@@ -2478,7 +2630,10 @@
 
     function soHitungStats() {
       const h = { Balance: 0, Plus: 0, Minus: 0, Belum: 0 };
-      soSemuaData.forEach(r => { if (h[r.status] !== undefined) h[r.status]++; else h.Belum++; });
+      soSemuaData.forEach(r => {
+        const norm = soNormStatus(r.status);
+        if (h[norm] !== undefined) h[norm]++; else h.Belum++;
+      });
       document.getElementById('so-n-balance').textContent = h.Balance;
       document.getElementById('so-n-plus').textContent    = h.Plus;
       document.getElementById('so-n-minus').textContent   = h.Minus;
