@@ -77,7 +77,7 @@ async function getWarehouseToken(wh) {
     console.error(`❌ [LOGIN GAGAL] ${wh.name}: username/password belum diisi di Railway.`);
     return null;
   }
-  console.time(`⏱️ login-${wh.id}`); // ⬅️ TAMBAHAN: mulai hitung waktu login
+  console.time(`⏱️ login-${wh.id}`);
   try {
     const response = await axios.post(`${BASE_URL}/users/login`, {
       username: wh.username,
@@ -93,24 +93,24 @@ async function getWarehouseToken(wh) {
     });
     const resData = response.data?.data || response.data;
     const token = resData?.auth_token || resData?.token || resData?.access_token;
-    console.timeEnd(`⏱️ login-${wh.id}`); // ⬅️ TAMBAHAN: selesai hitung waktu login
+    console.timeEnd(`⏱️ login-${wh.id}`);
     if (token) {
       tokenCache[wh.id] = token;
       console.log(`✅ [LOGIN SUKSES] ${wh.name}`);
       return token;
     }
   } catch (err) {
-    console.timeEnd(`⏱️ login-${wh.id}`); // ⬅️ TAMBAHAN: tetap tutup timer walau error
+    console.timeEnd(`⏱️ login-${wh.id}`);
     console.error(`❌ [LOGIN GAGAL] ${wh.name}:`, err.response?.data?.message || err.message);
   }
   return null;
 }
 
 async function fetchOverview(type, wh) {
-  console.time(`⏱️ overview-${type}-${wh.id}`); // ⬅️ TAMBAHAN: mulai hitung waktu overview
+  console.time(`⏱️ overview-${type}-${wh.id}`);
   const token = await getWarehouseToken(wh);
   if (!token) {
-    console.timeEnd(`⏱️ overview-${type}-${wh.id}`); // ⬅️ TAMBAHAN
+    console.timeEnd(`⏱️ overview-${type}-${wh.id}`);
     return { total_trx: 0, status_error: 'Login Failed' };
   }
 
@@ -127,16 +127,16 @@ async function fetchOverview(type, wh) {
   try {
     const res = await axios.get(url, { headers });
     const rawData = res.data?.data || res.data;
-    console.timeEnd(`⏱️ overview-${type}-${wh.id}`); // ⬅️ TAMBAHAN
+    console.timeEnd(`⏱️ overview-${type}-${wh.id}`);
     return { total_trx: parseTotalTrx(rawData), details: rawData };
   } catch (err) {
-    console.timeEnd(`⏱️ overview-${type}-${wh.id}`); // ⬅️ TAMBAHAN
+    console.timeEnd(`⏱️ overview-${type}-${wh.id}`);
     return { total_trx: 0, status_error: err.response?.data?.message || 'Access Restricted' };
   }
 }
 
 async function getFreshDashboardData(type) {
-  console.time(`⏱️ TOTAL-dashboard-${type || 'all'}`); // ⬅️ TAMBAHAN: total waktu seluruh proses
+  console.time(`⏱️ TOTAL-dashboard-${type || 'all'}`);
   const results = await Promise.all(
     WAREHOUSES.map(async (wh) => {
       let inboundData = null;
@@ -154,7 +154,7 @@ async function getFreshDashboardData(type) {
       return { id: wh.id, name: wh.name, data: { inbound: inboundData, outbound: outboundData } };
     })
   );
-  console.timeEnd(`⏱️ TOTAL-dashboard-${type || 'all'}`); // ⬅️ TAMBAHAN
+  console.timeEnd(`⏱️ TOTAL-dashboard-${type || 'all'}`);
 
   let totalInboundTrx = 0, totalOutboundTrx = 0;
   results.forEach(item => {
@@ -169,6 +169,45 @@ async function getFreshDashboardData(type) {
   };
 }
 
+// =============================================
+// BACKGROUND REFRESH — jaga cache tetap "hangat"
+// Server otomatis ambil data baru tiap 30 detik,
+// jadi user TIDAK PERNAH menunggu fetch live saat
+// buka/refresh Dashboard — selalu dapat dari cache.
+// isRefreshing = penanda anti-tabrakan: kalau proses
+// sebelumnya belum selesai, proses baru dilewati dulu.
+// =============================================
+const REFRESH_INTERVAL = 30 * 1000; // ⬅️ bisa diubah sesuai kebutuhan
+const isRefreshing = { inbound: false, outbound: false };
+
+async function backgroundRefresh(type) {
+  if (isRefreshing[type]) {
+    console.log(`⏭️  [SKIP REFRESH] ${type} — proses sebelumnya masih berjalan, dilewati dulu.`);
+    return;
+  }
+  isRefreshing[type] = true;
+  try {
+    console.log(`🔁 [BACKGROUND REFRESH] Mulai ambil data ${type} otomatis...`);
+    const data = await getFreshDashboardData(type);
+    dashboardCache[type] = data;
+    lastCacheTime[type] = Date.now();
+    console.log(`✅ [BACKGROUND REFRESH] Data ${type} berhasil diperbarui di cache.`);
+  } catch (err) {
+    console.error(`❌ [BACKGROUND REFRESH GAGAL] ${type}:`, err.message);
+  } finally {
+    isRefreshing[type] = false;
+  }
+}
+
+// Jalankan pertama kali begitu server nyala (supaya cache langsung terisi,
+// tidak perlu menunggu user pertama buka Dashboard)
+backgroundRefresh('inbound');
+backgroundRefresh('outbound');
+
+// Ulangi otomatis tiap REFRESH_INTERVAL
+setInterval(() => backgroundRefresh('inbound'),  REFRESH_INTERVAL);
+setInterval(() => backgroundRefresh('outbound'), REFRESH_INTERVAL);
+
 // GET /api/dashboard
 app.get('/api/dashboard', async (req, res) => {
   try {
@@ -177,11 +216,14 @@ app.get('/api/dashboard', async (req, res) => {
     const now = Date.now();
 
     if (type === 'inbound' || type === 'outbound') {
+      // Dengan background refresh aktif, cache seharusnya selalu ada & fresh.
+      // Fallback ini tetap dijaga untuk kondisi darurat: server baru nyala
+      // dan background refresh pertama belum selesai, atau forceRefresh diminta.
       if (dashboardCache[type] && (now - lastCacheTime[type] < CACHE_DURATION) && !forceRefresh) {
-        console.log(`💾 [CACHE HIT] ${type} — data dari cache, tidak fetch ulang`); // ⬅️ TAMBAHAN
+        console.log(`💾 [CACHE HIT] ${type} — data dari cache, tidak fetch ulang`);
         return res.json(dashboardCache[type]);
       }
-      console.log(`🔄 [CACHE MISS] ${type} — mulai fetch fresh dari API`); // ⬅️ TAMBAHAN
+      console.log(`🔄 [CACHE MISS] ${type} — cache belum siap / diminta force, fetch fresh sekarang`);
       const data = await getFreshDashboardData(type);
       dashboardCache[type] = data;
       lastCacheTime[type] = now;
