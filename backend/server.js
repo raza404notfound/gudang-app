@@ -77,6 +77,7 @@ async function getWarehouseToken(wh) {
     console.error(`❌ [LOGIN GAGAL] ${wh.name}: username/password belum diisi di Railway.`);
     return null;
   }
+  console.time(`⏱️ login-${wh.id}`); // ⬅️ TAMBAHAN: mulai hitung waktu login
   try {
     const response = await axios.post(`${BASE_URL}/users/login`, {
       username: wh.username,
@@ -92,20 +93,26 @@ async function getWarehouseToken(wh) {
     });
     const resData = response.data?.data || response.data;
     const token = resData?.auth_token || resData?.token || resData?.access_token;
+    console.timeEnd(`⏱️ login-${wh.id}`); // ⬅️ TAMBAHAN: selesai hitung waktu login
     if (token) {
       tokenCache[wh.id] = token;
       console.log(`✅ [LOGIN SUKSES] ${wh.name}`);
       return token;
     }
   } catch (err) {
+    console.timeEnd(`⏱️ login-${wh.id}`); // ⬅️ TAMBAHAN: tetap tutup timer walau error
     console.error(`❌ [LOGIN GAGAL] ${wh.name}:`, err.response?.data?.message || err.message);
   }
   return null;
 }
 
 async function fetchOverview(type, wh) {
+  console.time(`⏱️ overview-${type}-${wh.id}`); // ⬅️ TAMBAHAN: mulai hitung waktu overview
   const token = await getWarehouseToken(wh);
-  if (!token) return { total_trx: 0, status_error: 'Login Failed' };
+  if (!token) {
+    console.timeEnd(`⏱️ overview-${type}-${wh.id}`); // ⬅️ TAMBAHAN
+    return { total_trx: 0, status_error: 'Login Failed' };
+  }
 
   const { time_min, time_max } = getTodayTimestamps();
   const headers = {
@@ -120,13 +127,16 @@ async function fetchOverview(type, wh) {
   try {
     const res = await axios.get(url, { headers });
     const rawData = res.data?.data || res.data;
+    console.timeEnd(`⏱️ overview-${type}-${wh.id}`); // ⬅️ TAMBAHAN
     return { total_trx: parseTotalTrx(rawData), details: rawData };
   } catch (err) {
+    console.timeEnd(`⏱️ overview-${type}-${wh.id}`); // ⬅️ TAMBAHAN
     return { total_trx: 0, status_error: err.response?.data?.message || 'Access Restricted' };
   }
 }
 
 async function getFreshDashboardData(type) {
+  console.time(`⏱️ TOTAL-dashboard-${type || 'all'}`); // ⬅️ TAMBAHAN: total waktu seluruh proses
   const results = await Promise.all(
     WAREHOUSES.map(async (wh) => {
       let inboundData = null;
@@ -144,6 +154,7 @@ async function getFreshDashboardData(type) {
       return { id: wh.id, name: wh.name, data: { inbound: inboundData, outbound: outboundData } };
     })
   );
+  console.timeEnd(`⏱️ TOTAL-dashboard-${type || 'all'}`); // ⬅️ TAMBAHAN
 
   let totalInboundTrx = 0, totalOutboundTrx = 0;
   results.forEach(item => {
@@ -167,8 +178,10 @@ app.get('/api/dashboard', async (req, res) => {
 
     if (type === 'inbound' || type === 'outbound') {
       if (dashboardCache[type] && (now - lastCacheTime[type] < CACHE_DURATION) && !forceRefresh) {
+        console.log(`💾 [CACHE HIT] ${type} — data dari cache, tidak fetch ulang`); // ⬅️ TAMBAHAN
         return res.json(dashboardCache[type]);
       }
+      console.log(`🔄 [CACHE MISS] ${type} — mulai fetch fresh dari API`); // ⬅️ TAMBAHAN
       const data = await getFreshDashboardData(type);
       dashboardCache[type] = data;
       lastCacheTime[type] = now;
