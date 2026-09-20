@@ -1422,7 +1422,7 @@
           /* Layout utama */
           .awb-new-layout { display:flex; gap:12px; align-items:flex-start; }
           .awb-new-left { flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; }
-          .awb-new-right { width:260px; flex-shrink:0; display:flex; flex-direction:column; gap:10px; }
+          .awb-new-right { width:280px; flex-shrink:0; display:flex; flex-direction:column; gap:10px; }
 
           /* Status panel kanan atas */
           .awb-status-panel {
@@ -1513,7 +1513,7 @@
           .awb-tbl tbody tr { border-bottom:1px solid #f8fafc; transition:background .1s; }
           .awb-tbl tbody tr:hover { background:#fffbeb; }
           .awb-tbl td { padding:8px 12px; vertical-align:middle; color:#334155; }
-          .awb-tbl-wrap { max-height:420px; overflow-y:auto; }
+          .awb-tbl-wrap { max-height:calc(100vh - 280px); overflow-y:auto; }
           .awb-tbl-wrap::-webkit-scrollbar { width:4px; }
           .awb-tbl-wrap::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:4px; }
 
@@ -1668,26 +1668,11 @@
         </div>
         <div id="awb-top-status" class="awb-status-msg"></div>
 
-        <!-- MAIN LAYOUT -->
+        <!-- MAIN LAYOUT: Tabel lebar kiri, panel kanan -->
         <div class="awb-new-layout">
 
-          <!-- KIRI: Input + Progress + Tabel -->
+          <!-- KIRI: Progress + Tabel (lebar) -->
           <div class="awb-new-left">
-
-            <!-- Input Resi -->
-            <div class="awb-input-card">
-              <div class="awb-input-header">
-                <div style="display:flex;align-items:center;gap:7px;">
-                  <span class="material-symbols-outlined" style="color:#e11d48;font-size:17px;">qr_code_scanner</span>
-                  Input Resi
-                </div>
-                <span id="resi-count-label" style="background:#f1f5f9;color:#64748b;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;">0 resi</span>
-              </div>
-              <div style="padding:12px 14px;">
-                <textarea id="input-awb-bulk" class="awb-textarea" oninput="updateResiCount()"
-                  placeholder="Paste nomor resi (1 per baris)&#10;JX1234567890&#10;JX0987654321&#10;&#10;Atau pilih tanggal lalu klik Terapkan untuk load otomatis"></textarea>
-              </div>
-            </div>
 
             <!-- Progress Bar -->
             <div id="awb-progress-wrap" style="display:none;" class="awb-progress-card">
@@ -1696,7 +1681,7 @@
                 <span style="font-size:11px;color:#94a3b8;" id="chunk-progress-text"></span>
               </div>
               <div style="background:#f1f5f9;border-radius:4px;height:5px;overflow:hidden;">
-                <div id="awb-progress-bar" style="height:100%;background:#e11d48;border-radius:4px;width:0%;transition:width 0.3s;"></div>
+                <div id="awb-progress-bar" style="height:100%;background:#fbbf24;border-radius:4px;width:0%;transition:width 0.3s;"></div>
               </div>
             </div>
 
@@ -1732,9 +1717,10 @@
                     </tr>
                   </thead>
                   <tbody id="track-results-body">
-                    <tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:40px;">
-                      <span class="material-symbols-outlined" style="font-size:36px;display:block;margin-bottom:8px;color:#cbd5e1;">local_shipping</span>
-                      Pilih tanggal dan klik Terapkan untuk memuat resi.
+                    <tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:60px 20px;">
+                      <span class="material-symbols-outlined" style="font-size:48px;display:block;margin-bottom:10px;color:#e2e8f0;">local_shipping</span>
+                      <p style="font-size:13px;font-weight:600;color:#94a3b8;">Pilih tanggal untuk memuat resi</p>
+                      <p style="font-size:12px;color:#cbd5e1;margin-top:4px;">Klik kalender di atas, pilih tanggal, resi otomatis termuat</p>
                     </td></tr>
                   </tbody>
                 </table>
@@ -1742,8 +1728,24 @@
             </div>
           </div>
 
-          <!-- KANAN: Status + Aksi -->
+          <!-- KANAN: Input Resi + Ringkasan + Aksi -->
           <div class="awb-new-right">
+
+            <!-- Input Resi — compact di panel kanan -->
+            <div class="awb-status-panel">
+              <div class="awb-status-panel-header">
+                <span style="display:flex;align-items:center;gap:6px;">
+                  <span class="material-symbols-outlined" style="font-size:14px;">qr_code_scanner</span>
+                  Input Resi
+                </span>
+                <span id="resi-count-label" style="background:rgba(255,255,255,.15);color:#f8fafc;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700;">0 resi</span>
+              </div>
+              <div style="padding:10px 12px;">
+                <textarea id="input-awb-bulk" oninput="updateResiCount()"
+                  placeholder="Paste resi (1 per baris)&#10;JX1234567890"
+                  style="width:100%;height:110px;border:1px solid #e2e8f0;border-radius:7px;padding:8px 10px;font-size:12px;font-family:monospace;resize:vertical;outline:none;color:#334155;background:#f8fafc;line-height:1.6;"></textarea>
+              </div>
+            </div>
 
             <!-- Ringkasan Status -->
             <div class="awb-status-panel">
@@ -1788,7 +1790,7 @@
                   <span id="btn-lacak-text">Lacak Sekarang</span>
                 </button>
               </div>
-              <!-- Track Ulang sudah dihandle otomatis oleh Lacak Sekarang -->
+              <!-- Track Ulang hidden — dihandle otomatis -->
               <div class="awb-action-btn-row" style="display:none;">
                 <button onclick="trackBelumJalanSaja()" id="btn-lacak-belum-jalan" class="awb-side-btn awb-side-btn-belum">
                   <span class="material-symbols-outlined" style="font-size:17px;">replay</span>
