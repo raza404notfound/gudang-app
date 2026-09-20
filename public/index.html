@@ -13,6 +13,7 @@
 
   <!-- Tema kuning — hapus blok style ini untuk kembali ke merah -->
   <style id="tema-kuning">
+    /* Variabel tema kuning — hanya root vars */
     :root {
       --kn-utama  : #fbbf24;
       --kn-hover  : #d97706;
@@ -20,33 +21,6 @@
       --kn-muda   : #fef3c7;
       --kn-border : #fde68a;
       --kn-navy   : #1e293b;
-    }
-    .brand-logo { background: linear-gradient(135deg,var(--kn-utama),var(--kn-hover)) !important; box-shadow: 0 3px 10px rgba(251,191,36,.3) !important; }
-    .brand-name { color: var(--kn-utama) !important; }
-    .avatar { background: linear-gradient(135deg,var(--kn-utama),var(--kn-hover)) !important; color: var(--kn-navy) !important; box-shadow: 0 2px 8px rgba(251,191,36,.3) !important; }
-    .user-profile { background: linear-gradient(135deg,#fefce8,#fef9c3) !important; border-color: var(--kn-border) !important; }
-    .user-badge { background: var(--kn-utama) !important; color: var(--kn-navy) !important; }
-    .nav-item:hover { color: var(--kn-gelap) !important; }
-    .nav-item:hover .material-symbols-outlined { color: var(--kn-utama) !important; }
-    .nav-item.active { background: var(--kn-muda) !important; color: var(--kn-gelap) !important; }
-    .nav-item.active .material-symbols-outlined { color: var(--kn-utama) !important; }
-    .sidebar-logout { background: var(--kn-utama) !important; color: var(--kn-navy) !important; }
-    .sidebar-logout:hover { background: var(--kn-hover) !important; }
-    .sidebar-logout .material-symbols-outlined { color: var(--kn-navy) !important; }
-    .btn-auth { background: linear-gradient(135deg,var(--kn-utama),var(--kn-hover)) !important; color: var(--kn-navy) !important; box-shadow: 0 4px 14px rgba(251,191,36,.35) !important; }
-    .btn-auth:hover { background: linear-gradient(135deg,#f59e0b,#b45309) !important; }
-    .toggle-auth { color: rgba(251,191,36,.8) !important; }
-    .awb-side-btn-lacak { background: var(--kn-utama) !important; color: var(--kn-navy) !important; border-color: var(--kn-utama) !important; }
-    .awb-side-btn-lacak:hover { background: var(--kn-hover) !important; }
-    .progress-fill-inc { background: var(--kn-utama) !important; }
-    .do-btn-submit { background: var(--kn-utama) !important; color: var(--kn-navy) !important; }
-    .do-btn-submit:hover:not(:disabled) { background: var(--kn-hover) !important; }
-    .do-tab.aktif { color: var(--kn-gelap) !important; border-bottom-color: var(--kn-utama) !important; }
-    .so-chip.aktif-Semua { background: var(--kn-muda) !important; border-color: var(--kn-utama) !important; color: var(--kn-gelap) !important; }
-    input:focus, select:focus, textarea:focus {
-      border-color: var(--kn-utama) !important;
-      box-shadow: 0 0 0 2px rgba(251,191,36,.2) !important;
-      outline: none !important;
     }
   </style>
   <!-- Google Fonts & Icons -->
@@ -75,30 +49,30 @@
     }
     .brand-logo {
       width: 38px; height: 38px; border-radius: 10px;
-      background: linear-gradient(135deg,#e11d48,#9f1239);
-      color: #fff; display: flex; align-items: center;
+      background: linear-gradient(135deg,#fbbf24,#d97706);
+      color: #1e293b; display: flex; align-items: center;
       justify-content: center; flex-shrink: 0;
-      box-shadow: 0 3px 10px rgba(225,29,72,.3);
+      box-shadow: 0 3px 10px rgba(251,191,36,.3);
     }
     .brand-text { display: flex; flex-direction: column; line-height: 1.25; }
-    .brand-name { font-size: 16px; font-weight: 900; color: #e11d48; letter-spacing: -.3px; }
+    .brand-name { font-size: 16px; font-weight: 900; color: #d97706; letter-spacing: -.3px; }
     .brand-sub  { font-size: 9.5px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: .7px; }
 
     /* User Profile */
     .user-profile {
       margin: 10px 12px;
       padding: 12px 14px;
-      background: linear-gradient(135deg, #fff1f2, #fff5f5);
-      border: 1px solid #fecdd3;
+      background: linear-gradient(135deg, #fefce8, #fef9c3);
+      border: 1px solid #fde68a;
       border-radius: 12px;
       display: flex; align-items: center; gap: 11px;
     }
     .avatar {
       width: 40px; height: 40px; border-radius: 10px;
-      background: linear-gradient(135deg, #e11d48, #be123c);
-      color: #fff; display: flex; align-items: center;
+      background: linear-gradient(135deg, #fbbf24, #d97706);
+      color: #1e293b; display: flex; align-items: center;
       justify-content: center; font-weight: 800; font-size: 17px;
-      flex-shrink: 0; box-shadow: 0 2px 8px rgba(225,29,72,.3);
+      flex-shrink: 0; box-shadow: 0 2px 8px rgba(251,191,36,.3);
     }
     .user-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
     .user-name {
@@ -106,8 +80,8 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .user-badge {
-      font-size: 10px; font-weight: 600;
-      background: #e11d48; color: #fff;
+      font-size: 10px; font-weight: 700;
+      background: #fbbf24; color: #1e293b;
       padding: 2px 8px; border-radius: 20px;
       width: max-content;
     }
@@ -130,10 +104,10 @@
       margin-bottom: 2px;
     }
     .nav-item .material-symbols-outlined { font-size: 18px; flex-shrink: 0; transition: color .15s; }
-    .nav-item:hover { background: #f8fafc; color: #1e293b; }
-    .nav-item:hover .material-symbols-outlined { color: #e11d48; }
-    .nav-item.active { background: #fff1f2; color: #e11d48; font-weight: 700; }
-    .nav-item.active .material-symbols-outlined { color: #e11d48; }
+    .nav-item:hover { background: #fef3c7; color: #92400e; }
+    .nav-item:hover .material-symbols-outlined { color: #d97706; }
+    .nav-item.active { background: #fef3c7; color: #92400e; font-weight: 700; }
+    .nav-item.active .material-symbols-outlined { color: #d97706; }
 
     /* Sidebar footer - keluar */
     .sidebar-footer {
@@ -142,12 +116,12 @@
       margin-top: auto;
     }
     .sidebar-logout {
-      color: #fff !important; font-weight: 700 !important;
-      background: #e11d48 !important; border-radius: 8px !important;
-      margin: 0 2px !important;
+      color: #e11d48; font-weight: 600;
+      background: #fff1f2; border-radius: 8px;
+      margin: 0 2px; border: 1.5px solid #fecdd3;
     }
-    .sidebar-logout:hover { background: #be123c !important; }
-    .sidebar-logout .material-symbols-outlined { color: #fff !important; }
+    .sidebar-logout:hover { background: #fee2e2; border-color: #fca5a5; }
+    .sidebar-logout .material-symbols-outlined { color: #e11d48; }
 
     /* MAIN WRAPPER */
     .main-wrapper { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
@@ -161,14 +135,7 @@
     }
     .top-header-left { display: flex; align-items: center; gap: 8px; }
     .top-header-left .material-symbols-outlined { font-size: 20px; color: #94a3b8; }
-    .btn-logout {
-      display: flex; align-items: center; gap: 6px;
-      background: #fff1f2; color: #e11d48;
-      border: 1.5px solid #fecdd3; padding: 6px 14px;
-      border-radius: 8px; font-size: 12px; font-weight: 700;
-      cursor: pointer; transition: .15s;
-    }
-    .btn-logout:hover { background: #fee2e2; border-color: #fca5a5; }
+    /* btn-logout dipindah ke sidebar */
 
     .content-container { flex: 1; padding: 22px 24px; overflow-y: auto; scroll-behavior: smooth; }
     .content-container::-webkit-scrollbar { width: 5px; }
@@ -233,7 +200,7 @@
     .table-footer .material-symbols-outlined { font-size:12px; }
     .progress-bar-container { display:flex; align-items:center; gap:6px; width:100%; }
     .progress-track { flex:1; height:4px; background:#f1f5f9; border-radius:3px; overflow:hidden; }
-    .progress-fill-inc { height:100%; background:#e11d48; border-radius:3px; transition:width .3s ease; }
+    .progress-fill-inc { height:100%; background:#fbbf24; border-radius:3px; transition:width .3s ease; }
     .progress-fill-out { height:100%; background:#3b82f6; border-radius:3px; transition:width .3s ease; }
 
     /* LAYOUT LACAK AWB 2 KOLOM */
@@ -1193,7 +1160,7 @@
             transition:background .12s ease;
           }
           .do-table tbody tr:last-child { border-bottom:none; }
-          .do-table tbody tr:hover { background:#fafbff; }
+          .do-table tbody tr:hover { background:#fffbeb; }
           .do-table td { padding:9px 12px; vertical-align:middle; color:#334155; }
 
           /* Status badges */
@@ -1262,9 +1229,10 @@
           .do-tab {
             padding:8px 20px; font-size:13px; font-weight:600; cursor:pointer;
             color:#64748b; border-bottom:2px solid transparent; margin-bottom:-2px;
-            transition:color .15s, border-color .15s;
+            transition:color .15s, border-color .15s; border-radius:6px 6px 0 0;
           }
-          .do-tab.aktif { color:#e11d48; border-bottom-color:#e11d48; }
+          .do-tab:hover { color:#92400e; background:#fef3c7; }
+          .do-tab.aktif { color:#92400e; border-bottom-color:#fbbf24; background:#fefce8; }
           .do-tab-panel { display:none; }
           .do-tab-panel.aktif { display:block; }
           .do-form-row { margin-bottom:13px; }
@@ -1472,7 +1440,7 @@
             cursor:pointer; transition:background .1s; font-size:13px;
           }
           .awb-status-row:last-child { border-bottom:none; }
-          .awb-status-row:hover { background:#f8fafc; }
+          .awb-status-row:hover { background:#fffbeb; }
           .awb-status-row .lbl { color:#475569; display:flex; align-items:center; gap:6px; }
           .awb-status-row .val { font-weight:700; font-size:14px; }
 
@@ -1495,9 +1463,9 @@
             gap:8px; transition:.15s; border:1.5px solid transparent;
           }
           .awb-side-btn-lacak {
-            background:#e11d48; color:#fff; border-color:#e11d48;
+            background:#fbbf24; color:#1e293b; border-color:#fbbf24;
           }
-          .awb-side-btn-lacak:hover { background:#be123c; }
+          .awb-side-btn-lacak:hover { background:#d97706; border-color:#d97706; }
           .awb-side-btn-lacak:disabled { background:#94a3b8; border-color:#94a3b8; cursor:not-allowed; }
           .awb-side-btn-belum {
             background:#fef9c3; color:#92400e; border-color:#fde68a;
@@ -1543,7 +1511,7 @@
             position:sticky; top:0; z-index:2;
           }
           .awb-tbl tbody tr { border-bottom:1px solid #f8fafc; transition:background .1s; }
-          .awb-tbl tbody tr:hover { background:#fafbff; }
+          .awb-tbl tbody tr:hover { background:#fffbeb; }
           .awb-tbl td { padding:8px 12px; vertical-align:middle; color:#334155; }
           .awb-tbl-wrap { max-height:420px; overflow-y:auto; }
           .awb-tbl-wrap::-webkit-scrollbar { width:4px; }
@@ -1557,10 +1525,129 @@
         </style>
 
         <!-- TOP BAR: Tanggal + Terapkan + Cek Resi + Lacak Cancel -->
+        <style>
+          /* ---- CUSTOM DATE PICKER ---- */
+          .cdp-wrap { position:relative; }
+          .cdp-input {
+            display:flex; align-items:center; gap:7px;
+            border:1.5px solid #e2e8f0; border-radius:8px;
+            padding:7px 12px; background:#fff; cursor:pointer;
+            font-size:13px; color:#1e293b; transition:.15s;
+            min-width:150px; user-select:none;
+          }
+          .cdp-input:hover { border-color:#fbbf24; }
+          .cdp-input.open  { border-color:#fbbf24; box-shadow:0 0 0 3px rgba(251,191,36,.15); }
+          .cdp-input .material-symbols-outlined { font-size:17px; color:#94a3b8; }
+          .cdp-input .cdp-val { font-weight:600; }
+          .cdp-input .cdp-placeholder { color:#94a3b8; font-weight:400; }
+
+          .cdp-popup {
+            position:absolute; top:calc(100% + 8px); left:0;
+            background:#fff; border:1px solid #e2e8f0; border-radius:14px;
+            box-shadow:0 12px 40px rgba(0,0,0,.14); z-index:9999;
+            width:300px; overflow:hidden; animation:cdpFadeIn .15s ease;
+          }
+          @keyframes cdpFadeIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+
+          .cdp-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:14px 16px 10px; border-bottom:1px solid #f1f5f9;
+          }
+          .cdp-month-label {
+            font-size:14px; font-weight:700; color:#1e293b; cursor:pointer;
+          }
+          .cdp-nav {
+            display:flex; gap:4px;
+          }
+          .cdp-nav button {
+            width:30px; height:30px; border:1px solid #e2e8f0; border-radius:7px;
+            background:#f8fafc; cursor:pointer; display:flex; align-items:center;
+            justify-content:center; color:#64748b; transition:.15s;
+          }
+          .cdp-nav button:hover { background:#fef3c7; border-color:#fbbf24; color:#92400e; }
+          .cdp-nav button .material-symbols-outlined { font-size:16px; }
+
+          .cdp-grid {
+            display:grid; grid-template-columns:repeat(7,1fr);
+            padding:10px 12px 14px; gap:2px;
+          }
+          .cdp-day-name {
+            font-size:10px; font-weight:700; color:#94a3b8;
+            text-align:center; padding:4px 0 8px;
+            text-transform:uppercase; letter-spacing:.4px;
+          }
+          .cdp-day {
+            aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+            font-size:13px; border-radius:8px; cursor:pointer;
+            color:#334155; transition:all .12s; position:relative;
+          }
+          .cdp-day:hover { background:#fef3c7; color:#92400e; }
+          .cdp-day.other-month { color:#cbd5e1; }
+          .cdp-day.other-month:hover { background:#f8fafc; color:#94a3b8; }
+          .cdp-day.today {
+            font-weight:700; color:#fbbf24;
+          }
+          .cdp-day.today::after {
+            content:''; position:absolute; bottom:3px; left:50%;
+            transform:translateX(-50%); width:4px; height:4px;
+            border-radius:50%; background:#fbbf24;
+          }
+          .cdp-day.selected {
+            background:#fbbf24 !important; color:#1e293b !important;
+            font-weight:700; box-shadow:0 2px 8px rgba(251,191,36,.4);
+          }
+          .cdp-day.selected::after { display:none; }
+
+          .cdp-footer {
+            padding:10px 14px 12px; border-top:1px solid #f1f5f9;
+            display:flex; justify-content:space-between; align-items:center;
+          }
+          .cdp-today-btn {
+            font-size:12px; color:#64748b; background:none; border:none;
+            cursor:pointer; font-weight:600; padding:4px 8px; border-radius:6px;
+            transition:.15s;
+          }
+          .cdp-today-btn:hover { background:#f1f5f9; color:#334155; }
+          .cdp-clear-btn {
+            font-size:12px; color:#94a3b8; background:none; border:none;
+            cursor:pointer; padding:4px 8px; border-radius:6px; transition:.15s;
+          }
+          .cdp-clear-btn:hover { color:#e11d48; }
+        </style>
+
         <div class="awb-top-bar">
           <div class="awb-date-wrap">
             <label>Tanggal</label>
-            <input type="date" id="filter-tanggal" onchange="awbOnTanggalChange()">
+
+            <!-- Custom date picker -->
+            <div class="cdp-wrap" id="cdp-wrap">
+              <div class="cdp-input" id="cdp-input" onclick="cdpToggle()">
+                <span class="material-symbols-outlined">calendar_today</span>
+                <span class="cdp-placeholder" id="cdp-display">Pilih tanggal</span>
+              </div>
+              <!-- Hidden input tetap ada untuk kompatibilitas fungsi lama -->
+              <input type="hidden" id="filter-tanggal">
+
+              <div class="cdp-popup" id="cdp-popup" style="display:none;">
+                <div class="cdp-header">
+                  <span class="cdp-month-label" id="cdp-month-label">September 2026</span>
+                  <div class="cdp-nav">
+                    <button onclick="cdpPrevMonth()">
+                      <span class="material-symbols-outlined">chevron_left</span>
+                    </button>
+                    <button onclick="cdpNextMonth()">
+                      <span class="material-symbols-outlined">chevron_right</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="cdp-grid" id="cdp-grid"></div>
+                <div class="cdp-footer">
+                  <button class="cdp-clear-btn" onclick="cdpClear()">Hapus</button>
+                  <button class="cdp-today-btn" onclick="cdpSelectToday()">Hari ini</button>
+                </div>
+              </div>
+            </div>
+
             <select id="filter-gudang" style="min-width:130px;">
               <option value="">Semua Gudang</option>
               <option value="GUDANG 1">Gudang 1</option>
@@ -1568,10 +1655,6 @@
               <option value="GUDANG 3">Gudang 3</option>
               <option value="GUDANG 4">Gudang 4</option>
             </select>
-            <button class="awb-apply-btn" id="btn-terapkan" onclick="awbTerapkan()">
-              <span class="material-symbols-outlined" style="font-size:16px;">check_circle</span>
-              Terapkan
-            </button>
           </div>
           <!-- Cek Resi — sendiri agar tidak salah pencet -->
           <button class="awb-cek-btn" id="btn-cek-resi" onclick="cekResiDariSheet()">
@@ -2707,6 +2790,148 @@
 
     // AMBIL DARI SHEET — baca dari tab "Resi Harian", masukkan ke kotak input
     // AMBIL DARI SHEET — langsung ke Apps Script (tanpa lewat Railway)
+    // =============================================
+    // CUSTOM DATE PICKER
+    // =============================================
+    let cdpYear  = new Date().getFullYear();
+    let cdpMonth = new Date().getMonth(); // 0-based
+    let cdpSelectedDate = ''; // format YYYY-MM-DD
+
+    const CDP_DAYS   = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+    const CDP_MONTHS = ['Januari','Februari','Maret','April','Mei','Juni',
+                        'Juli','Agustus','September','Oktober','November','Desember'];
+
+    function cdpToggle() {
+      const popup = document.getElementById('cdp-popup');
+      const input = document.getElementById('cdp-input');
+      const isOpen = popup.style.display !== 'none';
+      if (isOpen) {
+        popup.style.display = 'none';
+        input.classList.remove('open');
+      } else {
+        popup.style.display = '';
+        input.classList.add('open');
+        cdpRender();
+        // Tutup saat klik di luar
+        setTimeout(() => {
+          document.addEventListener('click', cdpOutsideClick, { once: true });
+        }, 0);
+      }
+    }
+
+    function cdpOutsideClick(e) {
+      const wrap = document.getElementById('cdp-wrap');
+      if (wrap && wrap.contains(e.target)) {
+        // Klik masih di dalam picker, pasang listener lagi
+        setTimeout(() => {
+          document.addEventListener('click', cdpOutsideClick, { once: true });
+        }, 0);
+        return;
+      }
+      document.getElementById('cdp-popup').style.display = 'none';
+      document.getElementById('cdp-input').classList.remove('open');
+    }
+
+    function cdpRender() {
+      // Update label bulan
+      document.getElementById('cdp-month-label').textContent =
+        CDP_MONTHS[cdpMonth] + ' ' + cdpYear;
+
+      const grid  = document.getElementById('cdp-grid');
+      const today = new Date();
+      const todayStr = today.getFullYear() + '-' +
+        String(today.getMonth()+1).padStart(2,'0') + '-' +
+        String(today.getDate()).padStart(2,'0');
+
+      // Hari pertama bulan ini (0=Min, 1=Sen, dst)
+      const firstDay = new Date(cdpYear, cdpMonth, 1).getDay();
+      const daysInMonth = new Date(cdpYear, cdpMonth+1, 0).getDate();
+      const daysInPrev  = new Date(cdpYear, cdpMonth, 0).getDate();
+
+      let html = '';
+
+      // Header hari
+      CDP_DAYS.forEach(d => {
+        html += `<div class="cdp-day-name">${d}</div>`;
+      });
+
+      // Sel kosong sebelum hari pertama (isi dari bulan sebelumnya)
+      for (let i = 0; i < firstDay; i++) {
+        const d = daysInPrev - firstDay + 1 + i;
+        html += `<div class="cdp-day other-month">${d}</div>`;
+      }
+
+      // Hari-hari bulan ini
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = cdpYear + '-' +
+          String(cdpMonth+1).padStart(2,'0') + '-' +
+          String(d).padStart(2,'0');
+        let cls = 'cdp-day';
+        if (dateStr === todayStr) cls += ' today';
+        if (dateStr === cdpSelectedDate) cls += ' selected';
+        html += `<div class="${cls}" onclick="cdpSelect('${dateStr}')">${d}</div>`;
+      }
+
+      // Isi sisa grid dengan hari bulan berikutnya
+      const total = firstDay + daysInMonth;
+      const remainder = total % 7 === 0 ? 0 : 7 - (total % 7);
+      for (let d = 1; d <= remainder; d++) {
+        html += `<div class="cdp-day other-month">${d}</div>`;
+      }
+
+      grid.innerHTML = html;
+    }
+
+    function cdpSelect(dateStr) {
+      cdpSelectedDate = dateStr;
+      // Update hidden input (untuk kompatibilitas)
+      document.getElementById('filter-tanggal').value = dateStr;
+      // Update display
+      const [y, m, d] = dateStr.split('-');
+      const disp = document.getElementById('cdp-display');
+      disp.textContent = d + ' ' + CDP_MONTHS[parseInt(m)-1] + ' ' + y;
+      disp.className = 'cdp-val';
+      // Tutup popup
+      document.getElementById('cdp-popup').style.display = 'none';
+      document.getElementById('cdp-input').classList.remove('open');
+      // Langsung Terapkan
+      awbTerapkan();
+    }
+
+    function cdpSelectToday() {
+      const today = new Date();
+      cdpYear  = today.getFullYear();
+      cdpMonth = today.getMonth();
+      const dateStr = today.getFullYear() + '-' +
+        String(today.getMonth()+1).padStart(2,'0') + '-' +
+        String(today.getDate()).padStart(2,'0');
+      cdpSelect(dateStr);
+    }
+
+    function cdpClear() {
+      cdpSelectedDate = '';
+      document.getElementById('filter-tanggal').value = '';
+      const disp = document.getElementById('cdp-display');
+      disp.textContent = 'Pilih tanggal';
+      disp.className = 'cdp-placeholder';
+      document.getElementById('cdp-popup').style.display = 'none';
+      document.getElementById('cdp-input').classList.remove('open');
+      const msg = document.getElementById('awb-top-status');
+      msg.innerText = ''; 
+    }
+
+    function cdpPrevMonth() {
+      cdpMonth--;
+      if (cdpMonth < 0) { cdpMonth = 11; cdpYear--; }
+      cdpRender();
+    }
+
+    function cdpNextMonth() {
+      cdpMonth++;
+      if (cdpMonth > 11) { cdpMonth = 0; cdpYear++; }
+      cdpRender();
+    }
+
     // Fungsi lama tetap ada (dipakai awbTerapkan)
     async function loadFromSheet() {
       const tanggal = document.getElementById('filter-tanggal').value;
@@ -2735,29 +2960,17 @@
 
     // Terapkan: pilih tanggal → otomatis load resi
     async function awbTerapkan() {
-      const tanggal = document.getElementById('filter-tanggal').value;
+      const tanggal = cdpSelectedDate || document.getElementById('filter-tanggal').value;
       if (!tanggal) {
         const msg = document.getElementById('awb-top-status');
         msg.innerText = '⚠️ Pilih tanggal terlebih dahulu.';
         msg.style.color = '#d97706'; return;
       }
-      const btn = document.getElementById('btn-terapkan');
-      btn.disabled = true;
-      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px;animation:spin 1s linear infinite;">sync</span> Memuat...`;
       await loadFromSheet();
-      btn.disabled = false;
-      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px;">check_circle</span> Terapkan`;
     }
 
     function awbOnTanggalChange() {
-      const msg = document.getElementById('awb-top-status');
-      const tgl = document.getElementById('filter-tanggal').value;
-      if (tgl) {
-        msg.innerText = 'Klik Terapkan untuk memuat resi tanggal ' + tgl + '.';
-        msg.style.color = '#64748b';
-      } else {
-        msg.innerText = '';
-      }
+      // Tidak dipakai lagi — CDP langsung Terapkan saat pilih tanggal
     }
 
     // CEK RESI — langsung ke Apps Script, baca Tracking AWB (tanpa Biteship)
