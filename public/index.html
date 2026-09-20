@@ -3005,31 +3005,54 @@
       const tanggal = document.getElementById('filter-tanggal').value;
       if (!tanggal) return;
       const gudang  = document.getElementById('filter-gudang').value;
-      const msg     = document.getElementById('awb-top-status');
-      msg.innerText = 'Mengambil resi dari Sheet...';
-      msg.style.color = '#0284c7';
+      const banner  = document.getElementById('awb-top-status');
+
+      // Sembunyikan banner sementara saat loading
+      banner.style.display = 'none';
+
       try {
         const params = { action: 'loadResi', tanggal };
         if (gudang) params.gudang = gudang;
         const data = await gasGetDirect(params);
-        if (!data.success) { msg.innerText = data.message || 'Gagal.'; msg.style.color = '#ef4444'; return null; }
+
+        if (!data.success) {
+          // Tampilkan banner merah kalau gagal
+          banner.style.background = '#fff1f2';
+          banner.style.borderColor = '#fecdd3';
+          document.getElementById('awb-banner-jumlah').innerHTML =
+            `<span style="font-size:15px;color:#be123c;">⚠ ${data.message || 'Gagal memuat resi'}</span>`;
+          document.getElementById('awb-banner-sub').textContent = '';
+          banner.style.display = 'flex';
+          return null;
+        }
+
         const resiList = data.rows.map(r => r.resi).filter(Boolean);
         document.getElementById('input-awb-bulk').value = resiList.join('\n');
         updateResiCount();
         allTrackedData = []; hitungSummary(); renderResultsTable();
-        // Tampilkan banner kuning solid
-        const banner = document.getElementById('awb-top-status');
+
+        // Tampilkan banner kuning solid dengan angka resi
         const [y, m, d] = tanggal.split('-');
         const bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-        const gudangLabel = document.getElementById('filter-gudang').value || 'Semua Gudang';
+        const gudangLabel = gudang || 'Semua Gudang';
+
+        banner.style.background = '#fef3c7';
+        banner.style.borderColor = '#fde68a';
         document.getElementById('awb-banner-jumlah').innerHTML =
-          `<span style="font-size:26px;font-weight:800;color:#92400e;">${resiList.length}</span> <span style="font-size:13px;font-weight:500;color:#b45309;">resi siap dilacak</span>`;
+          `<span style="font-size:26px;font-weight:800;color:#92400e;">${resiList.length}</span>` +
+          ` <span style="font-size:13px;font-weight:500;color:#b45309;">resi siap dilacak</span>`;
         document.getElementById('awb-banner-sub').textContent =
           `${d} ${bulan[parseInt(m)-1]} ${y} · ${gudangLabel} · dimuat ${new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}`;
         banner.style.display = 'flex';
+
         return resiList;
       } catch (err) {
-        msg.innerText = 'Gagal terhubung ke Apps Script.'; msg.style.color = '#ef4444';
+        banner.style.background = '#fff1f2';
+        banner.style.borderColor = '#fecdd3';
+        document.getElementById('awb-banner-jumlah').innerHTML =
+          `<span style="font-size:15px;color:#be123c;">⚠ Gagal terhubung ke Apps Script</span>`;
+        document.getElementById('awb-banner-sub').textContent = '';
+        banner.style.display = 'flex';
         return null;
       }
     }
