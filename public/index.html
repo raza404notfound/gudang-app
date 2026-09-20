@@ -1788,7 +1788,8 @@
                   <span id="btn-lacak-text">Lacak Sekarang</span>
                 </button>
               </div>
-              <div class="awb-action-btn-row">
+              <!-- Track Ulang sudah dihandle otomatis oleh Lacak Sekarang -->
+              <div class="awb-action-btn-row" style="display:none;">
                 <button onclick="trackBelumJalanSaja()" id="btn-lacak-belum-jalan" class="awb-side-btn awb-side-btn-belum">
                   <span class="material-symbols-outlined" style="font-size:17px;">replay</span>
                   Track Ulang Belum Jalan
@@ -1806,10 +1807,12 @@
             <div class="awb-status-panel">
               <div class="awb-status-panel-header">Panduan</div>
               <div style="padding:12px 14px;font-size:12px;color:#64748b;line-height:1.8;">
-                <p><b>1.</b> Pilih tanggal → klik <b>Terapkan</b></p>
+                <p><b>1.</b> Pilih tanggal → resi otomatis termuat</p>
                 <p><b>2.</b> Klik <b>Lacak Sekarang</b></p>
-                <p><b>3.</b> Klik <b>Simpan ke Sheet</b></p>
-                <p style="margin-top:8px;color:#94a3b8;font-size:11px;">Gunakan <b>Track Ulang</b> untuk retry resi belum jalan saja.</p>
+                <p style="font-size:11px;color:#94a3b8;padding:6px 8px;background:#f8fafc;border-radius:6px;margin-top:4px;">
+                  ⚡ Otomatis skip resi yang sudah jalan<br>
+                  💾 Otomatis simpan ke sheet setelah selesai
+                </p>
               </div>
             </div>
 
@@ -3087,37 +3090,93 @@
     async function handleTrackAwbBulk() {
       const rawText = document.getElementById('input-awb-bulk').value.trim();
       if (!rawText) return showToast('Silakan masukkan nomor resi terlebih dahulu!', 'info');
-      const resiList = rawText.split('\n').map(s => s.trim().toUpperCase()).filter(Boolean);
-      if (resiList.length === 0) return showToast('Tidak ada resi valid!', 'error');
+      const semuaResi = rawText.split('\n').map(s => s.trim().toUpperCase()).filter(Boolean);
+      if (semuaResi.length === 0) return showToast('Tidak ada resi valid!', 'error');
 
       const btn = document.getElementById('btn-lacak-now');
       btn.disabled = true;
-      document.getElementById('btn-lacak-text').innerText = 'Sedang Melacak...';
+      document.getElementById('btn-lacak-text').innerText = 'Memeriksa sheet...';
       document.getElementById('awb-progress-wrap').style.display = 'block';
+      document.getElementById('progress-label').innerText = 'Memeriksa status resi di sheet...';
+      document.getElementById('awb-progress-bar').style.width = '5%';
 
+      const tanggalInput = cdpSelectedDate || document.getElementById('filter-tanggal').value || new Date().toISOString().slice(0,10);
+      const gudangDipilih = document.getElementById('filter-gudang').value || '';
+      const msg = document.getElementById('awb-top-status');
+
+      // ============================================================
+      // LANGKAH 1: Cek sheet — ambil resi yang sudah jalan
+      // ============================================================
+      const sudahJalanSet = new Set();
+      try {
+        const dataSheet = await gasGetDirect({ action: 'loadTracking', tanggal: tanggalInput, ...(gudangDipilih ? {gudang: gudangDipilih} : {}) });
+        if (dataSheet.success && dataSheet.rows) {
+          dataSheet.rows.forEach(r => {
+            const cat = kategorikanStatus(r.status, r.keterangan);
+            if (cat === 'sudah_jalan') {
+              sudahJalanSet.add(String(r.resi || '').trim().toUpperCase());
+              // Masukkan ke allTrackedData supaya tetap tampil di tabel
+              const existing = allTrackedData.findIndex(d => d.resi === r.resi);
+              const obj = {
+                resi: r.resi, gudang: r.gudang, kurir: r.kurir,
+                tanggal: tanggalInput, status: r.status,
+                keterangan: r.keterangan, tglInput: r.tglInput,
+                tglDicatat: r.tglDicatat, category: 'sudah_jalan'
+              };
+              if (existing >= 0) allTrackedData[existing] = obj;
+              else allTrackedData.push(obj);
+            }
+          });
+        }
+      } catch(e) {
+        console.warn('Gagal cek sheet, lanjut tracking semua:', e.message);
+      }
+
+      // ============================================================
+      // LANGKAH 2: Filter — skip yang sudah jalan
+      // ============================================================
+      const resiList = semuaResi.filter(r => !sudahJalanSet.has(r));
+      const skipped  = semuaResi.length - resiList.length;
+
+      if (skipped > 0) {
+        msg.innerText = `⚡ ${skipped} resi sudah jalan — dilewati. Tracking ${resiList.length} resi.`;
+        msg.style.color = '#d97706';
+      }
+
+      if (resiList.length === 0) {
+        document.getElementById('awb-progress-bar').style.width = '100%';
+        document.getElementById('progress-label').innerText = 'Semua resi sudah jalan!';
+        document.getElementById('btn-lacak-text').innerText = 'Lacak Sekarang';
+        btn.disabled = false;
+        hitungSummary(); renderResultsTable();
+        showToast(`Semua ${skipped} resi sudah jalan — tidak ada yang perlu di-tracking.`, 'success');
+        return;
+      }
+
+      // ============================================================
+      // LANGKAH 3: Tracking resi yang perlu di-cek
+      // ============================================================
+      document.getElementById('btn-lacak-text').innerText = 'Sedang Melacak...';
       const totalResi = resiList.length;
       let processed = 0;
 
-      document.getElementById('cnt-total').innerText = totalResi;
-      document.getElementById('cnt-belum-cek').innerText = totalResi;
       ['cnt-sedang-cek','cnt-total','cnt-belum-cek','cnt-sudah-jalan','cnt-belum-jalan',
        'cnt-cancel','cnt-gagal-cek','cnt-sudah-jalan2','cnt-belum-jalan2','cnt-cancel2','cnt-gagal2'].forEach(id => {
         const el = document.getElementById(id); if (el) el.innerText = '0';
       });
+      document.getElementById('cnt-total').innerText = semuaResi.length;
 
-      const tanggalInput = document.getElementById('filter-tanggal').value || new Date().toISOString().slice(0,10);
       const CHUNK_SIZE = 50;
       const chunks = [];
       for (let i = 0; i < resiList.length; i += CHUNK_SIZE) chunks.push(resiList.slice(i, i + CHUNK_SIZE));
 
-      const newData = [];
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
         document.getElementById('cnt-sedang-cek').innerText = chunk.length;
-        document.getElementById('cnt-belum-cek').innerText = totalResi - processed;
-        document.getElementById('chunk-progress-text').innerText = `Batch ${i+1}/${chunks.length} (${processed}/${totalResi})`;
+        document.getElementById('cnt-belum-cek').innerText  = totalResi - processed;
+        document.getElementById('chunk-progress-text').innerText = `Chunk ${i+1}/${chunks.length} · ${processed}/${totalResi} resi`;
         document.getElementById('awb-progress-bar').style.width = `${Math.round((processed/totalResi)*100)}%`;
-        document.getElementById('progress-label').innerText = `Memproses ${processed+1}–${Math.min(processed+chunk.length, totalResi)} dari ${totalResi} resi...`;
+        document.getElementById('progress-label').innerText = `Melacak ${processed+1}–${Math.min(processed+chunk.length,totalResi)} dari ${totalResi} resi...`;
 
         try {
           const res = await fetch('/api/track-awb-chunk', {
@@ -3126,46 +3185,71 @@
             body: JSON.stringify({ batchResi: chunk })
           });
           const result = await res.json();
-          const gudangDipilih = document.getElementById('filter-gudang').value || '';
           (result.data || []).forEach(item => {
             if (!item) return;
             const cat = kategorikanStatus(item.status, item.note);
-            newData.push({
-              resi: item.resi,
-              gudang: gudangDipilih,
+            const obj = {
+              resi: item.resi, gudang: gudangDipilih,
               kurir: item.kurir || detectKurir(item.resi),
-              tanggal: tanggalInput,
-              status: item.status || '-',
+              tanggal: tanggalInput, status: item.status || '-',
               keterangan: item.note || '-',
               tglInput: item.tglInput || tanggalInput,
-              tglDicatat: item.tglDicatat || '-',
-              category: cat
-            });
+              tglDicatat: item.tglDicatat || '-', category: cat
+            };
+            const idx = allTrackedData.findIndex(d => d.resi === obj.resi);
+            if (idx >= 0) allTrackedData[idx] = obj; else allTrackedData.push(obj);
           });
         } catch {
-          const gudangDipilih = document.getElementById('filter-gudang').value || '';
-          chunk.forEach(r => newData.push({
-            resi: r, gudang: gudangDipilih, kurir: detectKurir(r), tanggal: tanggalInput,
-            status: 'Error Koneksi', keterangan: 'Gagal menghubungi API',
-            tglInput: tanggalInput, tglDicatat: '-',
-            category: 'gagal'
-          }));
+          chunk.forEach(r => {
+            const obj = {
+              resi: r, gudang: gudangDipilih, kurir: detectKurir(r),
+              tanggal: tanggalInput, status: 'Error Koneksi',
+              keterangan: 'Gagal menghubungi API',
+              tglInput: tanggalInput, tglDicatat: '-', category: 'gagal'
+            };
+            const idx = allTrackedData.findIndex(d => d.resi === r);
+            if (idx >= 0) allTrackedData[idx] = obj; else allTrackedData.push(obj);
+          });
         }
         processed += chunk.length;
-        // Merge newData ke allTrackedData (update jika resi sudah ada)
-        newData.forEach(nd => {
-          const idx = allTrackedData.findIndex(d => d.resi === nd.resi);
-          if (idx >= 0) allTrackedData[idx] = nd; else allTrackedData.push(nd);
-        });
         hitungSummary(); renderResultsTable();
       }
 
       document.getElementById('awb-progress-bar').style.width = '100%';
-      document.getElementById('chunk-progress-text').innerText = `Selesai (${totalResi}/${totalResi})`;
-      document.getElementById('progress-label').innerText = 'Tracking selesai!';
-      document.getElementById('btn-sync-sheet').disabled = false;
+      document.getElementById('chunk-progress-text').innerText = `Selesai · ${totalResi} resi di-tracking`;
+      document.getElementById('progress-label').innerText = 'Tracking selesai — menyimpan ke sheet...';
       btn.disabled = false;
       document.getElementById('btn-lacak-text').innerText = 'Lacak Sekarang';
+
+      // ============================================================
+      // LANGKAH 4: Auto simpan ke sheet
+      // ============================================================
+      try {
+        document.getElementById('btn-sync-sheet').disabled = true;
+        const token = sessionStorage.getItem('sessionToken');
+        const resSave = await fetch('/api/sheet/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-session-token': token },
+          body: JSON.stringify({ tanggal: tanggalInput, data: allTrackedData })
+        });
+        const resSaveJson = await resSave.json();
+        if (resSaveJson.success) {
+          document.getElementById('progress-label').innerText = '✅ Tracking selesai & tersimpan ke sheet!';
+          msg.innerText = `✅ ${allTrackedData.length} data tersimpan ke Sheet.`;
+          msg.style.color = '#16a34a';
+          showToast(`Tracking selesai! ${skipped > 0 ? skipped + ' resi dilewati (sudah jalan). ' : ''}Data tersimpan ke sheet.`, 'success');
+        } else {
+          document.getElementById('progress-label').innerText = 'Tracking selesai — gagal simpan otomatis.';
+          msg.innerText = '⚠️ Tracking selesai tapi gagal simpan — klik Simpan ke Sheet manual.';
+          msg.style.color = '#d97706';
+          document.getElementById('btn-sync-sheet').disabled = false;
+        }
+      } catch {
+        document.getElementById('progress-label').innerText = 'Tracking selesai — gagal simpan otomatis.';
+        msg.innerText = '⚠️ Tracking selesai tapi gagal simpan — klik Simpan ke Sheet manual.';
+        msg.style.color = '#d97706';
+        document.getElementById('btn-sync-sheet').disabled = false;
+      }
     }
 
     function renderResultsTable() {
