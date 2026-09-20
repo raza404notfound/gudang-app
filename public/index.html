@@ -1795,8 +1795,9 @@
                   Track Ulang Belum Jalan
                 </button>
               </div>
-              <div class="awb-action-btn-row">
-                <button onclick="konfirmasiSimpan()" id="btn-sync-sheet" class="awb-side-btn awb-side-btn-simpan" disabled>
+              <!-- Simpan ke Sheet: hanya muncul saat auto-simpan gagal -->
+              <div class="awb-action-btn-row" id="btn-sync-wrap" style="display:none;">
+                <button onclick="syncToSheet()" id="btn-sync-sheet" class="awb-side-btn awb-side-btn-simpan">
                   <span class="material-symbols-outlined" style="font-size:17px;">cloud_upload</span>
                   Simpan ke Sheet
                 </button>
@@ -2528,7 +2529,7 @@
         const el = document.getElementById(id); if (el) el.innerText = '0';
       });
       document.getElementById('track-results-body').innerHTML = `<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:40px;">Data direset.</td></tr>`;
-      document.getElementById('btn-sync-sheet').disabled = true;
+      // auto-simpan — tidak perlu toggle disabled
       document.getElementById('awb-top-status').innerText = '';
       document.getElementById('awb-progress-wrap').style.display = 'none';
       if (document.getElementById('table-count-label')) document.getElementById('table-count-label').innerText = '';
@@ -3007,7 +3008,7 @@
           category: kategorikanStatus(r.status, r.keterangan)
         }));
         hitungSummary(); renderResultsTable();
-        document.getElementById('btn-sync-sheet').disabled = false;
+        document.getElementById('btn-sync-wrap').style.display = '';
         msg.innerText = `✅ ${data.rows.length} resi ditampilkan dari Tracking AWB.`;
         msg.style.color = '#16a34a';
       } catch (err) {
@@ -3078,8 +3079,14 @@
           body: JSON.stringify({ tanggal, data: allTrackedData })
         });
         const result = await res.json();
-        if (result.success) { msg.innerText = `✅ ${allTrackedData.length} data tersimpan ke Sheet.`; msg.style.color = '#16a34a'; }
-        else { msg.innerText = result.message || 'Gagal.'; msg.style.color = '#ef4444'; }
+        if (result.success) {
+          msg.innerText = `✅ ${allTrackedData.length} data tersimpan ke Sheet.`;
+          msg.style.color = '#16a34a';
+          document.getElementById('btn-sync-wrap').style.display = 'none';
+        } else {
+          msg.innerText = result.message || 'Gagal.';
+          msg.style.color = '#ef4444';
+        }
       } catch { msg.innerText = 'Gagal terhubung ke server.'; msg.style.color = '#ef4444'; }
       finally {
         btn.disabled = false;
@@ -3225,7 +3232,7 @@
       // LANGKAH 4: Auto simpan ke sheet
       // ============================================================
       try {
-        document.getElementById('btn-sync-sheet').disabled = true;
+        // auto-simpan — tidak perlu toggle disabled
         const token = sessionStorage.getItem('sessionToken');
         const resSave = await fetch('/api/sheet/sync', {
           method: 'POST',
@@ -3237,18 +3244,19 @@
           document.getElementById('progress-label').innerText = '✅ Tracking selesai & tersimpan ke sheet!';
           msg.innerText = `✅ ${allTrackedData.length} data tersimpan ke Sheet.`;
           msg.style.color = '#16a34a';
+          document.getElementById('btn-sync-wrap').style.display = 'none';
           showToast(`Tracking selesai! ${skipped > 0 ? skipped + ' resi dilewati (sudah jalan). ' : ''}Data tersimpan ke sheet.`, 'success');
         } else {
           document.getElementById('progress-label').innerText = 'Tracking selesai — gagal simpan otomatis.';
           msg.innerText = '⚠️ Tracking selesai tapi gagal simpan — klik Simpan ke Sheet manual.';
           msg.style.color = '#d97706';
-          document.getElementById('btn-sync-sheet').disabled = false;
+          document.getElementById('btn-sync-wrap').style.display = '';
         }
       } catch {
         document.getElementById('progress-label').innerText = 'Tracking selesai — gagal simpan otomatis.';
         msg.innerText = '⚠️ Tracking selesai tapi gagal simpan — klik Simpan ke Sheet manual.';
         msg.style.color = '#d97706';
-        document.getElementById('btn-sync-sheet').disabled = false;
+        document.getElementById('btn-sync-wrap').style.display = '';
       }
     }
 
