@@ -3096,24 +3096,23 @@
 
     // CEK RESI — langsung ke Apps Script, baca Tracking AWB (tanpa Biteship)
     async function cekResiDariSheet() {
-      awbBannerReset(); // Banner bisa muncul lagi setelah Cek Resi
       const tanggal = document.getElementById('filter-tanggal').value;
       if (!tanggal) return showToast('Pilih tanggal terlebih dahulu!', 'warning');
       const gudang = document.getElementById('filter-gudang').value;
-      const btn = document.getElementById('btn-cek-resi');
-      const msg = document.getElementById('awb-top-status');
+      const btn    = document.getElementById('btn-cek-resi');
       btn.disabled = true;
       btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Memuat...`;
-      msg.innerText = 'Mengambil data dari Tracking AWB...';
-      msg.style.color = '#16a34a';
       try {
         const params = { action: 'loadTracking', tanggal };
         if (gudang) params.gudang = gudang;
         const data = await gasGetDirect(params);
-        if (!data.success) { msg.innerText = data.message || 'Gagal.'; msg.style.color = '#ef4444'; return; }
+        if (!data.success) {
+          showToast(data.message || 'Gagal memuat tracking.', 'error');
+          return;
+        }
         if (data.rows.length === 0) {
-          msg.innerText = 'Belum ada resi yang ditrack di tanggal ini.';
-          msg.style.color = '#64748b'; return;
+          showToast('Belum ada resi yang ditrack di tanggal ini.', 'info');
+          return;
         }
         allTrackedData = data.rows.map(r => ({
           resi: r.resi, gudang: r.gudang || gudang || '',
@@ -3127,13 +3126,28 @@
         }));
         hitungSummary(); renderResultsTable();
         document.getElementById('btn-sync-wrap').style.display = '';
-        msg.innerText = `✅ ${data.rows.length} resi ditampilkan dari Tracking AWB.`;
-        msg.style.color = '#16a34a';
+
+        // Update banner dengan info cek resi
+        const banner = document.getElementById('awb-top-status');
+        const [y, m, d] = tanggal.split('-');
+        const bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+        const gudangLabel = gudang || 'Semua Gudang';
+        banner.style.background = '#fef3c7';
+        banner.style.borderColor = '#fde68a';
+        document.getElementById('awb-banner-jumlah').innerHTML =
+          `<span style="font-size:26px;font-weight:800;color:#92400e;">${data.rows.length}</span>` +
+          ` <span style="font-size:13px;font-weight:500;color:#b45309;">resi dari Tracking AWB</span>`;
+        document.getElementById('awb-banner-sub').textContent =
+          `${d} ${bulan[parseInt(m)-1]} ${y} · ${gudangLabel}`;
+        awbBannerReset();
+        awbBannerTampil();
+
+        showToast(`${data.rows.length} resi dimuat dari Tracking AWB.`, 'success');
       } catch (err) {
-        msg.innerText = 'Gagal terhubung ke Apps Script.'; msg.style.color = '#ef4444';
+        showToast('Gagal terhubung ke Apps Script.', 'error');
       } finally {
         btn.disabled = false;
-        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;">search</span> Cek Resi`;
+        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;">manage_search</span> Cek Resi`;
       }
     }
 
