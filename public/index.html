@@ -1718,7 +1718,7 @@
             <span class="material-symbols-outlined" style="font-size:16px;">search</span>
             Lacak Sekarang
           </button>
-          <button onclick="document.getElementById('awb-top-status').style.display='none'"
+          <button onclick="awbBannerTutup()"
             style="background:none;border:none;color:#b45309;cursor:pointer;
               font-size:18px;line-height:1;opacity:.5;padding:4px;flex-shrink:0;"
             title="Tutup">✕</button>
@@ -3043,7 +3043,8 @@
           ` <span style="font-size:13px;font-weight:500;color:#b45309;">resi siap dilacak</span>`;
         document.getElementById('awb-banner-sub').textContent =
           `${d} ${bulan[parseInt(m)-1]} ${y} · ${gudangLabel} · dimuat ${new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}`;
-        banner.style.display = 'flex';
+        awbBannerReset();
+        awbBannerTampil();
 
         return resiList;
       } catch (err) {
@@ -3052,7 +3053,8 @@
         document.getElementById('awb-banner-jumlah').innerHTML =
           `<span style="font-size:15px;color:#be123c;">⚠ Gagal terhubung ke Apps Script</span>`;
         document.getElementById('awb-banner-sub').textContent = '';
-        banner.style.display = 'flex';
+        awbBannerReset();
+        awbBannerTampil();
         return null;
       }
     }
@@ -3072,8 +3074,29 @@
       // Tidak dipakai lagi — CDP langsung Terapkan saat pilih tanggal
     }
 
+    // ---- BANNER NOTIF ----
+    let awbBannerDitutup = false; // flag: user tutup manual
+
+    function awbBannerTutup() {
+      awbBannerDitutup = true;
+      document.getElementById('awb-top-status').style.display = 'none';
+    }
+
+    function awbBannerTampil() {
+      // Hanya tampil kalau user belum menutup manual
+      if (!awbBannerDitutup) {
+        document.getElementById('awb-top-status').style.display = 'flex';
+      }
+    }
+
+    function awbBannerReset() {
+      // Reset flag saat ada aksi baru (load tanggal baru, cek resi)
+      awbBannerDitutup = false;
+    }
+
     // CEK RESI — langsung ke Apps Script, baca Tracking AWB (tanpa Biteship)
     async function cekResiDariSheet() {
+      awbBannerReset(); // Banner bisa muncul lagi setelah Cek Resi
       const tanggal = document.getElementById('filter-tanggal').value;
       if (!tanggal) return showToast('Pilih tanggal terlebih dahulu!', 'warning');
       const gudang = document.getElementById('filter-gudang').value;
