@@ -872,162 +872,228 @@
       </section>
 
       <!-- MENU PLACEHOLDERS -->
-      <section id="page-pusat-inventory" class="page-content">
+            <section id="page-pusat-inventory" class="page-content">
         <style>
-          /* PI freeze layout */
+          /* ---- PI LAYOUT FREEZE ---- */
           #page-pusat-inventory.active { display:flex !important; flex-direction:column; height:calc(100vh - 54px); overflow:hidden; }
-          .so-sticky-header { position:sticky; top:0; z-index:10; background:#f1f5f9; padding-bottom:8px; flex-shrink:0; }
-          .so-scroll-body { flex:1; overflow-y:auto; overflow-x:hidden; scroll-behavior:smooth; }
-          .so-scroll-body::-webkit-scrollbar { width:5px; }
-          .so-scroll-body::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:10px; }
+          .pi-sticky { position:sticky; top:0; z-index:10; background:#f1f5f9; padding-bottom:8px; flex-shrink:0; }
+          .pi-scroll { flex:1; overflow-y:auto; overflow-x:hidden; scroll-behavior:smooth; }
+          .pi-scroll::-webkit-scrollbar { width:5px; }
+          .pi-scroll::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:10px; }
 
-          .so-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin-bottom:8px;}
-          .so-toolbar select,.so-toolbar input[type=text]{border:1px solid #cbd5e1;border-radius:6px;padding:6px 10px;font-size:13px;color:#1e293b;background:#f8fafc;outline:none;transition:border-color .15s;}
-          .so-toolbar select:focus,.so-toolbar input[type=text]:focus{border-color:#e11d48;}
-          .so-sesi-select{min-width:160px;}
-          .so-status-group{display:flex;gap:6px;flex-wrap:wrap;}
-          .so-chip{border:1.5px solid #e2e8f0;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;background:#f8fafc;color:#64748b;transition:all .15s;white-space:nowrap;user-select:none;}
-          .so-chip:hover{border-color:#94a3b8;color:#334155;}
-          .so-chip.aktif-Balance{background:#f0fdf4;border-color:#22c55e;color:#15803d;}
-          .so-chip.aktif-Plus{background:#eff6ff;border-color:#3b82f6;color:#1d4ed8;}
-          .so-chip.aktif-Minus{background:#fff1f2;border-color:#e11d48;color:#be123c;}
-          .so-chip.aktif-Belum{background:#fefce8;border-color:#ca8a04;color:#92400e;}
-          .so-chip.aktif-Semua{background:#f1f5f9;border-color:#64748b;color:#1e293b;}
-          .so-stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
-          .so-stat-card{flex:1 1 100px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;text-align:center;}
-          .so-stat-card .num{font-size:20px;font-weight:700;color:#1e293b;}
-          .so-stat-card .lbl{font-size:11px;color:#64748b;margin-top:2px;}
-          .so-stat-card.c-balance .num{color:#16a34a;}
-          .so-stat-card.c-plus .num{color:#2563eb;}
-          .so-stat-card.c-minus .num{color:#e11d48;}
-          .so-stat-card.c-belum .num{color:#ca8a04;}
-          .so-table-wrap{background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:auto;}
-          .so-table{width:100%;border-collapse:collapse;font-size:12.5px;}
-          .so-table thead th{background:#1e293b;color:#f8fafc;padding:9px 10px;text-align:left;font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:2;}
-          .so-table tbody tr{border-bottom:1px solid #f1f5f9;transition:background .1s;}
-          .so-table tbody tr:hover{background:#f8fafc;}
-          .so-table td{padding:8px 10px;vertical-align:middle;color:#334155;}
-          .so-badge{display:inline-block;border-radius:12px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;}
-          .so-badge-Balance{background:#dcfce7;color:#15803d;}
-          .so-badge-Plus{background:#dbeafe;color:#1d4ed8;}
-          .so-badge-Minus{background:#ffe4e6;color:#be123c;}
-          .so-badge-Belum{background:#fef9c3;color:#92400e;}
-          .so-badge-Balance{background:#dcfce7;color:#15803d;}
-          .so-badge-Plus{background:#dbeafe;color:#1d4ed8;}
-          .so-badge-Minus{background:#ffe4e6;color:#be123c;}
-          .so-badge-Cocok{background:#dcfce7;color:#15803d;}
-          .so-badge-Kurang{background:#ffe4e6;color:#be123c;}
-          .so-badge-Lebih{background:#dbeafe;color:#1d4ed8;}
-          .so-sel-minus{color:#dc2626;font-weight:700;}
-          .so-sel-plus{color:#2563eb;font-weight:700;}
-          .so-thumb{width:44px;height:44px;object-fit:cover;border-radius:6px;cursor:pointer;background:#f1f5f9;display:block;}
-          .so-thumb-empty{width:44px;height:44px;border-radius:6px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:18px;}
-          .so-pager{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:10px 14px;border-top:1px solid #f1f5f9;font-size:13px;color:#475569;}
-          .so-pager button{border:1px solid #e2e8f0;border-radius:6px;padding:4px 12px;background:#f8fafc;cursor:pointer;font-size:12px;color:#334155;}
-          .so-pager button:disabled{opacity:.4;cursor:default;}
-          .so-pager button:not(:disabled):hover{background:#e2e8f0;}
+          /* ---- TOOLBAR ---- */
+          .pi-toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+          .pi-toolbar select, .pi-toolbar input[type=text] { border:1px solid #e2e8f0; border-radius:7px; padding:7px 10px; font-size:13px; color:#1e293b; background:#f8fafc; outline:none; transition:border-color .15s; }
+          .pi-toolbar select:focus, .pi-toolbar input[type=text]:focus { border-color:#fbbf24; }
+
+          /* Status chips */
+          .pi-chip { border:1.5px solid #e2e8f0; border-radius:20px; padding:4px 12px; font-size:12px; font-weight:600; cursor:pointer; background:#f8fafc; color:#64748b; transition:all .15s; white-space:nowrap; user-select:none; }
+          .pi-chip:hover { border-color:#94a3b8; color:#334155; }
+          .pi-chip.aktif-Semua   { background:#f1f5f9; border-color:#64748b; color:#1e293b; }
+          .pi-chip.aktif-Balance { background:#f0fdf4; border-color:#22c55e; color:#15803d; }
+          .pi-chip.aktif-Plus    { background:#eff6ff; border-color:#3b82f6; color:#1d4ed8; }
+          .pi-chip.aktif-Minus   { background:#fff1f2; border-color:#e11d48; color:#be123c; }
+          .pi-chip.aktif-Belum   { background:#fefce8; border-color:#ca8a04; color:#92400e; }
+
+          /* Toggle view btn */
+          .pi-view-btn { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border:1.5px solid #e2e8f0; border-radius:7px; background:#f8fafc; cursor:pointer; color:#64748b; transition:.15s; flex-shrink:0; }
+          .pi-view-btn:hover, .pi-view-btn.aktif { background:#fef3c7; border-color:#fbbf24; color:#92400e; }
+          .pi-view-btn .material-symbols-outlined { font-size:18px; }
+
+          /* Info bar */
+          .pi-info-bar { font-size:12px; color:#64748b; margin-bottom:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:space-between; }
+
+          /* Stats */
+          .pi-stats { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+          .pi-stat { flex:1 1 80px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; text-align:center; }
+          .pi-stat .num { font-size:18px; font-weight:700; }
+          .pi-stat .lbl { font-size:10px; color:#64748b; margin-top:1px; }
+          .pi-stat.c-balance .num { color:#16a34a; }
+          .pi-stat.c-plus .num   { color:#2563eb; }
+          .pi-stat.c-minus .num  { color:#e11d48; }
+          .pi-stat.c-belum .num  { color:#ca8a04; }
+
+          /* ---- GRID VIEW ---- */
+          .pi-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px; padding:2px; }
+          .pi-card {
+            background:#fff; border:1px solid #e2e8f0; border-radius:12px;
+            overflow:hidden; cursor:pointer; transition:all .18s;
+            box-shadow:0 1px 3px rgba(0,0,0,.05);
+            position:relative;
+          }
+          .pi-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.1); transform:translateY(-2px); border-color:#fbbf24; }
+          .pi-card-img { width:100%; aspect-ratio:1; object-fit:cover; background:#f8fafc; display:block; }
+          .pi-card-img-placeholder { width:100%; aspect-ratio:1; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#cbd5e1; }
+          .pi-card-body { padding:10px 12px; }
+          .pi-card-name { font-size:12px; font-weight:700; color:#1e293b; line-height:1.3; margin-bottom:4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+          .pi-card-sku  { font-size:10px; color:#94a3b8; font-family:monospace; margin-bottom:6px; }
+          .pi-card-meta { display:flex; align-items:center; justify-content:space-between; gap:4px; }
+          .pi-card-qty  { font-size:18px; font-weight:800; color:#1e293b; }
+          .pi-card-rak  { font-size:10px; color:#64748b; font-weight:600; }
+
+          /* Status badge di card */
+          .pi-status-badge { position:absolute; top:8px; right:8px; border-radius:20px; padding:2px 8px; font-size:10px; font-weight:700; }
+          .pi-badge-Balance { background:#dcfce7; color:#15803d; }
+          .pi-badge-Plus    { background:#dbeafe; color:#1d4ed8; }
+          .pi-badge-Minus   { background:#fee2e2; color:#be123c; }
+          .pi-badge-Belum   { background:#fef9c3; color:#92400e; }
+
+          /* ---- LIST VIEW ---- */
+          .pi-list { display:flex; flex-direction:column; gap:6px; }
+          .pi-list-item {
+            background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+            display:flex; align-items:center; gap:12px; padding:10px 14px;
+            cursor:pointer; transition:all .15s;
+            box-shadow:0 1px 2px rgba(0,0,0,.04);
+          }
+          .pi-list-item:hover { border-color:#fbbf24; background:#fffbeb; }
+          .pi-list-thumb { width:52px; height:52px; border-radius:8px; object-fit:cover; background:#f1f5f9; flex-shrink:0; }
+          .pi-list-thumb-ph { width:52px; height:52px; border-radius:8px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#cbd5e1; }
+          .pi-list-info { flex:1; min-width:0; }
+          .pi-list-name { font-size:13px; font-weight:700; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .pi-list-sub  { font-size:11px; color:#94a3b8; font-family:monospace; margin-top:1px; }
+          .pi-list-rak  { font-size:11px; color:#64748b; margin-top:2px; }
+          .pi-list-qty  { font-size:20px; font-weight:800; color:#1e293b; flex-shrink:0; text-align:right; min-width:40px; }
+
+          /* ---- MODAL DETAIL CARD ---- */
+          #pi-detail-overlay {
+            display:none; position:fixed; inset:0;
+            background:rgba(15,23,42,.6); z-index:9500;
+            align-items:center; justify-content:center;
+            backdrop-filter:blur(3px);
+          }
+          #pi-detail-overlay.open { display:flex; animation:doFadeIn .18s ease; }
+          .pi-detail-modal {
+            background:#fff; border-radius:16px;
+            width:780px; max-width:96vw; max-height:90vh;
+            display:flex; flex-direction:column;
+            box-shadow:0 24px 60px rgba(0,0,0,.2); overflow:hidden;
+          }
+          .pi-detail-header {
+            background:#1e293b; color:#f8fafc;
+            padding:14px 18px; display:flex; gap:14px; align-items:center; flex-shrink:0;
+          }
+          .pi-detail-header-img {
+            width:52px; height:52px; border-radius:8px; object-fit:cover;
+            background:#334155; flex-shrink:0;
+          }
+          .pi-detail-header-info { flex:1; min-width:0; }
+          .pi-detail-header-name { font-size:14px; font-weight:700; line-height:1.3; }
+          .pi-detail-header-sku  { font-size:11px; color:#94a3b8; font-family:monospace; margin-top:2px; }
+          .pi-detail-header-meta { display:flex; gap:8px; margin-top:5px; flex-wrap:wrap; }
+          .pi-detail-close { background:none; border:none; color:#94a3b8; font-size:22px; cursor:pointer; padding:0; line-height:1; flex-shrink:0; }
+          .pi-detail-close:hover { color:#fff; }
+          .pi-detail-body { flex:1; overflow-y:auto; padding:0; }
+          .pi-detail-body::-webkit-scrollbar { width:4px; }
+          .pi-detail-body::-webkit-scrollbar-thumb { background:#e2e8f0; border-radius:4px; }
+
+          /* Riwayat table */
+          .pi-riwayat-tbl { width:100%; border-collapse:collapse; font-size:12.5px; }
+          .pi-riwayat-tbl thead th {
+            background:#f8fafc; color:#64748b; padding:9px 14px;
+            text-align:left; font-size:10px; font-weight:700;
+            text-transform:uppercase; letter-spacing:.4px;
+            border-bottom:1px solid #f1f5f9; position:sticky; top:0; z-index:2;
+          }
+          .pi-riwayat-tbl tbody tr { border-bottom:1px solid #f8fafc; transition:background .1s; }
+          .pi-riwayat-tbl tbody tr:hover { background:#fffbeb; }
+          .pi-riwayat-tbl td { padding:9px 14px; vertical-align:middle; color:#334155; }
+          .pi-detail-empty { padding:40px 20px; text-align:center; color:#94a3b8; }
+          .pi-detail-empty .material-symbols-outlined { font-size:40px; display:block; margin-bottom:8px; }
+
+          /* Lightbox tetap ada */
           #so-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:9999;align-items:center;justify-content:center;}
           #so-lightbox.open{display:flex;}
           #so-lightbox img{max-width:90vw;max-height:90vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.5);}
           #so-lightbox-close{position:absolute;top:18px;right:24px;color:#fff;font-size:30px;cursor:pointer;background:none;border:none;line-height:1;}
-          .so-state-box{padding:60px 20px;text-align:center;color:#94a3b8;}
-          .so-state-box .material-symbols-outlined{font-size:48px;margin-bottom:10px;display:block;}
-          .so-state-box p{font-size:13px;margin:0;}
-          .so-info-bar{font-size:12px;color:#64748b;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+
+          /* Modal rusak tetap ada */
+          #so-rusak-modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9998;align-items:center;justify-content:center;}
         </style>
 
-        <!-- STICKY HEADER: toolbar + stats -->
-        <div class="so-sticky-header">
-        <!-- TOOLBAR -->
-        <div class="so-toolbar">
-          <select class="so-sesi-select" id="so-sesi-select" onchange="soGantiSesi()">
-            <option value="">— Pilih Bulan SO —</option>
-          </select>
-          <input type="text" id="so-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:200px;" oninput="soFilter()">
-          <!-- Personil autocomplete -->
-          <div style="position:relative;" id="so-personil-wrap">
-            <input type="text" id="so-personil-input"
-              placeholder="Cari personil..."
-              style="min-width:150px;"
-              oninput="soPersonilInput()"
-              onkeydown="soPersonilKeydown(event)"
-              autocomplete="off">
-            <div id="so-personil-dropdown"
-              style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:200px;max-width:300px;
-                     background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.1);
-                     z-index:999;max-height:240px;overflow-y:auto;"></div>
+        <!-- STICKY HEADER -->
+        <div class="pi-sticky">
+          <div class="pi-toolbar">
+            <select id="so-sesi-select" onchange="soGantiSesi()" style="min-width:155px;">
+              <option value="">— Pilih Bulan SO —</option>
+            </select>
+            <input type="text" id="so-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:180px;" oninput="soFilter()">
+            <div style="position:relative;" id="so-personil-wrap">
+              <input type="text" id="so-personil-input" placeholder="Cari personil..." style="min-width:130px;"
+                oninput="soPersonilInput()" onkeydown="soPersonilKeydown(event)" autocomplete="off">
+              <div id="so-personil-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:200px;max-width:300px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:999;max-height:220px;overflow-y:auto;"></div>
+            </div>
+            <input type="text" id="so-rak-filter" placeholder="Filter Rak..." style="min-width:100px;" oninput="soFilter()">
+            <select id="pi-sort-select" onchange="soFilter()" style="min-width:160px;">
+              <option value="qty-desc">Qty ↓ Terbesar</option>
+              <option value="qty-asc">Qty ↑ Terkecil</option>
+              <option value="status">Status (Minus dulu)</option>
+              <option value="nama">Nama A–Z</option>
+              <option value="selisih-desc">Selisih terbesar</option>
+            </select>
+            <!-- Status chips -->
+            <div style="display:flex;gap:5px;flex-wrap:wrap;">
+              <div class="pi-chip aktif-Semua" onclick="piSetStatus('Semua',this)" id="pi-chip-Semua">Semua</div>
+              <div class="pi-chip" onclick="piSetStatus('Balance',this)" id="pi-chip-Balance">Balance</div>
+              <div class="pi-chip" onclick="piSetStatus('Plus',this)"    id="pi-chip-Plus">Plus</div>
+              <div class="pi-chip" onclick="piSetStatus('Minus',this)"   id="pi-chip-Minus">Minus</div>
+              <div class="pi-chip" onclick="piSetStatus('Belum',this)"   id="pi-chip-Belum">Belum</div>
+            </div>
+            <!-- Toggle view + Export -->
+            <div style="display:flex;gap:6px;margin-left:auto;">
+              <button class="pi-view-btn aktif" id="pi-btn-grid" onclick="piSetView('grid')" title="Grid view">
+                <span class="material-symbols-outlined">grid_view</span>
+              </button>
+              <button class="pi-view-btn" id="pi-btn-list" onclick="piSetView('list')" title="List view">
+                <span class="material-symbols-outlined">view_list</span>
+              </button>
+            </div>
           </div>
-          <input type="text" id="so-rak-filter" placeholder="Filter Rak..." style="min-width:110px;" oninput="soFilter()">
-          <div class="so-status-group">
-            <div class="so-chip aktif-Semua" onclick="soSetStatus('Semua',this)" id="so-chip-Semua">Semua</div>
-            <div class="so-chip" onclick="soSetStatus('Balance',this)" id="so-chip-Balance">Balance</div>
-            <div class="so-chip" onclick="soSetStatus('Plus',this)"    id="so-chip-Plus">Plus</div>
-            <div class="so-chip" onclick="soSetStatus('Minus',this)"   id="so-chip-Minus">Minus</div>
-            <div class="so-chip" onclick="soSetStatus('Belum',this)"   id="so-chip-Belum">Belum</div>
+
+          <!-- Info bar -->
+          <div class="pi-info-bar" id="so-info-bar" style="display:none;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span><b id="so-info-total">0</b> produk total</span>
+              <span>·</span>
+              <span>Menampilkan <b id="so-info-tampil">0</b></span>
+              <span>·</span>
+              <span style="color:#e11d48;font-weight:600;" id="so-info-sesi"></span>
+            </div>
+            <button onclick="soExportCSV()"
+              style="display:flex;align-items:center;gap:5px;padding:4px 12px;background:#f0fdf4;color:#15803d;border:1.5px solid #86efac;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;"
+              onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
+              <span class="material-symbols-outlined" style="font-size:13px;">download</span> Export CSV
+            </button>
+          </div>
+
+          <!-- Stats -->
+          <div class="pi-stats" id="so-stats" style="display:none;">
+            <div class="pi-stat c-balance"><div class="num" id="so-n-balance">0</div><div class="lbl">Balance</div></div>
+            <div class="pi-stat c-plus">  <div class="num" id="so-n-plus">0</div>  <div class="lbl">Plus</div></div>
+            <div class="pi-stat c-minus"> <div class="num" id="so-n-minus">0</div> <div class="lbl">Minus</div></div>
+            <div class="pi-stat c-belum"> <div class="num" id="so-n-belum">0</div> <div class="lbl">Belum</div></div>
           </div>
         </div>
 
-        <!-- INFO BAR -->
-        <div class="so-info-bar" id="so-info-bar" style="display:none;justify-content:space-between;">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <span><b id="so-info-total">0</b> produk total</span>
-            <span>·</span>
-            <span>Menampilkan <b id="so-info-tampil">0</b></span>
-            <span>·</span>
-            <span style="color:#e11d48;font-weight:600;" id="so-info-sesi"></span>
-          </div>
-          <button onclick="soExportCSV()"
-            style="display:flex;align-items:center;gap:5px;padding:4px 12px;background:#f0fdf4;color:#15803d;border:1.5px solid #86efac;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap;"
-            onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
-            <span class="material-symbols-outlined" style="font-size:13px;">download</span> Export CSV
-          </button>
-        </div>
-
-        <!-- STATS -->
-        <div class="so-stats" id="so-stats" style="display:none;">
-          <div class="so-stat-card c-balance"><div class="num" id="so-n-balance">0</div><div class="lbl">Balance</div></div>
-          <div class="so-stat-card c-plus">   <div class="num" id="so-n-plus">0</div>   <div class="lbl">Plus (lebih)</div></div>
-          <div class="so-stat-card c-minus">  <div class="num" id="so-n-minus">0</div>  <div class="lbl">Minus (kurang)</div></div>
-          <div class="so-stat-card c-belum">  <div class="num" id="so-n-belum">0</div>  <div class="lbl">Belum dihitung</div></div>
-        </div>
-
-        </div><!-- /so-sticky-header -->
-
-        <!-- SCROLL BODY: tabel -->
-        <div class="so-scroll-body">
-        <!-- TABEL -->
-        <div class="so-table-wrap" id="so-table-wrap">
-          <div class="so-state-box" id="so-state-box">
+        <!-- SCROLL AREA -->
+        <div class="pi-scroll" id="pi-scroll-area">
+          <div id="so-state-box" class="pi-detail-empty">
             <span class="material-symbols-outlined">inventory_2</span>
             <p>Pilih bulan SO untuk memuat data.</p>
           </div>
-          <table class="so-table" id="so-table" style="display:none;">
-            <thead>
-              <tr>
-                <th style="width:52px;">Foto</th>
-                <th>SKU</th>
-                <th>Nama Produk</th>
-                <th>Rak</th>
-                <th>Tim</th>
-                <th style="text-align:right;">Sistem</th>
-                <th style="text-align:right;">Real</th>
-                <th style="text-align:right;">Selisih</th>
-                <th>Status</th>
-                <th>Personil</th>
-                <th>Balancing</th>
-                <th style="width:80px;text-align:center;">Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="so-tbody"></tbody>
-          </table>
-          <div class="so-pager" id="so-pager" style="display:none;">
-            <button onclick="soHalamanNav(-1)" id="so-btn-prev">‹ Prev</button>
-            <span id="so-pager-info">1 / 1</span>
-            <button onclick="soHalamanNav(1)"  id="so-btn-next">Next ›</button>
+          <!-- Grid / List container -->
+          <div id="pi-view-container" style="display:none;"></div>
+
+          <!-- Pager -->
+          <div id="so-pager" style="display:none;padding:10px 0;">
+            <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end;">
+              <span style="font-size:12px;color:#94a3b8;" id="so-pager-count"></span>
+              <button onclick="soHalamanNav(-1)" id="so-btn-prev" style="border:1px solid #e2e8f0;border-radius:6px;padding:5px 14px;background:#f8fafc;cursor:pointer;font-size:12px;">‹ Prev</button>
+              <span id="so-pager-info" style="font-size:13px;color:#475569;">1 / 1</span>
+              <button onclick="soHalamanNav(1)"  id="so-btn-next" style="border:1px solid #e2e8f0;border-radius:6px;padding:5px 14px;background:#f8fafc;cursor:pointer;font-size:12px;">Next ›</button>
+            </div>
           </div>
         </div>
-
-        </div><!-- /so-scroll-body -->
 
         <!-- LIGHTBOX -->
         <div id="so-lightbox" onclick="soCloseLightbox()">
@@ -1035,12 +1101,32 @@
           <img id="so-lightbox-img" src="" alt="Foto produk">
         </div>
 
-        <!-- MODAL URAIAN RUSAK (Pusat Inventory) -->
-        <div id="so-rusak-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9998;align-items:center;justify-content:center;" onclick="soTutupRusakModal(event)">
+        <!-- MODAL DETAIL CARD -->
+        <div id="pi-detail-overlay" onclick="piTutupDetail(event)">
+          <div class="pi-detail-modal" onclick="event.stopPropagation()">
+            <div class="pi-detail-header">
+              <img id="pi-detail-img" class="pi-detail-header-img" src="" alt="" onerror="this.style.display='none'">
+              <div class="pi-detail-header-info">
+                <div class="pi-detail-header-name" id="pi-detail-nama"></div>
+                <div class="pi-detail-header-sku"  id="pi-detail-sku"></div>
+                <div class="pi-detail-header-meta" id="pi-detail-meta"></div>
+              </div>
+              <button class="pi-detail-close" onclick="piTutupDetail()">✕</button>
+            </div>
+            <div class="pi-detail-body">
+              <div id="pi-detail-content">
+                <div class="pi-detail-empty"><span class="material-symbols-outlined">sync</span><p>Memuat...</p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODAL URAIAN RUSAK -->
+        <div id="so-rusak-modal" onclick="soTutupRusakModal(event)" style="align-items:center;justify-content:center;">
           <div style="background:#fff;border-radius:14px;width:420px;max-width:94vw;box-shadow:0 20px 60px rgba(0,0,0,.18);overflow:hidden;" onclick="event.stopPropagation()">
             <div style="background:#1e293b;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;">
               <span id="so-rusak-modal-judul" style="font-size:13px;font-weight:700;">Uraian Kerusakan</span>
-              <button onclick="soTutupRusakModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;">✕</button>
+              <button onclick="document.getElementById('so-rusak-modal').style.display='none'" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;">✕</button>
             </div>
             <div id="so-rusak-modal-body" style="padding:18px;min-height:80px;">
               <div style="text-align:center;color:#94a3b8;padding:20px 0;">Memuat...</div>
@@ -1050,7 +1136,7 @@
 
       </section>
 
-      <section id="page-barang-bermasalah" class="page-content">
+<section id="page-barang-bermasalah" class="page-content">
         <style>
           /* ---- WRAPPER LAYOUT ---- */
           #page-barang-bermasalah.active { display:flex !important; flex-direction:column; height:calc(100vh - 54px); overflow:hidden; }
@@ -3049,11 +3135,11 @@
       });
     });
 
-    // =============================================
-    // MODUL PUSAT INVENTORY — STOCK OPNAME VIEWER
+        // =============================================
+    // MODUL PUSAT INVENTORY — CARD VIEW
     // =============================================
     const SO_ASSET_BASE = 'https://pdcgudang.et.r.appspot.com/v1/assets/get';
-    const SO_PER_HALAMAN = 50;
+    const SO_PER_HALAMAN = 60;
 
     let soSemuaData   = [];
     let soDataFilter  = [];
@@ -3061,98 +3147,77 @@
     let soStatusAkt   = 'Semua';
     let soSesiAktif   = '';
     let soSudahInit   = false;
-    let soPersonilList = [];   // daftar nama unik dari data
-    let soPersonilAktif = '';  // kata kunci filter aktif (dari klik dropdown)
-    let soPersonilIdx   = -1;  // keyboard nav index
+    let soPersonilList  = [];
+    let soPersonilAktif = '';
+    let soPersonilIdx   = -1;
+    let piViewMode    = 'grid'; // 'grid' | 'list'
+
+    function piSetView(mode) {
+      piViewMode = mode;
+      document.getElementById('pi-btn-grid').classList.toggle('aktif', mode === 'grid');
+      document.getElementById('pi-btn-list').classList.toggle('aktif', mode === 'list');
+      soRenderTabel();
+    }
+
+    function piSetStatus(status, el) {
+      soStatusAkt  = status;
+      soHalamanAkt = 1;
+      document.querySelectorAll('.pi-chip').forEach(c => c.className = 'pi-chip');
+      el.classList.add('aktif-' + status);
+      soFilter();
+    }
+
+    function soNormStatus(s) {
+      const v = String(s||'').trim();
+      const map = { 'Cocok':'Balance', 'Kurang':'Minus', 'Lebih':'Plus' };
+      return map[v] || v;
+    }
 
     // ---- AUTOCOMPLETE PERSONIL ----
     function soPersonilInput() {
-      const q   = (document.getElementById('so-personil-input').value || '').toLowerCase().trim();
-      const dd  = document.getElementById('so-personil-dropdown');
+      const q  = (document.getElementById('so-personil-input').value || '').toLowerCase().trim();
+      const dd = document.getElementById('so-personil-dropdown');
       soPersonilIdx = -1;
-
-      // Kalau input dikosongkan, reset filter
       if (!q) {
         soPersonilAktif = '';
         document.getElementById('so-personil-input').style.borderColor = '';
         dd.style.display = 'none';
-        soFilter();
-        return;
+        soFilter(); return;
       }
-
-      // Cari nama yang mengandung kata kunci (tiap kata dalam nama dicek)
-      const hits = soPersonilList.filter(nama =>
-        nama.toLowerCase().includes(q)
-      );
-
+      const hits = soPersonilList.filter(n => n.toLowerCase().includes(q));
       if (!hits.length) { dd.style.display = 'none'; return; }
-
       dd.innerHTML = hits.map((nama, i) => {
-        // Bold bagian yang cocok
-        // Highlight tanpa RegExp dinamis — aman dari special char
         const idxH = nama.toLowerCase().indexOf(q);
-        const hl = idxH >= 0
-          ? nama.slice(0, idxH) + '<b style="color:#e11d48;">' + nama.slice(idxH, idxH + q.length) + '</b>' + nama.slice(idxH + q.length)
-          : nama;
+        const hl   = idxH >= 0 ? nama.slice(0,idxH)+'<b style="color:#e11d48;">'+nama.slice(idxH,idxH+q.length)+'</b>'+nama.slice(idxH+q.length) : nama;
         return `<div class="so-personil-item" data-nama="${nama}" data-idx="${i}"
-          style="padding:8px 13px;cursor:pointer;font-size:13px;color:#334155;
-                 border-bottom:1px solid #f8fafc;transition:background .1s;"
-          onmouseenter="this.style.background='#f8fafc'"
-          onmouseleave="this.style.background=''"
+          style="padding:8px 13px;cursor:pointer;font-size:13px;color:#334155;border-bottom:1px solid #f8fafc;transition:background .1s;"
+          onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background=''"
           onclick="soPersonilPilih('${nama.replace(/'/g,"\'")}')">
-          ${hl}
-        </div>`;
+          ${hl}</div>`;
       }).join('');
       dd.style.display = '';
-
-      // Tutup saat klik di luar
-      setTimeout(() => {
-        document.addEventListener('click', soPersonilTutupDd, { once: true });
-      }, 0);
+      setTimeout(() => document.addEventListener('click', soPersonilTutupDd, { once: true }), 0);
     }
-
     function soPersonilKeydown(e) {
-      const dd    = document.getElementById('so-personil-dropdown');
+      const dd = document.getElementById('so-personil-dropdown');
       const items = dd.querySelectorAll('.so-personil-item');
       if (!items.length) return;
-
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        soPersonilIdx = Math.min(soPersonilIdx + 1, items.length - 1);
-        soPersonilHighlight(items);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        soPersonilIdx = Math.max(soPersonilIdx - 1, 0);
-        soPersonilHighlight(items);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (soPersonilIdx >= 0 && items[soPersonilIdx]) {
-          soPersonilPilih(items[soPersonilIdx].dataset.nama);
-        }
-      } else if (e.key === 'Escape') {
-        soPersonilTutupDd();
-      }
+      if (e.key === 'ArrowDown') { e.preventDefault(); soPersonilIdx = Math.min(soPersonilIdx+1, items.length-1); soPersonilHighlight(items); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); soPersonilIdx = Math.max(soPersonilIdx-1, 0); soPersonilHighlight(items); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (soPersonilIdx >= 0 && items[soPersonilIdx]) soPersonilPilih(items[soPersonilIdx].dataset.nama); }
+      else if (e.key === 'Escape') soPersonilTutupDd();
     }
-
     function soPersonilHighlight(items) {
-      items.forEach((el, i) => {
-        el.style.background = i === soPersonilIdx ? '#fff1f2' : '';
-        el.style.color      = i === soPersonilIdx ? '#e11d48' : '#334155';
-      });
-      if (items[soPersonilIdx]) {
-        items[soPersonilIdx].scrollIntoView({ block:'nearest' });
-      }
+      items.forEach((el, i) => { el.style.background = i===soPersonilIdx?'#fff1f2':''; el.style.color = i===soPersonilIdx?'#e11d48':'#334155'; });
+      if (items[soPersonilIdx]) items[soPersonilIdx].scrollIntoView({ block:'nearest' });
     }
-
     function soPersonilPilih(nama) {
       soPersonilAktif = nama;
       const input = document.getElementById('so-personil-input');
-      input.value = nama;
-      input.style.borderColor = '#e11d48';
+      input.value = nama; input.style.borderColor = '#fbbf24';
       document.getElementById('so-personil-dropdown').style.display = 'none';
       soFilter();
     }
-
     function soPersonilTutupDd(e) {
       const wrap = document.getElementById('so-personil-wrap');
       if (e && wrap && wrap.contains(e.target)) return;
@@ -3172,25 +3237,21 @@
       try {
         const url = new URL(GAS_URL);
         url.searchParams.set('action', 'soListSesi');
-        const res  = await fetch(url.toString());
-        const data = await res.json();
+        const data = await (await fetch(url.toString())).json();
         if (!data.success || !data.data || !data.data.length) {
-          sel.innerHTML = '<option value="">Tidak ada data SO</option>';
-          return;
+          sel.innerHTML = '<option value="">Tidak ada data SO</option>'; return;
         }
-        const bulanMap = {1:'Januari',2:'Februari',3:'Maret',4:'April',5:'Mei',6:'Juni',7:'Juli',8:'Agustus',9:'September',10:'Oktober',11:'November',12:'Desember'};
+        const bMap = {1:'Januari',2:'Februari',3:'Maret',4:'April',5:'Mei',6:'Juni',7:'Juli',8:'Agustus',9:'September',10:'Oktober',11:'November',12:'Desember'};
         sel.innerHTML = '<option value="">— Pilih Bulan SO —</option>';
         data.data.forEach(s => {
-          const opt = document.createElement('option');
-          opt.value = s.nama;
-          opt.textContent = `${bulanMap[s.bulan] || s.bulan} ${s.tahun}`;
-          sel.appendChild(opt);
+          const o = document.createElement('option');
+          o.value = s.nama; o.textContent = `${bMap[s.bulan]||s.bulan} ${s.tahun}`;
+          sel.appendChild(o);
         });
         sel.disabled = false;
         if (data.data.length) { sel.value = data.data[0].nama; soGantiSesi(); }
-      } catch (err) {
+      } catch(err) {
         sel.innerHTML = '<option value="">Gagal memuat daftar sesi</option>';
-        console.error('SO list sesi error:', err);
       }
     }
 
@@ -3203,8 +3264,8 @@
       soHalamanAkt    = 1;
       soStatusAkt     = 'Semua';
       soPersonilAktif = '';
-      document.querySelectorAll('.so-chip').forEach(c => c.className = 'so-chip');
-      document.getElementById('so-chip-Semua').classList.add('aktif-Semua');
+      document.querySelectorAll('.pi-chip').forEach(c => c.className = 'pi-chip');
+      document.getElementById('pi-chip-Semua').classList.add('aktif-Semua');
       document.getElementById('so-cari').value = '';
       document.getElementById('so-rak-filter').value = '';
       document.getElementById('so-personil-input').value = '';
@@ -3213,16 +3274,16 @@
       document.getElementById('so-stats').style.display   = 'none';
       document.getElementById('so-info-bar').style.display = 'none';
       document.getElementById('so-pager').style.display   = 'none';
+      document.getElementById('pi-view-container').style.display = 'none';
       soTampilLoading('Memuat data SO...');
       try {
         const url = new URL(GAS_URL);
         url.searchParams.set('action', 'soLoadData');
         url.searchParams.set('sesi', sesi);
-        const res  = await fetch(url.toString());
-        const data = await res.json();
+        const data = await (await fetch(url.toString())).json();
         if (!data.success) { soTampilPesan('error', data.message || 'Gagal memuat data.'); return; }
         soSemuaData = data.rows || [];
-        // Build daftar personil deduplicate case-insensitive
+        // Build personil list
         soPersonilList = [];
         const seen = {};
         (data.rows || []).forEach(r => {
@@ -3232,110 +3293,81 @@
           if (!seen[key]) { seen[key] = true; soPersonilList.push(raw); }
         });
         soPersonilList.sort((a,b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-        soPersonilAktif = '';
-        document.getElementById('so-personil-input').value = '';
-        document.getElementById('so-personil-input').style.borderColor = '';
         soHitungStats();
         soFilter();
-      } catch (err) {
+      } catch(err) {
         soTampilPesan('error', 'Gagal terhubung ke Apps Script.');
-        console.error('SO load error:', err);
       }
-    }
-
-    function soSetStatus(status, el) {
-      soStatusAkt  = status;
-      soHalamanAkt = 1;
-      document.querySelectorAll('.so-chip').forEach(c => c.className = 'so-chip');
-      el.classList.add('aktif-' + status);
-      soFilter();
-    }
-
-    function soNormStatus(s) {
-      const v = String(s||'').trim();
-      const map = { 'Cocok':'Balance', 'Kurang':'Minus', 'Lebih':'Plus' };
-      return map[v] || v;
     }
 
     function soFilter() {
       const cari       = (document.getElementById('so-cari').value || '').toLowerCase();
       const rak        = (document.getElementById('so-rak-filter').value || '').toLowerCase();
       const personilKw = (soPersonilAktif || '').toLowerCase();
+      const sort       = document.getElementById('pi-sort-select').value;
+
       soDataFilter = soSemuaData.filter(r => {
         const normSt = soNormStatus(r.status);
         if (soStatusAkt !== 'Semua' && normSt !== soStatusAkt) return false;
         if (rak       && !String(r.rak).toLowerCase().includes(rak)) return false;
-        if (personilKw && !String(r.personil || '').toLowerCase().includes(personilKw)) return false;
-        if (cari      && !(r.sku + ' ' + r.namaProduk).toLowerCase().includes(cari)) return false;
+        if (personilKw && !String(r.personil||'').toLowerCase().includes(personilKw)) return false;
+        if (cari      && !(r.sku+' '+r.namaProduk).toLowerCase().includes(cari)) return false;
         return true;
       });
+
+      // Sort
+      const statusOrder = { 'Minus':0, 'Plus':1, 'Balance':2, 'Belum':3 };
+      soDataFilter.sort((a, b) => {
+        if (sort === 'qty-desc')     return (b.qtySistem||0) - (a.qtySistem||0);
+        if (sort === 'qty-asc')      return (a.qtySistem||0) - (b.qtySistem||0);
+        if (sort === 'nama')         return a.namaProduk.localeCompare(b.namaProduk);
+        if (sort === 'selisih-desc') return Math.abs(b.selisih||0) - Math.abs(a.selisih||0);
+        if (sort === 'status') {
+          const sa = statusOrder[soNormStatus(a.status)] ?? 4;
+          const sb = statusOrder[soNormStatus(b.status)] ?? 4;
+          return sa - sb;
+        }
+        return 0;
+      });
+
       soHalamanAkt = 1;
       soRenderTabel();
       soUpdateInfoBar();
     }
 
     function soRenderTabel() {
-      const tbody = document.getElementById('so-tbody');
-      const table = document.getElementById('so-table');
-      const pager = document.getElementById('so-pager');
+      const container = document.getElementById('pi-view-container');
+      const stateBox  = document.getElementById('so-state-box');
+      const pager     = document.getElementById('so-pager');
+
       if (!soDataFilter.length) {
-        table.style.display = 'none';
+        container.style.display = 'none';
         pager.style.display = 'none';
         soTampilPesan('empty', 'Tidak ada data yang sesuai filter.');
         return;
       }
-      document.getElementById('so-state-box').style.display = 'none';
-      table.style.display = '';
+
+      stateBox.style.display = 'none';
+      container.style.display = '';
+
       const total   = soDataFilter.length;
       const maxHal  = Math.ceil(total / SO_PER_HALAMAN);
       soHalamanAkt  = Math.min(soHalamanAkt, maxHal);
       const mulai   = (soHalamanAkt - 1) * SO_PER_HALAMAN;
       const slice   = soDataFilter.slice(mulai, mulai + SO_PER_HALAMAN);
 
-      tbody.innerHTML = slice.map(r => {
-        const fotoHtml = r.kodeGambar
-          ? `<img class="so-thumb" loading="lazy"
-               src="${SO_ASSET_BASE}?id=${encodeURIComponent(r.kodeGambar)}&thumbnail=true"
-               onerror="this.outerHTML='<div class=\\'so-thumb-empty\\'><span class=\\'material-symbols-outlined\\' style=\\'font-size:18px;\\'>broken_image</span></div>'"
-               onclick="soOpenLightbox('${encodeURIComponent(r.kodeGambar)}')"
-               title="Klik untuk perbesar">`
-          : `<div class="so-thumb-empty"><span class="material-symbols-outlined" style="font-size:18px;">image_not_supported</span></div>`;
-
-        const badge = `<span class="so-badge so-badge-${soNormStatus(r.status)||'Belum'}">${soNormStatus(r.status)||'Belum'}</span>`;
-
-        const sel = r.selisih === '' ? '—'
-          : r.selisih < 0 ? `<span class="so-sel-minus">${r.selisih}</span>`
-          : r.selisih > 0 ? `<span class="so-sel-plus">+${r.selisih}</span>`
-          : '<span style="color:#64748b;">0</span>';
-
-        const real = (r.totalReal === '' || r.totalReal === null)
-          ? '<span style="color:#94a3b8;font-style:italic;">Belum</span>'
-          : r.totalReal;
-
-        return `<tr>
-          <td>${fotoHtml}</td>
-          <td style="font-family:monospace;font-size:11px;color:#475569;">${r.sku}</td>
-          <td style="max-width:200px;">${r.namaProduk}</td>
-          <td><span style="font-weight:600;color:#334155;">${r.rak}</span></td>
-          <td style="color:#64748b;">${r.tim}</td>
-          <td style="text-align:right;">${r.qtySistem}</td>
-          <td style="text-align:right;">${real}</td>
-          <td style="text-align:right;">${sel}</td>
-          <td>${badge}</td>
-          <td style="font-size:12px;">${r.personil || '—'}</td>
-          <td style="font-size:11px;color:#64748b;">${r.balancing || '—'}</td>
-          <td style="text-align:center;">
-            <button onclick="soOpenActions('${encodeURIComponent(JSON.stringify({sku:r.sku,nama:r.namaProduk,sesi:soSesiAktif}))}')"
-              style="border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;padding:4px 10px;cursor:pointer;font-size:13px;color:#475569;font-weight:700;transition:.15s;"
-              title="Aksi produk ini"
-              onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">···</button>
-          </td>
-        </tr>`;
-      }).join('');
+      if (piViewMode === 'grid') {
+        container.className = 'pi-grid';
+        container.innerHTML = slice.map(r => piRenderCard(r)).join('');
+      } else {
+        container.className = 'pi-list';
+        container.innerHTML = slice.map(r => piRenderListItem(r)).join('');
+      }
 
       if (maxHal > 1) {
         pager.style.display = '';
-        document.getElementById('so-pager-info').textContent = `${soHalamanAkt} / ${maxHal}`;
+        document.getElementById('so-pager-info').textContent  = `${soHalamanAkt} / ${maxHal}`;
+        document.getElementById('so-pager-count').textContent = `${mulai+1}–${Math.min(mulai+SO_PER_HALAMAN,total)} dari ${total}`;
         document.getElementById('so-btn-prev').disabled = soHalamanAkt <= 1;
         document.getElementById('so-btn-next').disabled = soHalamanAkt >= maxHal;
       } else {
@@ -3343,10 +3375,170 @@
       }
     }
 
+    function piRenderCard(r) {
+      const norm  = soNormStatus(r.status);
+      const foto  = r.kodeGambar
+        ? `<img class="pi-card-img" loading="lazy" src="${SO_ASSET_BASE}?id=${encodeURIComponent(r.kodeGambar)}&thumbnail=true" onerror="this.outerHTML='<div class=\'pi-card-img-placeholder\'><span class=\'material-symbols-outlined\' style=\'font-size:36px;\'>image_not_supported</span></div>'">`
+        : `<div class="pi-card-img-placeholder"><span class="material-symbols-outlined" style="font-size:36px;">image_not_supported</span></div>`;
+      const sel   = r.selisih === '' ? '' : (r.selisih < 0 ? `<span style="font-size:11px;color:#be123c;font-weight:700;">▼${r.selisih}</span>` : r.selisih > 0 ? `<span style="font-size:11px;color:#2563eb;font-weight:700;">▲+${r.selisih}</span>` : '');
+      const dEnc  = encodeURIComponent(JSON.stringify({sku:r.sku,nama:r.namaProduk,sesi:soSesiAktif,kodeGambar:r.kodeGambar||''}));
+      return `<div class="pi-card" onclick="piOpenDetail('${dEnc}')">
+        ${foto}
+        <span class="pi-status-badge pi-badge-${norm}">${norm}</span>
+        <div class="pi-card-body">
+          <div class="pi-card-name">${r.namaProduk}</div>
+          <div class="pi-card-sku">${r.sku}</div>
+          <div class="pi-card-meta">
+            <div>
+              <div class="pi-card-qty">${r.qtySistem}</div>
+              <div style="font-size:9px;color:#94a3b8;">qty sistem</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="pi-card-rak">${r.rak}</div>
+              <div style="margin-top:2px;">${sel}</div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    function piRenderListItem(r) {
+      const norm = soNormStatus(r.status);
+      const foto = r.kodeGambar
+        ? `<img class="pi-list-thumb" loading="lazy" src="${SO_ASSET_BASE}?id=${encodeURIComponent(r.kodeGambar)}&thumbnail=true" onerror="this.outerHTML='<div class=\'pi-list-thumb-ph\'><span class=\'material-symbols-outlined\' style=\'font-size:22px;\'>image_not_supported</span></div>'">`
+        : `<div class="pi-list-thumb-ph"><span class="material-symbols-outlined" style="font-size:22px;">image_not_supported</span></div>`;
+      const sel  = r.selisih === '' ? '' : r.selisih < 0 ? `<span style="color:#be123c;font-weight:700;font-size:11px;">▼${r.selisih}</span>` : r.selisih > 0 ? `<span style="color:#2563eb;font-weight:700;font-size:11px;">▲+${r.selisih}</span>` : '';
+      const dEnc = encodeURIComponent(JSON.stringify({sku:r.sku,nama:r.namaProduk,sesi:soSesiAktif,kodeGambar:r.kodeGambar||''}));
+      return `<div class="pi-list-item" onclick="piOpenDetail('${dEnc}')">
+        ${foto}
+        <div class="pi-list-info">
+          <div class="pi-list-name">${r.namaProduk}</div>
+          <div class="pi-list-sub">${r.sku}</div>
+          <div class="pi-list-rak">Rak: <b>${r.rak}</b> · Tim: ${r.tim||'—'} · <span class="pi-status-badge pi-badge-${norm}" style="position:static;display:inline-block;">${norm}</span> ${sel}</div>
+        </div>
+        <div class="pi-list-qty">${r.qtySistem}</div>
+      </div>`;
+    }
+
+    // ---- MODAL DETAIL CARD ----
+    async function piOpenDetail(encodedData) {
+      const d = JSON.parse(decodeURIComponent(encodedData));
+      const overlay = document.getElementById('pi-detail-overlay');
+      const content = document.getElementById('pi-detail-content');
+
+      // Set header
+      const imgEl = document.getElementById('pi-detail-img');
+      if (d.kodeGambar) {
+        imgEl.src = `${SO_ASSET_BASE}?id=${encodeURIComponent(d.kodeGambar)}&thumbnail=true`;
+        imgEl.style.display = '';
+      } else {
+        imgEl.style.display = 'none';
+      }
+      document.getElementById('pi-detail-nama').textContent = d.nama;
+      document.getElementById('pi-detail-sku').textContent  = d.sku;
+
+      // Cari data row
+      const row = soSemuaData.find(r => r.sku === d.sku);
+      const norm = row ? soNormStatus(row.status) : '—';
+      const badgeColor = {'Balance':'#dcfce7','Plus':'#dbeafe','Minus':'#fee2e2','Belum':'#fef9c3'};
+      const badgeText  = {'Balance':'#15803d','Plus':'#1d4ed8','Minus':'#be123c','Belum':'#92400e'};
+      document.getElementById('pi-detail-meta').innerHTML = row ? `
+        <span style="background:${badgeColor[norm]||'#f1f5f9'};color:${badgeText[norm]||'#475569'};border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;">${norm}</span>
+        <span style="font-size:11px;color:#94a3b8;">Rak: <b style="color:#f8fafc;">${row.rak}</b></span>
+        <span style="font-size:11px;color:#94a3b8;">Tim: <b style="color:#f8fafc;">${row.tim||'—'}</b></span>
+        <span style="font-size:11px;color:#94a3b8;">Sistem: <b style="color:#fbbf24;">${row.qtySistem}</b></span>
+        <span style="font-size:11px;color:#94a3b8;">Real: <b style="color:#f8fafc;">${row.totalReal===''?'Belum':row.totalReal}</b></span>
+        ${row.selisih!==''&&row.selisih!==0?`<span style="font-size:11px;font-weight:700;color:${row.selisih<0?'#fca5a5':'#93c5fd'}">Selisih: ${row.selisih>0?'+':''}${row.selisih}</span>`:''}
+      ` : '';
+
+      content.innerHTML = '<div class="pi-detail-empty"><span class="material-symbols-outlined" style="animation:spin 1s linear infinite;">sync</span><p>Memuat riwayat...</p></div>';
+      overlay.classList.add('open');
+
+      // Render tabel riwayat dari data yang sudah ada + load data rusak
+      if (!row) {
+        content.innerHTML = '<div class="pi-detail-empty"><span class="material-symbols-outlined">search_off</span><p>Data tidak ditemukan.</p></div>';
+        return;
+      }
+
+      // Bangun tabel dari data row SO
+      const r1 = row.realSatu  !== undefined ? row.realSatu  : '—';
+      const r2 = row.realDua   !== undefined ? row.realDua   : '—';
+      const r3 = row.realTiga  !== undefined ? row.realTiga  : '—';
+
+      // Load data rusak
+      let rusakInfo = null;
+      try {
+        const dataRusak = await gasGetDirect({ action: 'soGetRiwayat', sku: d.sku, sesi: d.sesi });
+        if (dataRusak.success && dataRusak.rows.length) rusakInfo = dataRusak.rows;
+      } catch(e) {}
+
+      const dEncFull = encodeURIComponent(JSON.stringify({sku:d.sku,nama:d.nama,sesi:d.sesi,kodeGambar:d.kodeGambar||''}));
+
+      content.innerHTML = `
+        <table class="pi-riwayat-tbl">
+          <thead>
+            <tr>
+              <th>Tim</th>
+              <th>Personil</th>
+              <th style="text-align:right;">Real 1</th>
+              <th style="text-align:right;">Real 2</th>
+              <th style="text-align:right;">Real 3</th>
+              <th style="text-align:right;">Total Real</th>
+              <th style="text-align:right;">Selisih</th>
+              <th>Status</th>
+              <th style="text-align:center;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:700;color:#1e293b;">${row.tim||'—'}</td>
+              <td>
+                <div style="font-weight:600;color:#334155;">${row.personil||'—'}</div>
+                <div style="font-size:10px;color:#94a3b8;">ct: ${(row.personil||'—').toLowerCase()}</div>
+              </td>
+              <td style="text-align:right;font-family:monospace;color:#475569;">${row.real1!==undefined&&row.real1!==''?row.real1:'—'}</td>
+              <td style="text-align:right;font-family:monospace;color:#475569;">${row.real2!==undefined&&row.real2!==''?row.real2:'—'}</td>
+              <td style="text-align:right;font-family:monospace;color:#475569;">${row.real3!==undefined&&row.real3!==''?row.real3:'—'}</td>
+              <td style="text-align:right;font-weight:700;color:#1e293b;">${row.totalReal===''?'<span style="color:#94a3b8;font-style:italic;font-size:11px;">Belum</span>':row.totalReal}</td>
+              <td style="text-align:right;">${row.selisih===''?'—':row.selisih<0?`<span style="color:#be123c;font-weight:700;">${row.selisih}</span>`:row.selisih>0?`<span style="color:#2563eb;font-weight:700;">+${row.selisih}</span>`:'<span style="color:#94a3b8;">0</span>'}</td>
+              <td><span style="background:${{'Balance':'#dcfce7','Plus':'#dbeafe','Minus':'#fee2e2','Belum':'#fef9c3'}[norm]||'#f1f5f9'};color:${{'Balance':'#15803d','Plus':'#1d4ed8','Minus':'#be123c','Belum':'#92400e'}[norm]||'#475569'};border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;">${norm}</span></td>
+              <td style="text-align:center;">
+                <button onclick="soOpenActions('${dEncFull}')"
+                  style="border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;padding:3px 10px;cursor:pointer;font-size:13px;color:#64748b;font-weight:700;"
+                  onmouseover="this.style.background='#fef3c7'" onmouseout="this.style.background='#f8fafc'"
+                  title="Riwayat kerusakan">···</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        ${row.catatan ? `<div style="padding:12px 14px;font-size:12px;color:#64748b;border-top:1px solid #f1f5f9;"><b>Catatan:</b> ${row.catatan}</div>` : ''}
+        ${row.balancing ? `<div style="padding:6px 14px 12px;font-size:11px;color:#94a3b8;">Balancing: ${row.balancing}</div>` : ''}
+        ${rusakInfo ? `
+          <div style="padding:12px 14px;border-top:1px solid #f1f5f9;">
+            <div style="font-size:11px;font-weight:700;color:#be123c;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">⚠ Riwayat Kerusakan</div>
+            ${rusakInfo.map(ri=>`
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;margin-bottom:5px;">
+                <div>
+                  <span style="font-weight:800;color:#be123c;font-size:15px;">${ri.jumlahRusak} pcs</span>
+                  <span style="font-size:11px;color:#64748b;margin-left:8px;">· ${ri.oleh||'—'} · ${ri.sesi||''}</span>
+                  ${ri.keterangan?`<div style="font-size:11px;color:#94a3b8;margin-top:2px;">${ri.keterangan}</div>`:''}
+                </div>
+                <span style="font-size:10px;color:#94a3b8;">${ri.dicatatPada||''}</span>
+              </div>
+            `).join('')}
+          </div>` : ''}
+      `;
+    }
+
+    function piTutupDetail(e) {
+      if (e && e.target !== document.getElementById('pi-detail-overlay')) return;
+      document.getElementById('pi-detail-overlay').classList.remove('open');
+    }
+
     function soHalamanNav(arah) {
       soHalamanAkt += arah;
       soRenderTabel();
-      document.getElementById('so-table-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.getElementById('pi-scroll-area').scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function soHitungStats() {
@@ -3373,170 +3565,80 @@
       const box = document.getElementById('so-state-box');
       box.innerHTML = `<span class="material-symbols-outlined" style="animation:spin 1s linear infinite;">sync</span><p>${pesan}</p>`;
       box.style.display = '';
-      document.getElementById('so-table').style.display = 'none';
+      document.getElementById('pi-view-container').style.display = 'none';
       document.getElementById('so-pager').style.display = 'none';
     }
 
     function soTampilPesan(tipe, pesan) {
-      const ikon = tipe === 'error' ? 'error' : 'search_off';
-      const box  = document.getElementById('so-state-box');
-      box.innerHTML = `<span class="material-symbols-outlined">${ikon}</span><p>${pesan}</p>`;
+      const box = document.getElementById('so-state-box');
+      box.innerHTML = `<span class="material-symbols-outlined">${tipe==='error'?'error':'search_off'}</span><p>${pesan}</p>`;
       box.style.display = '';
-      document.getElementById('so-table').style.display = 'none';
+      document.getElementById('pi-view-container').style.display = 'none';
       document.getElementById('so-pager').style.display = 'none';
     }
 
     function soOpenLightbox(kodeEncoded) {
       const kode = decodeURIComponent(kodeEncoded);
-      document.getElementById('so-lightbox-img').src =
-        SO_ASSET_BASE + '?id=' + encodeURIComponent(kode) + '&thumbnail=false';
+      document.getElementById('so-lightbox-img').src = SO_ASSET_BASE + '?id=' + encodeURIComponent(kode) + '&thumbnail=false';
       document.getElementById('so-lightbox').classList.add('open');
     }
-
     function soCloseLightbox() {
       document.getElementById('so-lightbox').classList.remove('open');
       document.getElementById('so-lightbox-img').src = '';
     }
 
-    // Export CSV Pusat Inventory — download langsung ke perangkat
     function soExportCSV() {
       if (!soDataFilter.length) return showToast('Tidak ada data untuk diekspor.', 'error');
-      const sesi        = soSesiAktif || 'SO';
-      const tglEksport  = new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' });
-      const baris = [['Tanggal Eksport','SKU','Nama Produk','Selisih']];
-      soDataFilter.forEach(r => {
-        baris.push([
-          tglEksport,
-          r.sku,
-          r.namaProduk,
-          r.selisih === '' ? '' : r.selisih
-        ]);
-      });
-      const csv = baris.map(row =>
-        row.map(v => {
-          const s = String(v == null ? '' : v).replace(/"/g, '""');
-          return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s;
-        }).join(',')
-      ).join('\n');
-      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const tgl  = new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' });
+      const rows = [['Tanggal Eksport','SKU','Nama Produk','Selisih']];
+      soDataFilter.forEach(r => rows.push([tgl, r.sku, r.namaProduk, r.selisih===''?'':r.selisih]));
+      const csv  = rows.map(r => r.map(v => { const s=String(v==null?'':v).replace(/"/g,'""'); return s.includes(',')||s.includes('"')?`"${s}"`:s; }).join(',')).join('\n');
+      const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' });
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `${sesi}_export_${new Date().toISOString().slice(0,10)}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      a.href = url; a.download = `${soSesiAktif}_export_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
 
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        soCloseLightbox();
-        document.getElementById('do-modal-overlay').classList.remove('open');
-        document.getElementById('so-rusak-modal').style.display = 'none';
-      }
-    });
-
-    // =============================================
-    // SO ACTIONS — popup uraian rusak dari _SO_RUSAK
-    // =============================================
+    // SO ACTIONS — popup uraian rusak
     async function soOpenActions(encodedData) {
       const d = JSON.parse(decodeURIComponent(encodedData));
       const modal = document.getElementById('so-rusak-modal');
       const body  = document.getElementById('so-rusak-modal-body');
       const judul = document.getElementById('so-rusak-modal-judul');
-
       judul.textContent = d.nama || d.sku;
       body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px 0;"><span class="material-symbols-outlined" style="font-size:32px;animation:spin 1s linear infinite;display:block;margin-bottom:8px;">sync</span>Memuat data...</div>';
       modal.style.display = 'flex';
-
       try {
-        // Langsung ke Apps Script — tidak lewat Railway
         const data = await gasGetDirect({ action: 'soGetRiwayat', sku: d.sku, sesi: d.sesi });
-
-        // Foto produk (pakai kodeGambar dari data SO yang sudah di-load)
         const rowData  = soSemuaData.find(r => r.sku === d.sku);
         const fotoHtml = (rowData && rowData.kodeGambar)
-          ? `<img src="${SO_ASSET_BASE}?id=${encodeURIComponent(rowData.kodeGambar)}&thumbnail=true"
-               style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0;background:#f1f5f9;"
-               onerror="this.style.display='none'">`
-          : `<div style="width:60px;height:60px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-               <span class="material-symbols-outlined" style="color:#cbd5e1;font-size:24px;">image_not_supported</span>
-             </div>`;
-
+          ? `<img src="${SO_ASSET_BASE}?id=${encodeURIComponent(rowData.kodeGambar)}&thumbnail=true" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0;background:#f1f5f9;" onerror="this.style.display='none'">`
+          : `<div style="width:60px;height:60px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span class="material-symbols-outlined" style="color:#cbd5e1;font-size:24px;">image_not_supported</span></div>`;
         if (!data.success || !data.rows || !data.rows.length) {
-          body.innerHTML = `
-            <div style="display:flex;gap:12px;align-items:center;padding:0 0 14px;border-bottom:1px solid #f1f5f9;margin-bottom:14px;">
-              ${fotoHtml}
-              <div>
-                <div style="font-size:12px;font-weight:700;color:#1e293b;">${d.nama}</div>
-                <div style="font-size:11px;color:#94a3b8;margin-top:2px;font-family:monospace;">${d.sku}</div>
-              </div>
-            </div>
-            <div style="text-align:center;padding:20px 0;">
-              <span class="material-symbols-outlined" style="font-size:40px;color:#d1d5db;display:block;margin-bottom:10px;">check_circle</span>
-              <p style="color:#64748b;font-size:13px;font-weight:600;">Belum pernah dirusak</p>
-              <p style="color:#94a3b8;font-size:12px;margin-top:4px;">Tidak ada catatan kerusakan untuk produk ini.</p>
-            </div>`;
-          return;
+          body.innerHTML = `<div style="display:flex;gap:12px;align-items:center;padding:0 0 14px;border-bottom:1px solid #f1f5f9;margin-bottom:14px;">${fotoHtml}<div><div style="font-size:12px;font-weight:700;color:#1e293b;">${d.nama}</div><div style="font-size:11px;color:#94a3b8;margin-top:2px;font-family:monospace;">${d.sku}</div></div></div>
+            <div style="text-align:center;padding:20px 0;"><span class="material-symbols-outlined" style="font-size:40px;color:#d1d5db;display:block;margin-bottom:10px;">check_circle</span><p style="color:#64748b;font-size:13px;font-weight:600;">Belum pernah dirusak</p></div>`; return;
         }
-
-        const latest  = data.rows[0];
-        const history = data.rows.slice(1);
-
-        body.innerHTML = `
-          <!-- Foto + nama produk -->
-          <div style="display:flex;gap:12px;align-items:center;padding:0 0 14px;border-bottom:1px solid #f1f5f9;margin-bottom:14px;">
-            ${fotoHtml}
-            <div style="min-width:0;">
-              <div style="font-size:12px;font-weight:700;color:#1e293b;line-height:1.3;">${d.nama}</div>
-              <div style="font-size:11px;color:#94a3b8;margin-top:2px;font-family:monospace;">${d.sku}</div>
-            </div>
-          </div>
-          <!-- Info terbaru -->
+        const latest = data.rows[0]; const history = data.rows.slice(1);
+        body.innerHTML = `<div style="display:flex;gap:12px;align-items:center;padding:0 0 14px;border-bottom:1px solid #f1f5f9;margin-bottom:14px;">${fotoHtml}<div style="min-width:0;"><div style="font-size:12px;font-weight:700;color:#1e293b;line-height:1.3;">${d.nama}</div><div style="font-size:11px;color:#94a3b8;margin-top:2px;font-family:monospace;">${d.sku}</div></div></div>
           <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:10px;padding:14px;margin-bottom:14px;">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-              <span style="font-size:11px;font-weight:700;color:#e11d48;text-transform:uppercase;letter-spacing:.4px;">Laporan Terbaru</span>
-              <span style="font-size:11px;color:#94a3b8;">${latest.dicatatPada||'-'}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-              <span style="font-size:26px;font-weight:800;color:#be123c;">${latest.jumlahRusak}</span>
-              <span style="font-size:12px;color:#64748b;">pcs rusak</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-              <span class="material-symbols-outlined" style="font-size:14px;color:#64748b;">person</span>
-              <span style="font-size:12px;font-weight:600;color:#334155;">${latest.oleh||'—'}</span>
-              <span style="font-size:11px;color:#94a3b8;">· ${latest.sesi||''}</span>
-            </div>
-            ${latest.keterangan ? `<div style="font-size:12px;color:#64748b;background:#fff;border-radius:6px;padding:8px 10px;border:1px solid #f1f5f9;">${latest.keterangan}</div>` : ''}
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;"><span style="font-size:11px;font-weight:700;color:#e11d48;text-transform:uppercase;letter-spacing:.4px;">Laporan Terbaru</span><span style="font-size:11px;color:#94a3b8;">${latest.dicatatPada||'-'}</span></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:26px;font-weight:800;color:#be123c;">${latest.jumlahRusak}</span><span style="font-size:12px;color:#64748b;">pcs rusak</span></div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span class="material-symbols-outlined" style="font-size:14px;color:#64748b;">person</span><span style="font-size:12px;font-weight:600;color:#334155;">${latest.oleh||'—'}</span><span style="font-size:11px;color:#94a3b8;">· ${latest.sesi||''}</span></div>
+            ${latest.keterangan?`<div style="font-size:12px;color:#64748b;background:#fff;border-radius:6px;padding:8px 10px;border:1px solid #f1f5f9;">${latest.keterangan}</div>`:''}
           </div>
-          <!-- Riwayat sebelumnya -->
-          ${history.length ? `
-            <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Riwayat Sebelumnya</div>
-            <div style="max-height:140px;overflow-y:auto;">
-              ${history.map(r => `
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border:1px solid #f1f5f9;border-radius:7px;margin-bottom:5px;background:#fafafa;">
-                  <div>
-                    <span style="font-weight:700;color:#be123c;">${r.jumlahRusak} pcs</span>
-                    <span style="font-size:11px;color:#64748b;margin-left:6px;">· ${r.oleh||'—'} · ${r.sesi||''}</span>
-                  </div>
-                  <span style="font-size:10px;color:#94a3b8;">${r.dicatatPada||''}</span>
-                </div>
-              `).join('')}
-            </div>
-          ` : ''}
-        `;
+          ${history.length?`<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Riwayat Sebelumnya</div><div style="max-height:140px;overflow-y:auto;">${history.map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border:1px solid #f1f5f9;border-radius:7px;margin-bottom:5px;background:#fafafa;"><div><span style="font-weight:700;color:#be123c;">${r.jumlahRusak} pcs</span><span style="font-size:11px;color:#64748b;margin-left:6px;">· ${r.oleh||'—'} · ${r.sesi||''}</span></div><span style="font-size:10px;color:#94a3b8;">${r.dicatatPada||''}</span></div>`).join('')}</div>`:''}`;
       } catch(e) {
         body.innerHTML = '<div style="text-align:center;color:#ef4444;padding:20px;">Gagal memuat data.</div>';
       }
     }
-
     function soTutupRusakModal(e) {
       if (e && e.target !== document.getElementById('so-rusak-modal')) return;
       document.getElementById('so-rusak-modal').style.display = 'none';
     }
 
-    // =============================================
+// =============================================
     // MODUL DATA OPNAME
     // =============================================
     let doSemuaData   = [];
