@@ -141,13 +141,11 @@
 
     .content-container {
       flex: 1; padding: 22px 24px; overflow-y: auto; scroll-behavior: smooth;
-      /* Opsi C: max-width agar tidak terlalu lebar di monitor besar */
-      /* Konten tetap fluid tapi punya batas maksimum */
     }
-    /* Wrapper dalam content agar punya max-width */
+    /* Opsi C: konten punya max-width tapi tetap fluid */
     .page-content {
-      max-width: 1400px;
       width: 100%;
+      /* Tidak pakai max-width di sini — layout AWB butuh full width */
     }
     .content-container::-webkit-scrollbar { width: 5px; }
     .content-container::-webkit-scrollbar-track { background: transparent; }
@@ -1403,8 +1401,9 @@
           .awb-top-bar {
             display:flex; align-items:center; gap:10px; flex-wrap:wrap;
             background:#fff; border:1px solid #e2e8f0; border-radius:10px;
-            padding:12px 16px; margin-bottom:12px;
+            padding:12px 16px; margin-bottom:8px;
             box-shadow:0 1px 3px rgba(0,0,0,.04);
+            width:100%;
           }
           .awb-top-bar .awb-date-wrap {
             display:flex; align-items:center; gap:8px; flex:1; min-width:200px;
@@ -1435,12 +1434,15 @@
             display:flex; align-items:center; gap:6px; transition:.15s; white-space:nowrap; margin-left:auto;
           }
           .awb-cancel-btn:hover { background:#fee2e2; }
-          #awb-top-status { font-size:12px; color:#64748b; width:100%; padding-top:4px; }
+          #awb-top-status {
+            font-size:13px; font-weight:600; color:#64748b;
+            width:100%; padding:6px 2px 2px; min-height:24px;
+          }
 
           /* Layout utama */
-          .awb-new-layout { display:flex; gap:12px; align-items:flex-start; }
-          .awb-new-left { flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; }
-          .awb-new-right { width:280px; flex-shrink:0; display:flex; flex-direction:column; gap:10px; }
+          .awb-new-layout { display:flex; gap:12px; align-items:flex-start; width:100%; }
+          .awb-new-left { flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; overflow:hidden; }
+          .awb-new-right { width:270px; flex-shrink:0; display:flex; flex-direction:column; gap:10px; }
 
           /* Status panel kanan atas */
           .awb-status-panel {
@@ -1531,15 +1533,19 @@
           .awb-tbl tbody tr { border-bottom:1px solid #f8fafc; transition:background .1s; }
           .awb-tbl tbody tr:hover { background:#fffbeb; }
           .awb-tbl td { padding:8px 12px; vertical-align:middle; color:#334155; }
-          .awb-tbl-wrap { max-height:calc(100vh - 280px); overflow-y:auto; overflow-x:auto; }
+          .awb-tbl-wrap { max-height:calc(100vh - 260px); overflow-y:auto; overflow-x:auto; }
           .awb-tbl { min-width: 700px; }
           .awb-tbl-wrap::-webkit-scrollbar { width:4px; }
           .awb-tbl-wrap::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:4px; }
 
           @media(max-width:900px) {
             .awb-new-layout { flex-direction:column; }
-            .awb-new-right { width:100%; flex-direction:row; flex-wrap:wrap; }
-            .awb-status-panel, .awb-action-panel { flex:1; min-width:240px; }
+            .awb-new-right { width:100%; flex-direction:row; flex-wrap:wrap; gap:10px; }
+            .awb-status-panel, .awb-action-panel { flex:1; min-width:220px; }
+            .awb-tbl-wrap { max-height:350px !important; }
+          }
+          @media(max-width:600px) {
+            .awb-new-right { flex-direction:column; }
           }
         </style>
 
@@ -1685,7 +1691,44 @@
             Lacak Cancel
           </button>
         </div>
-        <div id="awb-top-status" class="awb-status-msg"></div>
+        <!-- Banner status resi — kuning solid, muncul saat resi dimuat -->
+        <div id="awb-top-status" style="display:none;
+          background:#fef3c7; border:1.5px solid #fde68a; border-radius:10px;
+          padding:13px 18px; margin-bottom:12px;
+          display:none; align-items:center; gap:14px;
+          animation:awbBannerIn .25s ease;">
+          <div style="width:40px;height:40px;background:#fbbf24;border-radius:10px;
+            display:flex;align-items:center;justify-content:center;flex-shrink:0;
+            box-shadow:0 2px 8px rgba(251,191,36,.35);">
+            <span class="material-symbols-outlined" style="font-size:20px;color:#1e293b;">local_shipping</span>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div id="awb-banner-jumlah" style="font-size:22px;font-weight:800;color:#92400e;line-height:1.1;">
+              0 <span style="font-size:13px;font-weight:500;color:#b45309;">resi siap dilacak</span>
+            </div>
+            <div id="awb-banner-sub" style="font-size:12px;color:#b45309;margin-top:3px;"></div>
+          </div>
+          <button onclick="handleTrackAwbBulk()"
+            style="background:#fbbf24;color:#1e293b;border:none;border-radius:8px;
+              padding:9px 18px;font-size:13px;font-weight:800;cursor:pointer;
+              display:flex;align-items:center;gap:6px;white-space:nowrap;
+              box-shadow:0 2px 8px rgba(251,191,36,.4);transition:.15s;flex-shrink:0;"
+            onmouseover="this.style.background='#d97706'"
+            onmouseout="this.style.background='#fbbf24'">
+            <span class="material-symbols-outlined" style="font-size:16px;">search</span>
+            Lacak Sekarang
+          </button>
+          <button onclick="document.getElementById('awb-top-status').style.display='none'"
+            style="background:none;border:none;color:#b45309;cursor:pointer;
+              font-size:18px;line-height:1;opacity:.5;padding:4px;flex-shrink:0;"
+            title="Tutup">✕</button>
+        </div>
+        <style>
+          @keyframes awbBannerIn {
+            from { opacity:0; transform:translateY(-8px); }
+            to   { opacity:1; transform:translateY(0); }
+          }
+        </style>
 
         <!-- MAIN LAYOUT: Tabel lebar kiri, panel kanan -->
         <div class="awb-new-layout">
@@ -2974,8 +3017,16 @@
         document.getElementById('input-awb-bulk').value = resiList.join('\n');
         updateResiCount();
         allTrackedData = []; hitungSummary(); renderResultsTable();
-        msg.innerText = `✅ ${resiList.length} resi dimuat (${tanggal}).`;
-        msg.style.color = '#16a34a';
+        // Tampilkan banner kuning solid
+        const banner = document.getElementById('awb-top-status');
+        const [y, m, d] = tanggal.split('-');
+        const bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+        const gudangLabel = document.getElementById('filter-gudang').value || 'Semua Gudang';
+        document.getElementById('awb-banner-jumlah').innerHTML =
+          `<span style="font-size:26px;font-weight:800;color:#92400e;">${resiList.length}</span> <span style="font-size:13px;font-weight:500;color:#b45309;">resi siap dilacak</span>`;
+        document.getElementById('awb-banner-sub').textContent =
+          `${d} ${bulan[parseInt(m)-1]} ${y} · ${gudangLabel} · dimuat ${new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}`;
+        banner.style.display = 'flex';
         return resiList;
       } catch (err) {
         msg.innerText = 'Gagal terhubung ke Apps Script.'; msg.style.color = '#ef4444';
