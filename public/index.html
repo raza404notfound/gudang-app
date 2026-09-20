@@ -30,7 +30,9 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
 <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; }
-    body { display: flex; background-color: #f1f5f9; color: #334155; height: 100vh; overflow: hidden; }
+    body { display: flex; background-color: #f1f5f9; color: #334155; height: 100vh; overflow: hidden; min-width: 320px; }
+    /* Konten admin punya min-width supaya tidak collapse di layar kecil */
+    .main-wrapper { min-width: 0; }
 
     /* ---- SIDEBAR ---- */
     .sidebar {
@@ -137,7 +139,16 @@
     .top-header-left .material-symbols-outlined { font-size: 20px; color: #94a3b8; }
     /* btn-logout dipindah ke sidebar */
 
-    .content-container { flex: 1; padding: 22px 24px; overflow-y: auto; scroll-behavior: smooth; }
+    .content-container {
+      flex: 1; padding: 22px 24px; overflow-y: auto; scroll-behavior: smooth;
+      /* Opsi C: max-width agar tidak terlalu lebar di monitor besar */
+      /* Konten tetap fluid tapi punya batas maksimum */
+    }
+    /* Wrapper dalam content agar punya max-width */
+    .page-content {
+      max-width: 1400px;
+      width: 100%;
+    }
     .content-container::-webkit-scrollbar { width: 5px; }
     .content-container::-webkit-scrollbar-track { background: transparent; }
     .content-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -348,24 +359,29 @@
       /* Tampilkan tombol hamburger */
       .btn-hamburger { display: flex; }
 
-      /* Sidebar jadi panel slide dari kiri */
+      /* Sidebar jadi overlay dari kiri */
       .sidebar {
         position: fixed;
         top: 0; left: 0;
         height: 100%;
-        width: 260px;
+        width: 256px;
         z-index: 300;
         transform: translateX(-100%);
         transition: transform 0.25s ease;
-        box-shadow: 4px 0 20px rgba(0,0,0,0.12);
+        box-shadow: 4px 0 20px rgba(0,0,0,0.15);
       }
       .sidebar.open { transform: translateX(0); }
 
-      /* Body jangan overflow hidden saat sidebar tertutup */
-      body { overflow: auto; }
+      /* Overlay gelap saat sidebar terbuka */
+      .sidebar-backdrop {
+        display: none; position: fixed; inset: 0;
+        background: rgba(0,0,0,.4); z-index: 299;
+      }
+      .sidebar-backdrop.show { display: block; }
 
-      /* Main wrapper ambil penuh lebar layar */
+      body { overflow: auto; }
       .main-wrapper { width: 100%; }
+      .page-content { max-width: 100% !important; }
 
       /* Header lebih compact */
       .top-header { padding: 0 12px; height: 50px; font-size: 14px; }
@@ -802,6 +818,8 @@
       </button>
     </div>
 </aside>
+  <!-- Backdrop untuk mobile sidebar -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar()"></div>
   <!-- MAIN WRAPPER -->
 <main class="main-wrapper">
     <header class="top-header">
@@ -1513,7 +1531,8 @@
           .awb-tbl tbody tr { border-bottom:1px solid #f8fafc; transition:background .1s; }
           .awb-tbl tbody tr:hover { background:#fffbeb; }
           .awb-tbl td { padding:8px 12px; vertical-align:middle; color:#334155; }
-          .awb-tbl-wrap { max-height:calc(100vh - 280px); overflow-y:auto; }
+          .awb-tbl-wrap { max-height:calc(100vh - 280px); overflow-y:auto; overflow-x:auto; }
+          .awb-tbl { min-width: 700px; }
           .awb-tbl-wrap::-webkit-scrollbar { width:4px; }
           .awb-tbl-wrap::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:4px; }
 
@@ -3423,13 +3442,20 @@
 
     function openSidebar() {
       document.querySelector('.sidebar').classList.add('open');
-      document.getElementById('sidebar-overlay').classList.add('active');
+      const bd = document.getElementById('sidebar-backdrop');
+      if (bd) bd.classList.add('show');
+      // sidebar-overlay lama (jika masih ada)
+      const ov = document.getElementById('sidebar-overlay');
+      if (ov) ov.classList.add('active');
       document.body.style.overflow = 'hidden';
     }
 
     function closeSidebar() {
       document.querySelector('.sidebar').classList.remove('open');
-      document.getElementById('sidebar-overlay').classList.remove('active');
+      const bd = document.getElementById('sidebar-backdrop');
+      if (bd) bd.classList.remove('show');
+      const ov = document.getElementById('sidebar-overlay');
+      if (ov) ov.classList.remove('active');
       document.body.style.overflow = '';
     }
 
