@@ -801,6 +801,12 @@
         </a>
       </div>
       <div class="nav-section">
+        <div class="section-title">ANALITIK</div>
+        <a class="nav-item" href="#gudang-insight" onclick="switchTab('gudang-insight', this); return false;">
+          <span class="material-symbols-outlined">insights</span><span>Gudang Insight</span>
+        </a>
+      </div>
+      <div class="nav-section">
         <div class="section-title">PENGATURAN</div>
         <a class="nav-item" href="#kelola-akun" id="nav-kelola-akun" style="display:none;" onclick="switchTab('kelola-akun', this); return false;">
           <span class="material-symbols-outlined">manage_accounts</span><span>Kelola Akun</span>
@@ -1904,7 +1910,194 @@
       </section>
 
       <!-- PAGE: KELOLA AKUN (Superuser only) -->
-      <section id="page-kelola-akun" class="page-content">
+            <!-- GUDANG INSIGHT -->
+      <section id="page-gudang-insight" class="page-content">
+        <style>
+          #page-gudang-insight.active { display:flex !important; flex-direction:column; height:calc(100vh - 54px); overflow:hidden; }
+          .ins-sticky { flex-shrink:0; background:#f1f5f9; padding-bottom:8px; }
+          .ins-scroll  { flex:1; overflow-y:auto; padding-bottom:24px; }
+          .ins-scroll::-webkit-scrollbar { width:5px; }
+          .ins-scroll::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:10px; }
+
+          /* Toolbar */
+          .ins-toolbar {
+            background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+            padding:11px 16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+            box-shadow:0 1px 3px rgba(0,0,0,.04); margin-bottom:8px;
+          }
+          .ins-type-btn {
+            padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600;
+            cursor:pointer; border:1.5px solid #e2e8f0; background:#f8fafc; color:#64748b; transition:.15s;
+          }
+          .ins-type-btn.aktif { background:#fbbf24; color:#1e293b; border-color:#fbbf24; }
+          .ins-type-btn:hover:not(.aktif) { border-color:#fbbf24; color:#92400e; background:#fef3c7; }
+          .ins-preset-btn {
+            padding:5px 11px; border-radius:20px; font-size:12px; font-weight:600;
+            cursor:pointer; border:1.5px solid #e2e8f0; background:#f8fafc; color:#64748b; transition:.15s;
+          }
+          .ins-preset-btn.aktif { background:#1e293b; color:#fff; border-color:#1e293b; }
+          .ins-preset-btn:hover:not(.aktif) { border-color:#1e293b; background:#f1f5f9; }
+          .ins-apply-btn {
+            background:#1e293b; color:#fff; border:none; border-radius:8px;
+            padding:7px 16px; font-size:13px; font-weight:700; cursor:pointer;
+            display:flex; align-items:center; gap:5px; transition:.15s; white-space:nowrap;
+          }
+          .ins-apply-btn:hover { background:#0f172a; }
+          .ins-apply-btn:disabled { background:#94a3b8; cursor:not-allowed; }
+
+          /* Slide nav */
+          .ins-slide-nav {
+            display:flex; align-items:center; justify-content:space-between;
+            background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+            padding:10px 14px; box-shadow:0 1px 3px rgba(0,0,0,.04);
+          }
+          .ins-arrow {
+            width:32px; height:32px; border:1.5px solid #e2e8f0; border-radius:8px;
+            background:#f8fafc; cursor:pointer; display:flex; align-items:center;
+            justify-content:center; color:#64748b; transition:.15s;
+          }
+          .ins-arrow:hover:not(:disabled) { border-color:#fbbf24; background:#fef3c7; color:#92400e; }
+          .ins-arrow:disabled { opacity:.3; cursor:not-allowed; }
+          .ins-dots { display:flex; gap:5px; align-items:center; }
+          .ins-dot {
+            width:7px; height:7px; border-radius:50%; background:#e2e8f0; cursor:pointer; transition:.2s;
+          }
+          .ins-dot.aktif { background:#fbbf24; width:18px; border-radius:4px; }
+
+          /* Slide */
+          .ins-slide { display:none; }
+          .ins-slide.aktif { display:block; animation:insFadeIn .2s ease; }
+          @keyframes insFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+          /* Gudang header */
+          .ins-wh-hdr {
+            display:flex; align-items:center; gap:12px; margin-bottom:14px;
+            background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+            padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,.04);
+          }
+          .ins-wh-icon {
+            width:42px; height:42px; border-radius:10px;
+            background:linear-gradient(135deg,#fbbf24,#d97706);
+            display:flex; align-items:center; justify-content:center;
+            box-shadow:0 2px 8px rgba(251,191,36,.3); flex-shrink:0;
+          }
+          .ins-wh-icon .material-symbols-outlined { font-size:20px; color:#1e293b; }
+          .ins-wh-name { font-size:17px; font-weight:800; color:#1e293b; }
+          .ins-wh-sub  { font-size:11px; color:#94a3b8; margin-top:1px; }
+
+          /* Stats */
+          .ins-stats { display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+          .ins-stat {
+            flex:1; min-width:110px; background:#fff; border:1px solid #e2e8f0;
+            border-radius:10px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,.04);
+          }
+          .ins-stat-n { font-size:28px; font-weight:800; color:#1e293b; line-height:1; }
+          .ins-stat-l { font-size:10px; color:#94a3b8; margin-top:4px; text-transform:uppercase; letter-spacing:.5px; }
+          .ins-stat.trx .ins-stat-n { color:#0284c7; }
+          .ins-stat.pcs .ins-stat-n { color:#16a34a; }
+          .ins-stat.batal .ins-stat-n { color:#e11d48; }
+
+          /* Status breakdown */
+          .ins-status-grid { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+          .ins-st-item {
+            flex:1; min-width:90px; background:#fff; border:1px solid #e2e8f0;
+            border-radius:8px; padding:10px 12px; text-align:center;
+            box-shadow:0 1px 2px rgba(0,0,0,.03);
+          }
+          .ins-st-n { font-size:16px; font-weight:700; color:#1e293b; }
+          .ins-st-l { font-size:10px; color:#94a3b8; margin-top:3px; }
+
+          /* Chart traffic harian */
+          .ins-chart {
+            background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+            padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,.04);
+          }
+          .ins-chart-title { font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px; }
+          .ins-bars { display:flex; gap:4px; align-items:flex-end; height:100px; overflow-x:auto; }
+          .ins-bar-col { display:flex; flex-direction:column; align-items:center; gap:3px; flex:1; min-width:28px; }
+          .ins-bar-v { font-size:9px; font-weight:700; color:#64748b; }
+          .ins-bar-b { width:100%; border-radius:3px 3px 0 0; background:#fbbf24; min-height:3px; transition:height .4s ease; }
+          .ins-bar-l { font-size:9px; color:#94a3b8; white-space:nowrap; }
+
+          /* Top produk */
+          .ins-toprod {
+            background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+            padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,.04);
+          }
+          .ins-toprod-title { font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
+          .ins-prod-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f8fafc; }
+          .ins-prod-row:last-child { border-bottom:none; }
+          .ins-rank { width:22px; height:22px; border-radius:50%; background:#fef3c7; color:#92400e; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+          .ins-rank.r1 { background:#fbbf24; color:#1e293b; }
+          .ins-rank.r2 { background:#e2e8f0; color:#475569; }
+          .ins-rank.r3 { background:#fed7aa; color:#9a3412; }
+          .ins-prod-img { width:34px; height:34px; border-radius:6px; object-fit:cover; background:#f1f5f9; flex-shrink:0; }
+          .ins-prod-nm { flex:1; font-size:12px; font-weight:600; color:#1e293b; line-height:1.3; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+          .ins-prod-qty { font-size:13px; font-weight:800; color:#0284c7; flex-shrink:0; }
+
+          /* State box */
+          .ins-empty { padding:60px 20px; text-align:center; color:#94a3b8; }
+          .ins-empty .material-symbols-outlined { font-size:48px; display:block; margin-bottom:10px; color:#e2e8f0; }
+        </style>
+
+        <!-- STICKY -->
+        <div class="ins-sticky">
+          <!-- Toolbar -->
+          <div class="ins-toolbar">
+            <div style="display:flex;gap:6px;">
+              <button class="ins-type-btn aktif" onclick="insSetType('outbound',this)">
+                <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">outbound</span> Outbound
+              </button>
+              <button class="ins-type-btn" onclick="insSetType('inbound',this)">
+                <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">move_to_inbox</span> Inbound
+              </button>
+            </div>
+            <div style="width:1px;height:22px;background:#e2e8f0;"></div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              <button class="ins-preset-btn" onclick="insPreset('hari',this)">Hari ini</button>
+              <button class="ins-preset-btn" onclick="insPreset('3hari',this)">3 Hari</button>
+              <button class="ins-preset-btn" onclick="insPreset('minggu',this)">Seminggu</button>
+              <button class="ins-preset-btn aktif" onclick="insPreset('bulan',this)">Sebulan</button>
+              <button class="ins-preset-btn" onclick="insPreset('3bulan',this)">3 Bulan</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;">
+              <input type="date" id="ins-from" style="border:1px solid #e2e8f0;border-radius:7px;padding:6px 10px;font-size:12px;outline:none;background:#f8fafc;color:#1e293b;">
+              <span style="color:#94a3b8;font-size:12px;">—</span>
+              <input type="date" id="ins-to" style="border:1px solid #e2e8f0;border-radius:7px;padding:6px 10px;font-size:12px;outline:none;background:#f8fafc;color:#1e293b;">
+            </div>
+            <button class="ins-apply-btn" id="ins-apply-btn" onclick="insLoad()">
+              <span class="material-symbols-outlined" style="font-size:15px;">refresh</span> Terapkan
+            </button>
+          </div>
+
+          <!-- Slide navigator -->
+          <div class="ins-slide-nav">
+            <button class="ins-arrow" id="ins-prev" onclick="insNav(-1)">
+              <span class="material-symbols-outlined" style="font-size:18px;">chevron_left</span>
+            </button>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+              <span id="ins-slide-lbl" style="font-size:13px;font-weight:700;color:#1e293b;">— / —</span>
+              <div class="ins-dots" id="ins-dots"></div>
+            </div>
+            <button class="ins-arrow" id="ins-next" onclick="insNav(1)">
+              <span class="material-symbols-outlined" style="font-size:18px;">chevron_right</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SCROLL: Slides -->
+        <div class="ins-scroll">
+          <div id="ins-container">
+            <div class="ins-empty">
+              <span class="material-symbols-outlined">insights</span>
+              <p style="font-size:13px;font-weight:600;color:#64748b;">Pilih tipe &amp; klik Terapkan</p>
+              <p style="font-size:12px;margin-top:4px;">Data insight 4 gudang siap ditampilkan</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+<section id="page-kelola-akun" class="page-content">
         <div style="max-width: 720px;">
 
           <!-- Form Buat Akun Baru -->
@@ -2249,7 +2442,8 @@
       'pusat-inventory'   : () => initSoPage(),
       'barang-bermasalah' : () => initDataOpname(),
       'lacak-awb'         : () => null,
-      'kelola-akun'       : () => loadUserList()
+      'kelola-akun'       : () => loadUserList(),
+      'gudang-insight'    : () => initInsightPage()
     };
 
     function switchTab(pageId, element, pushState = true) {
@@ -3539,6 +3733,189 @@
     function formatNumber(n) {
       if (n === null || n === undefined || n === '') return '-';
       return Number(n).toLocaleString('id-ID');
+    }
+
+    // =============================================
+    // GUDANG INSIGHT
+    // =============================================
+    let insType      = 'outbound';
+    let insSlideIdx  = 0;
+    let insData      = [];
+    let insSudahInit = false;
+    const INS_IMG_BASE = 'https://pdcgudang.et.r.appspot.com/v1/assets/get';
+
+    function initInsightPage() {
+      if (insSudahInit) return;
+      insSudahInit = true;
+      insPreset('bulan', document.querySelector('.ins-preset-btn.aktif'));
+      insLoad();
+    }
+
+    function insSetType(type, el) {
+      insType = type;
+      document.querySelectorAll('.ins-type-btn').forEach(b => b.classList.remove('aktif'));
+      el.classList.add('aktif');
+    }
+
+    function insPreset(preset, el) {
+      document.querySelectorAll('.ins-preset-btn').forEach(b => b.classList.remove('aktif'));
+      if (el) el.classList.add('aktif');
+      const today = new Date();
+      const fmt   = d => d.toISOString().slice(0,10);
+      const from  = new Date(today);
+      if (preset === 'hari')   { /* same day */ }
+      if (preset === '3hari')  from.setDate(today.getDate() - 2);
+      if (preset === 'minggu') from.setDate(today.getDate() - 6);
+      if (preset === 'bulan')  from.setMonth(today.getMonth() - 1);
+      if (preset === '3bulan') from.setMonth(today.getMonth() - 3);
+      document.getElementById('ins-from').value = fmt(from);
+      document.getElementById('ins-to').value   = fmt(today);
+    }
+
+    async function insLoad() {
+      const from = document.getElementById('ins-from').value;
+      const to   = document.getElementById('ins-to').value;
+      if (!from || !to) return showToast('Pilih rentang tanggal dulu.', 'warning');
+
+      const btn = document.getElementById('ins-apply-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Memuat...';
+      document.getElementById('ins-container').innerHTML =
+        '<div class="ins-empty"><span class="material-symbols-outlined" style="animation:spin 1s linear infinite;font-size:48px;">sync</span><p style="font-size:13px;font-weight:600;color:#64748b;margin-top:10px;">Mengambil data dari PDC...</p></div>';
+
+      try {
+        const token = sessionStorage.getItem('sessionToken');
+        const res   = await fetch(`/api/insight?type=${insType}&date_from=${from}&date_to=${to}`, {
+          headers: { 'x-session-token': token }
+        });
+        const data  = await res.json();
+        if (!data.success) {
+          document.getElementById('ins-container').innerHTML =
+            `<div class="ins-empty"><span class="material-symbols-outlined" style="color:#e11d48;">error</span><p style="font-size:13px;color:#e11d48;">${data.message||'Gagal.'}</p></div>`;
+          return;
+        }
+        insData     = data.warehouses || [];
+        insSlideIdx = 0;
+        insRenderAll();
+      } catch(e) {
+        document.getElementById('ins-container').innerHTML =
+          '<div class="ins-empty"><span class="material-symbols-outlined">wifi_off</span><p style="font-size:13px;color:#e11d48;">Gagal terhubung ke server.</p></div>';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:15px;">refresh</span> Terapkan';
+      }
+    }
+
+    function insNav(arah) {
+      insSlideIdx = Math.max(0, Math.min(insData.length - 1, insSlideIdx + arah));
+      insRenderAll();
+    }
+
+    function insSlideGo(i) { insSlideIdx = i; insRenderAll(); }
+
+    function insRenderAll() {
+      if (!insData.length) return;
+      // Dots + label
+      const dots = document.getElementById('ins-dots');
+      dots.innerHTML = insData.map((w, i) =>
+        `<div class="ins-dot${i===insSlideIdx?' aktif':''}" onclick="insSlideGo(${i})"></div>`
+      ).join('');
+      document.getElementById('ins-slide-lbl').textContent =
+        `${insData[insSlideIdx].name} (${insSlideIdx+1}/${insData.length})`;
+      document.getElementById('ins-prev').disabled = insSlideIdx === 0;
+      document.getElementById('ins-next').disabled = insSlideIdx === insData.length - 1;
+      // Render konten
+      document.getElementById('ins-container').innerHTML = insBuildSlide(insData[insSlideIdx]);
+    }
+
+    function insBuildSlide(wh) {
+      const ov = wh.overview || {};
+      const bs = Array.isArray(wh.byStatus) ? wh.byStatus : [];
+      const dy = Array.isArray(wh.daily)    ? wh.daily    : [];
+      const mu = Array.isArray(wh.mostUsed) ? wh.mostUsed : [];
+      const from = document.getElementById('ins-from').value;
+      const to   = document.getElementById('ins-to').value;
+      const typeLabel = insType === 'outbound' ? 'Outbound' : 'Inbound';
+
+      // Hitung cancel dari byStatus
+      const cancelTrx = bs.find(s => s.status === 'cancel')?.transaction_count || 0;
+
+      let h = `
+        <!-- Gudang header -->
+        <div class="ins-wh-hdr">
+          <div class="ins-wh-icon"><span class="material-symbols-outlined">warehouse</span></div>
+          <div>
+            <div class="ins-wh-name">${wh.name}</div>
+            <div class="ins-wh-sub">${from} — ${to} · ${typeLabel}</div>
+          </div>
+        </div>
+
+        <!-- Stats utama -->
+        <div class="ins-stats">
+          <div class="ins-stat trx">
+            <div class="ins-stat-n">${Number(ov.total_trx||0).toLocaleString('id-ID')}</div>
+            <div class="ins-stat-l">Total Transaksi</div>
+          </div>
+          <div class="ins-stat pcs">
+            <div class="ins-stat-n">${Number(ov.total_pcs||0).toLocaleString('id-ID')}</div>
+            <div class="ins-stat-l">Total Pieces</div>
+          </div>
+          <div class="ins-stat batal">
+            <div class="ins-stat-n">${Number(cancelTrx).toLocaleString('id-ID')}</div>
+            <div class="ins-stat-l">Batal</div>
+          </div>
+        </div>`;
+
+      // Status breakdown
+      if (bs.length) {
+        const stMap = { waiting:'Menunggu', packing:'Dikemas', packed:'Selesai', delivered:'Diserahkan', cancel:'Batal' };
+        h += `<div class="ins-status-grid">`;
+        bs.forEach(s => {
+          h += `<div class="ins-st-item">
+            <div class="ins-st-n">${Number(s.transaction_count||0).toLocaleString('id-ID')}</div>
+            <div style="font-size:9px;color:#0284c7;font-weight:700;">${Number(s.item_count||0).toLocaleString('id-ID')} pcs</div>
+            <div class="ins-st-l">${stMap[s.status]||s.status}</div>
+          </div>`;
+        });
+        h += `</div>`;
+      }
+
+      // Chart traffic harian
+      if (dy.length) {
+        const maxVal = Math.max(...dy.map(d => Number(d.transaction_count||d.count||0)), 1);
+        const days   = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+        h += `<div class="ins-chart"><div class="ins-chart-title">📊 Traffic Harian</div><div class="ins-bars">`;
+        dy.forEach(d => {
+          const val = Number(d.transaction_count||d.count||0);
+          const pct = Math.round((val/maxVal)*100);
+          const lbl = d.day_name || (d.date ? days[new Date(d.date).getDay()] : '');
+          h += `<div class="ins-bar-col">
+            <div class="ins-bar-v">${val>0?val:''}</div>
+            <div class="ins-bar-b" style="height:${pct}%;"></div>
+            <div class="ins-bar-l">${lbl}</div>
+          </div>`;
+        });
+        h += `</div></div>`;
+      }
+
+      // Top produk
+      if (mu.length) {
+        const ranks = ['r1','r2','r3','',''];
+        h += `<div class="ins-toprod"><div class="ins-toprod-title">🏆 Produk Terlaris</div>`;
+        mu.slice(0,5).forEach((p,i) => {
+          const img = p.item_image_id
+            ? `<img class="ins-prod-img" src="${INS_IMG_BASE}?id=${encodeURIComponent(p.item_image_id)}&thumbnail=true" onerror="this.style.display='none'">`
+            : '<div class="ins-prod-img"></div>';
+          h += `<div class="ins-prod-row">
+            <div class="ins-rank ${ranks[i]||''}">${i+1}</div>
+            ${img}
+            <div class="ins-prod-nm">${p.item_name||p.name||'—'}</div>
+            <div class="ins-prod-qty">${Number(p.item_count||p.quantity||0).toLocaleString('id-ID')} pcs</div>
+          </div>`;
+        });
+        h += `</div>`;
+      }
+      return h;
     }
 
     document.addEventListener('DOMContentLoaded', checkAuthStatus);
