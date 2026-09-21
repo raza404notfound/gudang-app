@@ -753,6 +753,149 @@ app.post('/api/so/rusak', requireAuth, async (req, res) => {
   }
 });
 
+// =============================================
+// GUDANG INSIGHT
+// =============================================
+
+// Helper buat timestamp dari tanggal string YYYY-MM-DD
+function dateToTimestamp(dateStr, isEnd = false) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if (isEnd) return new Date(y, m-1, d, 23, 59, 59, 999).getTime();
+  return new Date(y, m-1, d, 0, 0, 0, 0).getTime();
+}
+
+// Fetch by_status — breakdown per status (Menunggu, Dikemas, Diserahkan, dll)
+async function fetchByStatus(type, wh, time_min, time_max) {
+  const token = await getWarehouseToken(wh);
+  if (!token) return null;
+  const headers = {
+    'authorization': `Bearer ${token}`,
+    'accept': 'application/json, text/plain, */*',
+    'origin': 'https://warehouse.onlypdc.com',
+    'referer': 'https://warehouse.onlypdc.com/',
+    'user-agent': 'Mozilla/5.0'
+  };
+  try {
+    const url = `${BASE_URL}/warehouses/insight/by_status?type=${type}&tx_type=order&time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
+    const res = await axios.get(url, { headers, timeout: 15000 });
+    return res.data?.data || res.data || null;
+  } catch(err) {
+    console.error(`fetchByStatus ${type} ${wh.id}:`, err.response?.data?.message || err.message);
+    return null;
+  }
+}
+
+// Fetch daily traffic — data per hari untuk chart
+async function fetchDaily(type, wh, time_min, time_max) {
+  const token = await getWarehouseToken(wh);
+  if (!token) return null;
+  const headers = {
+    'authorization': `Bearer ${token}`,
+    'accept': 'application/json, text/plain, */*',
+    'origin': 'https://warehouse.onlypdc.com',
+    'referer': 'https://warehouse.onlypdc.com/',
+    'user-agent': 'Mozilla/5.0'
+  };
+  try {
+    const url = `${BASE_URL}/warehouses/traffic/daily?type=${type}&tx_type=order&time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
+    const res = await axios.get(url, { headers, timeout: 15000 });
+    return res.data?.data || res.data || null;
+  } catch(err) {
+    console.error(`fetchDaily ${type} ${wh.id}:`, err.response?.data?.message || err.message);
+    return null;
+  }
+}
+
+// Fetch most used products
+async function fetchMostUsed(type, wh, time_min, time_max) {
+  const token = await getWarehouseToken(wh);
+  if (!token) return null;
+  const headers = {
+    'authorization': `Bearer ${token}`,
+    'accept': 'application/json, text/plain, */*',
+    'origin': 'https://warehouse.onlypdc.com',
+    'referer': 'https://warehouse.onlypdc.com/',
+    'user-agent': 'Mozilla/5.0'
+  };
+  try {
+    const url = `${BASE_URL}/warehouses/insight/most_used?warehouse_id=${wh.warehouse_id}&type=${type}&time_min=${time_min}&time_max=${time_max}&limit=5`;
+    const res = await axios.get(url, { headers, timeout: 15000 });
+    return res.data?.data || res.data || null;
+  } catch(err) {
+    console.error(`fetchMostUsed ${type} ${wh.id}:`, err.response?.data?.message || err.message);
+    return null;
+  }
+}
+
+// GET /api/insight?type=outbound&date_from=2026-09-01&date_to=2026-09-21&warehouse_id=pdc
+app.get('/api/insight', requireAuth, async (req, res) => {
+  try {
+    const { type = 'outbound', date_from, date_to, warehouse_id } = req.query;
+    if (!date_from || !date_to) {
+      return res.status(400).json({ success: false, message: 'date_from dan date_to wajib diisi.' });
+    }
+
+    const time_min = dateToTimestamp(date_from, false);
+    const time_max = dateToTimestamp(date_to, true);
+
+    // Filter gudang — kalau tidak ada ambil semua
+    const targets = warehouse_id
+      ? WAREHOUSES.filter(w => w.id === warehouse_id)
+      : WAREHOUSES;
+
+    const results = await Promise.all(targets.map(async (wh) => {
+      const [overview, byStatus, daily, mostUsed] = await Promise.all([
+        fetchOverviewRange(type, wh, time_min, time_max),
+        fetchByStatus(type, wh, time_min, time_max),
+        fetchDaily(type, wh, time_min, time_max),
+        fetchMostUsed(type, wh, time_min, time_max)
+      ]);
+      return {
+        id          : wh.id,
+        name        : wh.name,
+        warehouse_id: wh.warehouse_id,
+        overview, byStatus, daily, mostUsed
+      };
+    }));
+
+    res.json({ success: true, type, date_from, date_to, warehouses: results });
+  } catch(err) {
+    console.error('Insight error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal mengambil data insight.' });
+  }
+});
+
+// fetchOverview dengan range tanggal custom (bukan hanya hari ini)
+async function fetchOverviewRange(type, wh, time_min, time_max) {
+  const token = await getWarehouseToken(wh);
+  if (!token) return { total_trx: 0, total_pcs: 0, status_error: 'Login Failed' };
+  const headers = {
+    'authorization': `Bearer ${token}`,
+    'accept': 'application/json, text/plain, */*',
+    'origin': 'https://warehouse.onlypdc.com',
+    'referer': 'https://warehouse.onlypdc.com/',
+    'user-agent': 'Mozilla/5.0'
+  };
+  try {
+    const url = `${BASE_URL}/warehouses/insight/overview?type=${type}&time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
+    const res = await axios.get(url, { headers, timeout: 15000 });
+    const raw = res.data?.data || res.data;
+    // Hitung total trx dan pcs dari array status
+    let total_trx = 0, total_pcs = 0;
+    if (Array.isArray(raw)) {
+      raw.forEach(item => {
+        if (item.status !== 'cancel') {
+          total_trx += Number(item.transaction_count) || 0;
+          total_pcs += Number(item.item_count)        || 0;
+        }
+      });
+    }
+    return { total_trx, total_pcs, raw };
+  } catch(err) {
+    return { total_trx: 0, total_pcs: 0, status_error: err.response?.data?.message || 'Error' };
+  }
+}
+
 // Fallback route
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
