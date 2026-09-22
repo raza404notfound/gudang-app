@@ -768,12 +768,12 @@ function dateToTimestamp(dateStr, isEnd = false) {
 async function fetchByStatus(type, wh, time_min, time_max) {
   const token = await getWarehouseToken(wh);
   if (!token) return null;
-  const headers = {
+    const headers = {
     'authorization': `Bearer ${token}`,
     'accept': 'application/json, text/plain, */*',
     'origin': 'https://warehouse.onlypdc.com',
     'referer': 'https://warehouse.onlypdc.com/',
-    'user-agent': 'Mozilla/5.0'
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36'
   };
   try {
     const url = `${BASE_URL}/warehouses/insight/by_status?type=${type}&tx_type=order&time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
@@ -789,12 +789,12 @@ async function fetchByStatus(type, wh, time_min, time_max) {
 async function fetchDaily(type, wh, time_min, time_max) {
   const token = await getWarehouseToken(wh);
   if (!token) return null;
-  const headers = {
+    const headers = {
     'authorization': `Bearer ${token}`,
     'accept': 'application/json, text/plain, */*',
     'origin': 'https://warehouse.onlypdc.com',
     'referer': 'https://warehouse.onlypdc.com/',
-    'user-agent': 'Mozilla/5.0'
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36'
   };
   try {
     const url = `${BASE_URL}/warehouses/traffic/daily?type=${type}&tx_type=order&time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
@@ -810,12 +810,12 @@ async function fetchDaily(type, wh, time_min, time_max) {
 async function fetchMostUsed(type, wh, time_min, time_max) {
   const token = await getWarehouseToken(wh);
   if (!token) return null;
-  const headers = {
+    const headers = {
     'authorization': `Bearer ${token}`,
     'accept': 'application/json, text/plain, */*',
     'origin': 'https://warehouse.onlypdc.com',
     'referer': 'https://warehouse.onlypdc.com/',
-    'user-agent': 'Mozilla/5.0'
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36'
   };
   try {
     const url = `${BASE_URL}/warehouses/insight/most_used?warehouse_id=${wh.warehouse_id}&type=${type}&time_min=${time_min}&time_max=${time_max}&limit=5`;
@@ -869,12 +869,12 @@ app.get('/api/insight', requireAuth, async (req, res) => {
 async function fetchOverviewRange(type, wh, time_min, time_max) {
   const token = await getWarehouseToken(wh);
   if (!token) return { total_trx: 0, total_pcs: 0, status_error: 'Login Failed' };
-  const headers = {
+    const headers = {
     'authorization': `Bearer ${token}`,
     'accept': 'application/json, text/plain, */*',
     'origin': 'https://warehouse.onlypdc.com',
     'referer': 'https://warehouse.onlypdc.com/',
-    'user-agent': 'Mozilla/5.0'
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36'
   };
   try {
     const url = `${BASE_URL}/warehouses/insight/overview?type=${type}&time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
