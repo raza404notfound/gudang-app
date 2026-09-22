@@ -856,8 +856,9 @@ app.get('/api/insight', requireAuth, async (req, res) => {
       : WAREHOUSES;
 
     const results = await Promise.all(targets.map(async (wh) => {
-      const [overview, byStatus, daily, mostUsed] = await Promise.all([
-        fetchOverviewRange(type, wh, time_min, time_max),
+      // Jalankan overview dulu sendiri, lalu yang lain parallel
+      const overview = await fetchOverviewRange(type, wh, time_min, time_max);
+      const [byStatus, daily, mostUsed] = await Promise.all([
         fetchByStatus(type, wh, time_min, time_max),
         fetchDaily(type, wh, time_min, time_max),
         fetchMostUsed(type, wh, time_min, time_max)
@@ -890,7 +891,7 @@ async function fetchOverviewRange(type, wh, time_min, time_max) {
   };
   try {
     const url = `${BASE_URL}/warehouses/insight/overview?type=${type}&time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
-    const res = await axios.get(url, { headers, timeout: 15000 });
+    const res = await axios.get(url, { headers, timeout: 30000 });
     const raw = res.data?.data || res.data;
     // Hitung total trx dan pcs dari array status
     let total_trx = 0, total_pcs = 0;
