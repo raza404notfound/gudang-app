@@ -871,8 +871,8 @@ app.get('/api/insight', requireAuth, async (req, res) => {
 
     res.json({ success: true, type, date_from, date_to, warehouses: results });
   } catch(err) {
-    console.error('Insight error:', err.message);
-    res.status(500).json({ success: false, message: 'Gagal mengambil data insight.' });
+    console.error('Insight error detail:', err.stack || err.message);
+    res.status(500).json({ success: false, message: 'Gagal mengambil data insight: ' + err.message });
   }
 });
 
@@ -880,7 +880,7 @@ app.get('/api/insight', requireAuth, async (req, res) => {
 async function fetchOverviewRange(type, wh, time_min, time_max) {
   const token = await getWarehouseToken(wh);
   if (!token) return { total_trx: 0, total_pcs: 0, status_error: 'Login Failed' };
-    const headers = {
+  const headers = {
     'authorization': `Bearer ${token}`,
     'accept': 'application/json, text/plain, */*',
     'origin': 'https://warehouse.onlypdc.com',
