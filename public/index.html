@@ -3910,16 +3910,14 @@
         // Cek field yang tersedia
         const getVal = d => Number(d.transaction_count || d.count || d.trx || 0);
         const maxVal = Math.max(...dy.map(getVal), 1);
-        const days   = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
         h += `<div class="ins-chart"><div class="ins-chart-title">📊 Traffic Harian</div>
           <div class="ins-bars" style="height:120px;align-items:flex-end;">`;
         dy.forEach(d => {
           const val = getVal(d);
           // Tinggi minimum 4px agar bar terlihat, maksimum 100px
           const pct  = maxVal > 0 ? Math.max(4, Math.round((val/maxVal) * 96)) : 4;
-          const date = d.date || d.day || '';
-          const lbl  = d.day_name ||
-            (date ? days[new Date(date + 'T00:00:00').getDay()] : '');
+          // Field "day" sudah berisi nama hari Indonesia: "Minggu","Senin",dst
+          const lbl = d.day || d.day_name || d.date || '';
           h += `<div class="ins-bar-col">
             <div class="ins-bar-v" style="font-size:9px;font-weight:700;color:#64748b;">${val>0?val:''}</div>
             <div class="ins-bar-b" style="height:${pct}px;background:${val>0?'#fbbf24':'#f1f5f9'};width:100%;border-radius:3px 3px 0 0;min-height:3px;"></div>
