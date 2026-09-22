@@ -45,7 +45,8 @@ if (MISSING_ENV.length > 0) {
 // =============================================
 // DASHBOARD CACHE
 // =============================================
-const tokenCache   = {};
+const tokenCache     = {};
+const tokenCacheTime = {};
 const dashboardCache  = { inbound: null, outbound: null };
 const lastCacheTime   = { inbound: 0, outbound: 0 };
 const CACHE_DURATION  = 60 * 1000;
