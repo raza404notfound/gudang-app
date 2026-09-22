@@ -3837,8 +3837,10 @@
       const to   = document.getElementById('ins-to').value;
       const typeLabel = insType === 'outbound' ? 'Outbound' : 'Inbound';
 
-      // Hitung cancel dari byStatus
-      const cancelTrx = bs.find(s => s.status === 'cancel')?.transaction_count || 0;
+      // Ambil raw array dari overview (berisi breakdown per status)
+      const raw = Array.isArray(ov.raw) ? ov.raw : [];
+      const cancelTrx = raw.find(s => s.status === 'cancel')?.transaction_count || 0;
+      const cancelPcs = raw.find(s => s.status === 'cancel')?.item_count || 0;
 
       let h = `
         <!-- Gudang header -->
@@ -3862,13 +3864,36 @@
           </div>
           <div class="ins-stat batal">
             <div class="ins-stat-n">${Number(cancelTrx).toLocaleString('id-ID')}</div>
-            <div class="ins-stat-l">Batal</div>
+            <div class="ins-stat-l">Batal (${Number(cancelPcs).toLocaleString('id-ID')} pcs)</div>
           </div>
         </div>`;
 
-      // Status breakdown
-      if (bs.length) {
-        const stMap = { waiting:'Menunggu', packing:'Dikemas', packed:'Selesai', delivered:'Diserahkan', cancel:'Batal' };
+      // Status breakdown dari overview.raw
+      const stMap = {
+        waiting         : 'Menunggu',
+        picking         : 'Sedang Diambil',
+        picked          : 'Siap Dikemas',
+        packing         : 'Dikemas',
+        packing_completed: 'Selesai Dikemas',
+        completed       : 'Diserahkan Kurir',
+        cancel          : 'Batal'
+      };
+      if (raw.length) {
+        h += `<div class="ins-status-grid">`;
+        raw.forEach(s => {
+          const trx = Number(s.transaction_count||0);
+          const pcs = Number(s.item_count||0);
+          const isCancel = s.status === 'cancel';
+          h += `<div class="ins-st-item" style="${isCancel ? 'border-color:#fecdd3;background:#fff1f2;' : ''}">
+            <div class="ins-st-n" style="${isCancel ? 'color:#e11d48;' : ''}">${trx.toLocaleString('id-ID')}</div>
+            <div style="font-size:9px;color:#0284c7;font-weight:700;">${pcs.toLocaleString('id-ID')} pcs</div>
+            <div class="ins-st-l">${stMap[s.status]||s.status}</div>
+          </div>`;
+        });
+        h += `</div>`;
+      }
+      // byStatus dari endpoint terpisah (jika ada)
+      else if (bs.length) {
         h += `<div class="ins-status-grid">`;
         bs.forEach(s => {
           h += `<div class="ins-st-item">
@@ -3882,17 +3907,23 @@
 
       // Chart traffic harian
       if (dy.length) {
-        const maxVal = Math.max(...dy.map(d => Number(d.transaction_count||d.count||0)), 1);
+        // Cek field yang tersedia
+        const getVal = d => Number(d.transaction_count || d.count || d.trx || 0);
+        const maxVal = Math.max(...dy.map(getVal), 1);
         const days   = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
-        h += `<div class="ins-chart"><div class="ins-chart-title">📊 Traffic Harian</div><div class="ins-bars">`;
+        h += `<div class="ins-chart"><div class="ins-chart-title">📊 Traffic Harian</div>
+          <div class="ins-bars" style="height:120px;align-items:flex-end;">`;
         dy.forEach(d => {
-          const val = Number(d.transaction_count||d.count||0);
-          const pct = Math.round((val/maxVal)*100);
-          const lbl = d.day_name || (d.date ? days[new Date(d.date).getDay()] : '');
+          const val = getVal(d);
+          // Tinggi minimum 4px agar bar terlihat, maksimum 100px
+          const pct  = maxVal > 0 ? Math.max(4, Math.round((val/maxVal) * 96)) : 4;
+          const date = d.date || d.day || '';
+          const lbl  = d.day_name ||
+            (date ? days[new Date(date + 'T00:00:00').getDay()] : '');
           h += `<div class="ins-bar-col">
-            <div class="ins-bar-v">${val>0?val:''}</div>
-            <div class="ins-bar-b" style="height:${pct}%;"></div>
-            <div class="ins-bar-l">${lbl}</div>
+            <div class="ins-bar-v" style="font-size:9px;font-weight:700;color:#64748b;">${val>0?val:''}</div>
+            <div class="ins-bar-b" style="height:${pct}px;background:${val>0?'#fbbf24':'#f1f5f9'};width:100%;border-radius:3px 3px 0 0;min-height:3px;"></div>
+            <div class="ins-bar-l" style="font-size:9px;color:#94a3b8;">${lbl}</div>
           </div>`;
         });
         h += `</div></div>`;
