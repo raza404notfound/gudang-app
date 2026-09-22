@@ -72,7 +72,14 @@ function parseTotalTrx(data) {
 }
 
 async function getWarehouseToken(wh) {
-  if (tokenCache[wh.id]) return tokenCache[wh.id];
+  // Token di-cache selama 30 menit, lalu hapus otomatis
+  if (tokenCache[wh.id]) {
+    const age = Date.now() - (tokenCacheTime[wh.id] || 0);
+    if (age < 30 * 60 * 1000) return tokenCache[wh.id];
+    delete tokenCache[wh.id];
+    delete tokenCacheTime[wh.id];
+    console.log(`🔄 [TOKEN EXPIRED] ${wh.name} — login ulang`);
+  }
   if (!wh.username || !wh.password) {
     console.error(`❌ [LOGIN GAGAL] ${wh.name}: username/password belum diisi di Railway.`);
     return null;
@@ -95,7 +102,8 @@ async function getWarehouseToken(wh) {
     const token = resData?.auth_token || resData?.token || resData?.access_token;
     console.timeEnd(`⏱️ login-${wh.id}`);
     if (token) {
-      tokenCache[wh.id] = token;
+      tokenCache[wh.id]     = token;
+      tokenCacheTime[wh.id] = Date.now();
       console.log(`✅ [LOGIN SUKSES] ${wh.name}`);
       return token;
     }
@@ -777,10 +785,11 @@ async function fetchByStatus(type, wh, time_min, time_max) {
   };
   try {
     const url = `${BASE_URL}/warehouses/insight/by_status?type=${type}&tx_type=order&time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
-    const res = await axios.get(url, { headers, timeout: 15000 });
-    return res.data?.data || res.data || null;
+    const res = await axios.get(url, { headers, timeout: 20000 });
+    const d = res.data?.data || res.data;
+    return Array.isArray(d) ? d : null;
   } catch(err) {
-    console.error(`fetchByStatus ${type} ${wh.id}:`, err.response?.data?.message || err.message);
+    console.error(`fetchByStatus ${type} ${wh.id}:`, err.response?.status, err.response?.data?.message || err.message);
     return null;
   }
 }
@@ -798,10 +807,11 @@ async function fetchDaily(type, wh, time_min, time_max) {
   };
   try {
     const url = `${BASE_URL}/warehouses/traffic/daily?type=${type}&tx_type=order&time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
-    const res = await axios.get(url, { headers, timeout: 15000 });
-    return res.data?.data || res.data || null;
+    const res = await axios.get(url, { headers, timeout: 20000 });
+    const d = res.data?.data || res.data;
+    return Array.isArray(d) ? d : null;
   } catch(err) {
-    console.error(`fetchDaily ${type} ${wh.id}:`, err.response?.data?.message || err.message);
+    console.error(`fetchDaily ${type} ${wh.id}:`, err.response?.status, err.response?.data?.message || err.message);
     return null;
   }
 }
@@ -819,10 +829,11 @@ async function fetchMostUsed(type, wh, time_min, time_max) {
   };
   try {
     const url = `${BASE_URL}/warehouses/insight/most_used?warehouse_id=${wh.warehouse_id}&type=${type}&time_min=${time_min}&time_max=${time_max}&limit=5`;
-    const res = await axios.get(url, { headers, timeout: 15000 });
-    return res.data?.data || res.data || null;
+    const res = await axios.get(url, { headers, timeout: 20000 });
+    const d = res.data?.data || res.data;
+    return Array.isArray(d) ? d : (d ? [d] : null);
   } catch(err) {
-    console.error(`fetchMostUsed ${type} ${wh.id}:`, err.response?.data?.message || err.message);
+    console.error(`fetchMostUsed ${type} ${wh.id}:`, err.response?.status, err.response?.data?.message || err.message);
     return null;
   }
 }
