@@ -818,6 +818,27 @@ async function fetchDaily(type, wh, time_min, time_max) {
 }
 
 // Fetch most used products
+async function fetchByTeam(type, wh, time_min, time_max) {
+  const token = await getWarehouseToken(wh);
+  if (!token) return null;
+  const headers = {
+    'authorization': `Bearer ${token}`,
+    'accept': 'application/json, text/plain, */*',
+    'origin': 'https://warehouse.onlypdc.com',
+    'referer': 'https://warehouse.onlypdc.com/',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36'
+  };
+  try {
+    const url = `${BASE_URL}/warehouses/insight/rank?type=${type}&tx_type=order&order_by=item_count&time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
+    const res = await axios.get(url, { headers, timeout: 20000 });
+    const d = res.data?.data || res.data;
+    return Array.isArray(d) ? d : null;
+  } catch(err) {
+    console.error(`fetchByTeam ${type} ${wh.id}:`, err.response?.status, err.response?.data?.message || err.message);
+    return null;
+  }
+}
+
 async function fetchMostUsed(type, wh, time_min, time_max) {
   const token = await getWarehouseToken(wh);
   if (!token) return null;
@@ -858,16 +879,17 @@ app.get('/api/insight', requireAuth, async (req, res) => {
     const results = await Promise.all(targets.map(async (wh) => {
       // Jalankan overview dulu sendiri, lalu yang lain parallel
       const overview = await fetchOverviewRange(type, wh, time_min, time_max);
-      const [byStatus, daily, mostUsed] = await Promise.all([
+      const [byStatus, daily, mostUsed, byTeam] = await Promise.all([
         fetchByStatus(type, wh, time_min, time_max),
         fetchDaily(type, wh, time_min, time_max),
-        fetchMostUsed(type, wh, time_min, time_max)
+        fetchMostUsed(type, wh, time_min, time_max),
+        fetchByTeam(type, wh, time_min, time_max)
       ]);
       return {
         id          : wh.id,
         name        : wh.name,
         warehouse_id: wh.warehouse_id,
-        overview, byStatus, daily, mostUsed
+        overview, byStatus, daily, mostUsed, byTeam
       };
     }));
 
@@ -905,6 +927,34 @@ async function fetchOverviewRange(type, wh, time_min, time_max) {
     }
     return { total_trx, total_pcs, raw };
   } catch(err) {
+    const status = err.response?.status;
+    // Token expired → clear cache dan retry sekali
+    if (status === 401 || status === 403) {
+      delete tokenCache[wh.id];
+      delete tokenCacheTime[wh.id];
+      console.log(`🔄 [TOKEN RETRY] ${wh.name}`);
+      try {
+        const token2 = await getWarehouseToken(wh);
+        if (token2) {
+          const h2 = {
+            'authorization': `Bearer ${token2}`,
+            'accept': 'application/json, text/plain, */*',
+            'origin': 'https://warehouse.onlypdc.com',
+            'referer': 'https://warehouse.onlypdc.com/',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36'
+          };
+          const url2 = `${BASE_URL}/warehouses/insight/overview?type=${type}&time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
+          const res2 = await axios.get(url2, { headers: h2, timeout: 30000 });
+          const raw2 = res2.data?.data || res2.data;
+          let t = 0, p = 0;
+          if (Array.isArray(raw2)) {
+            raw2.forEach(item => { if(item.status!=='cancel'){ t+=Number(item.transaction_count)||0; p+=Number(item.item_count)||0; } });
+          }
+          return { total_trx: t, total_pcs: p, raw: raw2 };
+        }
+      } catch(e2) { console.error(`Retry gagal ${wh.name}:`, e2.message); }
+    }
+    console.error(`fetchOverviewRange ${type} ${wh.id}:`, status, err.message);
     return { total_trx: 0, total_pcs: 0, status_error: err.response?.data?.message || 'Error' };
   }
 }
