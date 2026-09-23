@@ -803,7 +803,9 @@
       <div class="nav-section">
         <div class="section-title">ANALITIK</div>
         <a class="nav-item" href="#gudang-insight" onclick="switchTab('gudang-insight', this); return false;">
-          <span class="material-symbols-outlined">insights</span><span>Gudang Insight</span>
+          <span class="material-symbols-outlined">insights</span>
+          <span>Gudang Insight</span>
+          <span style="margin-left:auto;background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;letter-spacing:.3px;flex-shrink:0;">BETA</span>
         </a>
       </div>
       <div class="nav-section">
@@ -3869,37 +3871,32 @@
         </div>`;
 
       // Status breakdown dari overview.raw
-      const stMap = {
-        waiting         : 'Menunggu',
-        picking         : 'Sedang Diambil',
-        picked          : 'Siap Dikemas',
-        packing         : 'Dikemas',
-        packing_completed: 'Selesai Dikemas',
-        completed       : 'Diserahkan Kurir',
-        cancel          : 'Batal'
+      // Status config — mirip web PDC dengan warna header
+      const stConfig = {
+        waiting          : { lbl:'Menunggu Diproses', bg:'#f59e0b', text:'#fff' },
+        picking          : { lbl:'Sedang Diambil',    bg:'#06b6d4', text:'#fff' },
+        picked           : { lbl:'Siap Dikemas',      bg:'#3b82f6', text:'#fff' },
+        packing          : { lbl:'Sedang Dikemas',    bg:'#8b5cf6', text:'#fff' },
+        packing_completed: { lbl:'Selesai Dikemas',   bg:'#10b981', text:'#fff' },
+        completed        : { lbl:'Diserahkan Kurir',  bg:'#0ea5e9', text:'#fff' },
+        cancel           : { lbl:'Transaksi Batal',   bg:'#6b7280', text:'#fff' }
       };
-      if (raw.length) {
-        h += `<div class="ins-status-grid">`;
-        raw.forEach(s => {
+      const sourceData = raw.length ? raw : bs;
+      if (sourceData.length) {
+        h += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">`;
+        sourceData.forEach(s => {
+          const cfg = stConfig[s.status] || { lbl:s.status, bg:'#94a3b8', text:'#fff' };
           const trx = Number(s.transaction_count||0);
           const pcs = Number(s.item_count||0);
-          const isCancel = s.status === 'cancel';
-          h += `<div class="ins-st-item" style="${isCancel ? 'border-color:#fecdd3;background:#fff1f2;' : ''}">
-            <div class="ins-st-n" style="${isCancel ? 'color:#e11d48;' : ''}">${trx.toLocaleString('id-ID')}</div>
-            <div style="font-size:9px;color:#0284c7;font-weight:700;">${pcs.toLocaleString('id-ID')} pcs</div>
-            <div class="ins-st-l">${stMap[s.status]||s.status}</div>
-          </div>`;
-        });
-        h += `</div>`;
-      }
-      // byStatus dari endpoint terpisah (jika ada)
-      else if (bs.length) {
-        h += `<div class="ins-status-grid">`;
-        bs.forEach(s => {
-          h += `<div class="ins-st-item">
-            <div class="ins-st-n">${Number(s.transaction_count||0).toLocaleString('id-ID')}</div>
-            <div style="font-size:9px;color:#0284c7;font-weight:700;">${Number(s.item_count||0).toLocaleString('id-ID')} pcs</div>
-            <div class="ins-st-l">${stMap[s.status]||s.status}</div>
+          h += `<div style="flex:1;min-width:100px;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);">
+            <div style="background:${cfg.bg};color:${cfg.text};padding:6px 10px;font-size:10px;font-weight:700;text-align:center;">
+              ${cfg.lbl}
+            </div>
+            <div style="background:#fff;padding:10px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 10px 10px;text-align:center;">
+              <div style="font-size:18px;font-weight:800;color:#1e293b;">${trx.toLocaleString('id-ID')}</div>
+              <div style="font-size:10px;color:#64748b;margin-top:1px;">Transaksi</div>
+              <div style="font-size:11px;font-weight:700;color:#0284c7;margin-top:3px;">${pcs.toLocaleString('id-ID')} pcs</div>
+            </div>
           </div>`;
         });
         h += `</div>`;
@@ -3925,6 +3922,43 @@
           </div>`;
         });
         h += `</div></div>`;
+      }
+
+      // Tabel per Tim
+      const bt = Array.isArray(wh.byTeam) ? wh.byTeam : [];
+      if (bt.length) {
+        h += `<div class="ins-toprod" style="margin-bottom:12px;">
+          <div class="ins-toprod-title">👥 Data Per Tim</div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead>
+                <tr style="background:#f8fafc;">
+                  <th style="padding:8px 12px;text-align:left;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;">No</th>
+                  <th style="padding:8px 12px;text-align:left;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;">Tim</th>
+                  <th style="padding:8px 12px;text-align:right;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;">Transaksi</th>
+                  <th style="padding:8px 12px;text-align:right;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;">Total Pcs</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${bt.slice(0,10).map((t,i) => `
+                  <tr style="border-bottom:1px solid #f8fafc;transition:background .1s;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''">
+                    <td style="padding:8px 12px;color:#94a3b8;font-size:11px;">${i+1}</td>
+                    <td style="padding:8px 12px;font-weight:600;color:#1e293b;">${t.team_name || t.name || 'Tim ' + (t.team_id||'')}</td>
+                    <td style="padding:8px 12px;text-align:right;font-weight:700;color:#0284c7;">${Number(t.transaction_count||0).toLocaleString('id-ID')}</td>
+                    <td style="padding:8px 12px;text-align:right;font-weight:700;color:#16a34a;">${Number(t.item_count||0).toLocaleString('id-ID')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr style="background:#f8fafc;border-top:2px solid #e2e8f0;">
+                  <td colspan="2" style="padding:8px 12px;font-weight:700;color:#1e293b;font-size:11px;">TOTAL</td>
+                  <td style="padding:8px 12px;text-align:right;font-weight:800;color:#0284c7;">${bt.slice(0,10).reduce((s,t)=>s+Number(t.transaction_count||0),0).toLocaleString('id-ID')}</td>
+                  <td style="padding:8px 12px;text-align:right;font-weight:800;color:#16a34a;">${bt.slice(0,10).reduce((s,t)=>s+Number(t.item_count||0),0).toLocaleString('id-ID')}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>`;
       }
 
       // Top produk
