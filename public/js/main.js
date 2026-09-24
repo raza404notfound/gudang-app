@@ -1,5 +1,9 @@
 // main.js — PDC Warehouse Admin
 
+// Variabel global yang diperlukan
+let lastFetchTimeInbound  = null;
+let lastFetchTimeOutbound = null;
+
 let allTrackedData = [];
 
     const WAREHOUSE_LIST = [
@@ -641,8 +645,15 @@ let allTrackedData = [];
     // =============================================
     // LACAK CANCEL — Scan resi + notifikasi suara
     // =============================================
-    let cancelResiSet = new Set();     // semua resi berstatus cancel di tanggal terpilih
-    let cancelScannedSet = new Set();  // resi yang sudah discan selama sesi popup ini terbuka
+    let cancelResiSet    = new Set(); // semua resi berstatus cancel di tanggal terpilih
+    let cancelScannedSet = new Set(); // resi yang sudah discan selama sesi popup ini terbuka
+
+    function updateCancelCounts() {
+      const totalEl   = document.getElementById('cancel-total-count');
+      const scannedEl = document.getElementById('cancel-scanned-count');
+      if (totalEl)   totalEl.innerText   = cancelResiSet.size;
+      if (scannedEl) scannedEl.innerText = cancelScannedSet.size;
+    }
 
     // URL Apps Script — fetch langsung dari browser tanpa lewat Railway
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbwBaBiM08RtAuPayp-vtJINsO3li2blbVg1sbTJtKFPF3-xLN6zhBg5_UbUG_79mQoJ/exec';
@@ -679,9 +690,16 @@ let allTrackedData = [];
           return;
         }
         data.rows.forEach(r => cancelResiSet.add(String(r.resi).toUpperCase()));
-        renderCancelList(data.rows);
         updateCancelCounts();
-        resultBox.innerText = `${cancelResiSet.size} resi cancel siap discan.`;
+        // Update result box dengan info cancel
+        resultBox.innerHTML = `
+          <div style="text-align:center;color:#94a3b8;">
+            <div style="font-size:32px;margin-bottom:8px;">📦</div>
+            <div style="font-size:13px;font-weight:700;color:#1e293b;">${cancelResiSet.size} resi cancel siap discan</div>
+            <div style="font-size:11px;margin-top:4px;opacity:.7;">JY/JX = JNT · Lainnya = tidak valid</div>
+          </div>`;
+        resultBox.style.background = '#f8fafc';
+        resultBox.style.border = '1.5px solid #e2e8f0';
         document.getElementById('cancel-scan-input').value = '';
         document.getElementById('cancel-scan-input').focus();
       } catch (err) {
@@ -689,10 +707,7 @@ let allTrackedData = [];
       }
     }
 
-    function renderCancelList(rows) {
-            document.getElementById('cancel-total-count').innerText = cancelResiSet.size;
-      document.getElementById('cancel-scanned-count').innerText = cancelScannedSet.size;
-    }
+
 
     // =============================================
 
