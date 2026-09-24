@@ -666,45 +666,156 @@ let allTrackedData = [];
     }
 
     async function openLacakCancel() {
-      const tanggal = document.getElementById('filter-tanggal').value;
+      const tanggal = cdpSelectedDate || document.getElementById('filter-tanggal').value;
       if (!tanggal) return showToast('Pilih tanggal terlebih dahulu!', 'warning');
       const gudang = document.getElementById('filter-gudang').value;
 
+      // Tampilkan modal
       const cm = document.getElementById('cancel-modal');
       cm.style.display = 'flex';
-      const resultBox = document.getElementById('cancel-last-result');
-      resultBox.innerText = 'Memuat data cancel...';
-      resultBox.style.background = '#f8fafc';
-      resultBox.style.color = '#64748b';
 
-      cancelResiSet = new Set();
+      // Reset state
+      cancelResiSet    = new Set();
       cancelScannedSet = new Set();
+      cancelRowData    = [];
       updateCancelCounts();
+
+      // Reset tabel
+      const tbody = document.getElementById('cancel-list-body');
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#94a3b8;font-size:12px;">Memuat daftar resi cancel...</td></tr>';
+
+      // Aktifkan keyboard listener untuk scanner eksternal
+      cancelScanBuffer = '';
+      document.addEventListener('keydown', cancelScanKeyListener);
 
       try {
         const params = { action: 'cancelList', tanggal };
         if (gudang) params.gudang = gudang;
         const data = await gasGetDirect(params);
         if (!data.success) {
-          resultBox.innerText = data.message || 'Gagal memuat data.';
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:30px;color:#e11d48;font-size:12px;">⚠ ${data.message || 'Gagal memuat data.'}</td></tr>`;
           return;
         }
+
+        // Simpan data rows untuk referensi scan
+        cancelRowData = data.rows || [];
         data.rows.forEach(r => cancelResiSet.add(String(r.resi).toUpperCase()));
         updateCancelCounts();
-        // Update result box dengan info cancel
-        resultBox.innerHTML = `
-          <div style="text-align:center;color:#94a3b8;">
-            <div style="font-size:32px;margin-bottom:8px;">📦</div>
-            <div style="font-size:13px;font-weight:700;color:#1e293b;">${cancelResiSet.size} resi cancel siap discan</div>
-            <div style="font-size:11px;margin-top:4px;opacity:.7;">JY/JX = JNT · Lainnya = tidak valid</div>
-          </div>`;
-        resultBox.style.background = '#f8fafc';
-        resultBox.style.border = '1.5px solid #e2e8f0';
-        document.getElementById('cancel-scan-input').value = '';
-        document.getElementById('cancel-scan-input').focus();
+
+        // Render tabel
+        cancelRenderTable();
+
+        // Update status header
+        const statusEl = document.getElementById('cancel-scan-status');
+        if (statusEl) statusEl.textContent = `${cancelResiSet.size} resi cancel — arahkan scanner ke resi`;
+
       } catch (err) {
-        resultBox.innerText = 'Gagal terhubung ke Apps Script.';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#e11d48;font-size:12px;">Gagal terhubung ke Apps Script.</td></tr>';
       }
+    }
+
+    // Data rows cancel untuk render tabel
+    let cancelRowData    = [];
+    let cancelScanBuffer = '';
+    let cancelScanTimer  = null;
+
+    // Render tabel daftar resi cancel
+    function cancelRenderTable() {
+      const tbody = document.getElementById('cancel-list-body');
+      if (!cancelRowData.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#94a3b8;font-size:12px;">Tidak ada resi cancel di tanggal ini.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = cancelRowData.map(r => {
+        const resi    = String(r.resi || '').toUpperCase();
+        const tgl     = r.tglDicatat || r.tgl_dicatat || '-';
+        const batch   = r.batch || '-';
+        const scanned = cancelScannedSet.has(resi);
+        const rowBg   = scanned ? 'background:#f0fdf4;' : '';
+        return `<tr id="cancel-row-${resi}" style="${rowBg}transition:background .3s;">
+          <td style="padding:10px 14px;font-family:monospace;font-size:12px;color:#1e293b;font-weight:600;">${resi}</td>
+          <td style="padding:10px 14px;font-size:11px;color:#64748b;">${tgl}</td>
+          <td style="padding:10px 14px;text-align:center;">
+            ${batch !== '-' ? `<span style="background:#fef3c7;color:#92400e;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;">${batch}</span>` : '<span style="color:#cbd5e1;font-size:11px;">—</span>'}
+          </td>
+          <td style="padding:10px 14px;text-align:center;" id="cancel-status-${resi}">
+            ${scanned
+              ? '<span style="background:#dcfce7;color:#15803d;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;">✅ Ditemukan</span>'
+              : '<span style="color:#cbd5e1;font-size:11px;">Belum scan</span>'
+            }
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    // Keyboard listener untuk scanner eksternal
+    function cancelScanKeyListener(e) {
+      // Scanner kirim karakter cepat lalu Enter
+      if (e.key === 'Enter') {
+        const resi = cancelScanBuffer.trim().toUpperCase();
+        cancelScanBuffer = '';
+        clearTimeout(cancelScanTimer);
+        if (resi.length > 3) cancelProcessScan(resi);
+        return;
+      }
+      // Abaikan modifier keys
+      if (e.key.length === 1) {
+        cancelScanBuffer += e.key;
+        clearTimeout(cancelScanTimer);
+        // Reset buffer kalau tidak ada input 300ms (bukan dari scanner)
+        cancelScanTimer = setTimeout(() => { cancelScanBuffer = ''; }, 300);
+      }
+    }
+
+    // Proses hasil scan
+    function cancelProcessScan(resi) {
+      const resultBox = document.getElementById('cancel-last-result');
+
+      // Cek JNT
+      const isJNT = resi.startsWith('JY') || resi.startsWith('JX');
+      if (!isJNT) {
+        playScanVoice('tidak_valid');
+        cancelShowResult(resultBox, '🚫', 'Bukan Paket JNT', resi, '#fff1f2', '#fecdd3', '#be123c');
+        return;
+      }
+
+      // Double scan
+      if (cancelScannedSet.has(resi)) {
+        playScanVoice('double');
+        cancelShowResult(resultBox, '⚠️', 'Double Paket!', resi, '#fef3c7', '#fde68a', '#92400e');
+        return;
+      }
+
+      cancelScannedSet.add(resi);
+      updateCancelCounts();
+
+      if (cancelResiSet.has(resi)) {
+        // Cancel ditemukan — hijau di tabel
+        playScanVoice('cancel');
+        cancelShowResult(resultBox, '🚨', 'Paket Cancel!', resi, '#fee2e2', '#fca5a5', '#dc2626');
+        // Update baris tabel
+        const row    = document.getElementById(`cancel-row-${resi}`);
+        const status = document.getElementById(`cancel-status-${resi}`);
+        if (row)    { row.style.background = '#f0fdf4'; }
+        if (status) { status.innerHTML = '<span style="background:#dcfce7;color:#15803d;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;">✅ Ditemukan</span>'; }
+      } else {
+        // Valid (JNT, bukan cancel)
+        playScanVoice('valid');
+        cancelShowResult(resultBox, '✅', 'Paket Valid', resi, '#f0fdf4', '#86efac', '#15803d');
+      }
+    }
+
+    function cancelShowResult(box, icon, label, resi, bg, border, color) {
+      box.style.display = '';
+      box.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:${bg};border-radius:8px;border:1.5px solid ${border};">
+        <span style="font-size:22px;">${icon}</span>
+        <div>
+          <div style="font-size:13px;font-weight:800;color:${color};">${label}</div>
+          <div style="font-size:11px;color:#94a3b8;font-family:monospace;">${resi}</div>
+        </div>
+      </div>`;
+      // Sembunyikan lagi setelah 2.5 detik
+      setTimeout(() => { if (box) box.style.display = 'none'; }, 2500);
     }
 
 
@@ -713,84 +824,17 @@ let allTrackedData = [];
 
 // [audio dimuat dari audio.js]
 
-function handleCancelScan(event) {
-      if (event.key !== 'Enter') return;
-      const input = document.getElementById('cancel-scan-input');
-      const resi  = input.value.trim().toUpperCase();
-      input.value = '';
-      if (!resi) return;
+// handleCancelScan lama dihapus — digantikan cancelScanKeyListener
 
-      const resultBox = document.getElementById('cancel-last-result');
-
-      // Cek apakah resi JNT (awalan JY atau JX)
-      const isJNT = resi.startsWith('JY') || resi.startsWith('JX');
-      if (!isJNT) {
-        playScanVoice('tidak_valid');
-        resultBox.innerHTML = `
-          <div style="text-align:center;">
-            <div style="font-size:28px;margin-bottom:4px;">🚫</div>
-            <div style="font-size:15px;font-weight:800;color:#be123c;">Bukan Paket JNT</div>
-            <div style="font-size:12px;color:#94a3b8;margin-top:4px;font-family:monospace;">${resi}</div>
-          </div>`;
-        resultBox.style.background = '#fff1f2';
-        resultBox.style.border     = '1.5px solid #fecdd3';
-        return;
-      }
-
-      // Double paket
-      if (cancelScannedSet.has(resi)) {
-        playScanVoice('double');
-        resultBox.innerHTML = `
-          <div style="text-align:center;">
-            <div style="font-size:28px;margin-bottom:4px;">⚠️</div>
-            <div style="font-size:15px;font-weight:800;color:#92400e;">Double Paket!</div>
-            <div style="font-size:12px;color:#94a3b8;margin-top:4px;font-family:monospace;">${resi}</div>
-          </div>`;
-        resultBox.style.background = '#fef3c7';
-        resultBox.style.border     = '1.5px solid #fde68a';
-        return;
-      }
-
-      cancelScannedSet.add(resi);
-
-      if (cancelResiSet.has(resi)) {
-        // Paket cancel ditemukan
-        playScanVoice('cancel');
-        resultBox.innerHTML = `
-          <div style="text-align:center;">
-            <div style="font-size:28px;margin-bottom:4px;">🚨</div>
-            <div style="font-size:15px;font-weight:800;color:#dc2626;">Paket Cancel!</div>
-            <div style="font-size:12px;color:#94a3b8;margin-top:4px;font-family:monospace;">${resi}</div>
-          </div>`;
-        resultBox.style.background = '#fee2e2';
-        resultBox.style.border     = '1.5px solid #fca5a5';
-      } else {
-        // Resi valid (JNT, ada di daftar, bukan cancel)
-        playScanVoice('valid');
-        resultBox.innerHTML = `
-          <div style="text-align:center;">
-            <div style="font-size:28px;margin-bottom:4px;">✅</div>
-            <div style="font-size:15px;font-weight:800;color:#16a34a;">Paket Valid</div>
-            <div style="font-size:12px;color:#94a3b8;margin-top:4px;font-family:monospace;">${resi}</div>
-          </div>`;
-        resultBox.style.background = '#f0fdf4';
-        resultBox.style.border     = '1.5px solid #86efac';
-      }
-
-      updateCancelCounts();
-    }
-
+    
     function closeLacakCancel() {
       document.getElementById('cancel-modal').style.display = 'none';
-      // Reset result box
-      document.getElementById('cancel-last-result').innerHTML = `
-        <div style="text-align:center;color:#94a3b8;">
-          <div style="font-size:32px;margin-bottom:6px;">📦</div>
-          <div style="font-size:13px;font-weight:600;">Siap scan resi...</div>
-          <div style="font-size:11px;margin-top:3px;opacity:.7;">JY/JX = JNT · Lainnya = tidak valid</div>
-        </div>`;
-      document.getElementById('cancel-last-result').style.background = '#f8fafc';
-      document.getElementById('cancel-last-result').style.border = '1.5px solid #e2e8f0';
+      // Hapus keyboard listener scanner
+      document.removeEventListener('keydown', cancelScanKeyListener);
+      cancelScanBuffer = '';
+      // Reset result notif
+      const rb = document.getElementById('cancel-last-result');
+      if (rb) { rb.innerHTML = ''; rb.style.display = 'none'; }
     }
 
     // AMBIL DARI SHEET — baca dari tab "Resi Harian", masukkan ke kotak input
