@@ -112,40 +112,55 @@
     </div>
   </div>
   <!-- MODAL LACAK CANCEL -->
-<div id="cancel-modal" class="login-overlay" style="display:none; z-index: 10000;">
-    <div class="login-card" style="width: 440px; max-width: 92vw;">
-      <h3 style="margin-bottom:6px;">🚨 Lacak Resi Cancel</h3>
-      <p style="font-size:12px;color:#64748b;text-align:center;margin-bottom:16px;">Scan atau ketik resi lalu tekan Enter.</p>
-
-      <input type="text" id="cancel-scan-input" placeholder="Scan / ketik resi di sini..." autocomplete="off"
-        onkeydown="handleCancelScan(event)"
-        style="width:100%;padding:12px;border:2px solid #e11d48;border-radius:8px;font-size:16px;font-family:monospace;outline:none;margin-bottom:14px;">
-
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:10px;">
-        <span>Total Cancel: <b id="cancel-total-count">0</b></span>
-        <span>Sudah Discan: <b id="cancel-scanned-count" style="color:#16a34a;">0</b></span>
+<div id="cancel-modal" style="display:none;position:fixed;inset:0;z-index:10000;
+    backdrop-filter:blur(16px) brightness(1.05);
+    -webkit-backdrop-filter:blur(16px) brightness(1.05);
+    background:rgba(255,255,255,0.4);
+    align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;width:420px;max-width:92vw;
+    box-shadow:0 24px 60px rgba(0,0,0,.15);overflow:hidden;
+    border:1px solid rgba(255,255,255,0.8);">
+    <div style="background:#1e293b;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;background:#fbbf24;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;">🚨</div>
+        <div>
+          <div style="font-size:14px;font-weight:800;color:#f8fafc;">Lacak Resi Cancel</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:1px;">Scan resi → Enter</div>
+        </div>
       </div>
-
-      <div id="cancel-last-result" style="min-height:50px;padding:12px;border-radius:8px;background:#f8fafc;color:#64748b;text-align:center;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:center;">
-        Menunggu scan...
+      <div style="display:flex;gap:16px;font-size:12px;">
+        <span style="color:#94a3b8;">Cancel: <b id="cancel-total-count" style="color:#fca5a5;">0</b></span>
+        <span style="color:#94a3b8;">Scan: <b id="cancel-scanned-count" style="color:#86efac;">0</b></span>
       </div>
-
-      <div style="max-height:180px;overflow-y:auto;border-top:1px solid #f1f5f9;padding-top:10px;">
-        <table style="width:100%;font-size:12px;border-collapse:collapse;">
-          <thead>
-            <tr style="color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;">
-              <th style="padding:4px 4px;text-align:left;font-weight:600;">Resi</th>
-              <th style="padding:4px 4px;text-align:left;font-weight:600;">Gudang</th>
-              <th style="padding:4px 4px;text-align:center;font-weight:600;">Batch</th>
-              <th style="padding:4px 4px;text-align:right;font-weight:600;">Status Scan</th>
-            </tr>
-          </thead>
-          <tbody id="cancel-list-body"></tbody>
-        </table>
-      </div>
-
-      <button onclick="closeLacakCancel()" style="width:100%;margin-top:14px;padding:10px;background:#f1f5f9;color:#475569;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Tutup</button>
     </div>
+    <div style="padding:20px;">
+      <input type="text" id="cancel-scan-input"
+        placeholder="Scan / ketik resi di sini..."
+        autocomplete="off" onkeydown="handleCancelScan(event)"
+        style="width:100%;padding:13px 14px;border:2px solid #fbbf24;border-radius:10px;
+          font-size:16px;font-family:monospace;outline:none;margin-bottom:14px;
+          background:#fff;color:#1e293b;box-shadow:0 0 0 3px rgba(251,191,36,.1);
+          box-sizing:border-box;">
+      <div id="cancel-last-result"
+        style="min-height:110px;padding:16px;border-radius:12px;
+          background:#f8fafc;border:1.5px solid #e2e8f0;
+          display:flex;align-items:center;justify-content:center;transition:all .2s;">
+        <div style="text-align:center;color:#94a3b8;">
+          <div style="font-size:32px;margin-bottom:8px;">📦</div>
+          <div style="font-size:13px;font-weight:600;">Siap scan resi...</div>
+          <div style="font-size:11px;margin-top:4px;opacity:.7;">JY/JX = JNT · Lainnya = tidak valid</div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:0 20px 20px;">
+      <button onclick="closeLacakCancel()"
+        style="width:100%;padding:12px;background:#1e293b;color:#f8fafc;
+          border:none;border-radius:10px;font-size:14px;font-weight:700;
+          cursor:pointer;"
+        onmouseover="this.style.background='#0f172a'"
+        onmouseout="this.style.background='#1e293b'">Tutup</button>
+    </div>
+  </div>
 </div>
 
   <!-- SIDEBAR -->
