@@ -1230,7 +1230,13 @@ app.get('/api/selling/team-stat', requireAuth, async (req, res) => {
     }
 
     const rawBuf = Buffer.from(apiRes.data);
+    console.log('🔍 [SELLING] Response status:', apiRes.status);
+    console.log('🔍 [SELLING] Response headers:', JSON.stringify(apiRes.headers));
+    console.log('🔍 [SELLING] Raw buffer length:', rawBuf.length);
+    console.log('🔍 [SELLING] Raw hex (first 200 bytes):', rawBuf.slice(0, 200).toString('hex'));
+
     const teams  = decodeTeamStatMetricResponse(rawBuf);
+    console.log('🔍 [SELLING] Teams parsed:', teams.length, teams.slice(0,2));
 
     // Urutkan berdasarkan transaksi terbesar
     teams.sort((a, b) => b.transaksi - a.transaksi);
