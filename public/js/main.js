@@ -292,7 +292,8 @@ let allTrackedData = [];
       'barang-bermasalah' : () => initDataOpname(),
       'lacak-awb'         : () => null,
       'kelola-akun'       : () => loadUserList(),
-      'gudang-insight'    : () => initInsightPage()
+      'gudang-insight'    : () => initInsightPage(),
+      'statistik-team'    : () => initTeamStatPage()
     };
 
     function switchTab(pageId, element, pushState = true) {
@@ -1771,6 +1772,198 @@ let allTrackedData = [];
         h += `</div>`;
       }
       return h;
+    }
+
+    // =============================================
+    // STATISTIK TEAM — PDC Selling
+    // =============================================
+    let tsInit = false;
+
+    function initTeamStatPage() {
+      if (tsInit) return;
+      tsInit = true;
+      tsPreset('sebulan', document.querySelector('#page-statistik-team .ins-preset-btn.aktif'));
+      tsLoad();
+    }
+
+    function tsPreset(preset, el) {
+      document.querySelectorAll('#page-statistik-team .ins-preset-btn').forEach(b => b.classList.remove('aktif'));
+      if (el) el.classList.add('aktif');
+      const today = new Date();
+      const fmt   = d => d.toISOString().slice(0, 10);
+      let from = new Date(today);
+      let to   = new Date(today);
+
+      if (preset === 'hari-ini') {
+        // from = to = hari ini
+      } else if (preset === 'kemarin') {
+        from.setDate(today.getDate() - 1);
+        to.setDate(today.getDate() - 1);
+      } else if (preset === 'seminggu') {
+        from.setDate(today.getDate() - 6);
+      } else if (preset === 'sebulan') {
+        from.setMonth(today.getMonth() - 1);
+      } else if (preset === '3bulan') {
+        from.setMonth(today.getMonth() - 3);
+      } else if (preset === '6bulan') {
+        from.setMonth(today.getMonth() - 6);
+      } else if (preset === 'setahun') {
+        from.setFullYear(today.getFullYear() - 1);
+      }
+
+      document.getElementById('ts-from').value = fmt(from);
+      document.getElementById('ts-to').value   = fmt(to);
+    }
+
+    async function tsLoad() {
+      const from = document.getElementById('ts-from').value;
+      const to   = document.getElementById('ts-to').value;
+      if (!from || !to) return showToast('Pilih rentang tanggal dulu.', 'warning');
+
+      const btn = document.getElementById('ts-apply-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Memuat...';
+      document.getElementById('ts-container').innerHTML =
+        '<div class="ins-empty"><span class="material-symbols-outlined" style="animation:spin 1s linear infinite;font-size:48px;">sync</span><p style="font-size:13px;font-weight:600;color:#64748b;margin-top:10px;">Mengambil data dari PDC Selling...</p></div>';
+
+      try {
+        const token = sessionStorage.getItem('sessionToken');
+        const res   = await fetch(`/api/selling/team-stat?date_from=${from}&date_to=${to}`, {
+          headers: { 'x-session-token': token }
+        });
+        const data = await res.json();
+        if (!data.success) {
+          document.getElementById('ts-container').innerHTML =
+            `<div class="ins-empty"><span class="material-symbols-outlined" style="color:#e11d48;">error</span><p style="font-size:13px;color:#e11d48;margin-top:8px;">${data.message || 'Gagal mengambil data.'}</p></div>`;
+          return;
+        }
+        tsRender(data.teams || [], from, to);
+      } catch (e) {
+        document.getElementById('ts-container').innerHTML =
+          '<div class="ins-empty"><span class="material-symbols-outlined">wifi_off</span><p style="font-size:13px;color:#e11d48;margin-top:8px;">Gagal terhubung ke server.</p></div>';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:15px;">refresh</span> Terapkan';
+      }
+    }
+
+    function tsRender(teams, from, to) {
+      if (!teams.length) {
+        document.getElementById('ts-container').innerHTML =
+          '<div class="ins-empty"><span class="material-symbols-outlined">search_off</span><p style="font-size:13px;color:#64748b;margin-top:8px;">Tidak ada data untuk periode ini.</p></div>';
+        return;
+      }
+
+      const totalTrx = teams.reduce((s, t) => s + (t.transaksi || 0), 0);
+      const maxTrx   = Math.max(...teams.map(t => t.transaksi || 0), 1);
+
+      // Format tanggal untuk label
+      const fmtDate = s => {
+        if (!s) return '';
+        const [y, m, d] = s.split('-');
+        const BLN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+        return `${parseInt(d)} ${BLN[parseInt(m)-1]} ${y}`;
+      };
+
+      let html = `
+        <!-- Header ringkasan -->
+        <div class="ins-wh-hdr" style="margin-bottom:16px;">
+          <div class="ins-wh-icon"><span class="material-symbols-outlined">groups</span></div>
+          <div>
+            <div class="ins-wh-name">Statistik Team — PDC Selling</div>
+            <div class="ins-wh-sub">${fmtDate(from)} — ${fmtDate(to)} · ${teams.length} team aktif</div>
+          </div>
+        </div>
+
+        <!-- Stat total -->
+        <div class="ins-stats" style="margin-bottom:16px;">
+          <div class="ins-stat trx">
+            <div class="ins-stat-n">${totalTrx.toLocaleString('id-ID')}</div>
+            <div class="ins-stat-l">Total Transaksi</div>
+          </div>
+          <div class="ins-stat pcs">
+            <div class="ins-stat-n">${teams.length}</div>
+            <div class="ins-stat-l">Jumlah Team</div>
+          </div>
+          <div class="ins-stat batal">
+            <div class="ins-stat-n">${totalTrx > 0 ? Math.round(totalTrx / teams.length).toLocaleString('id-ID') : 0}</div>
+            <div class="ins-stat-l">Rata-rata / Team</div>
+          </div>
+        </div>
+
+        <!-- Tabel team -->
+        <div class="ins-toprod" style="margin-bottom:16px;">
+          <div class="ins-toprod-title">📊 Transaksi Per Team</div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead>
+                <tr style="background:#f8fafc;">
+                  <th style="padding:9px 12px;text-align:left;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;white-space:nowrap;">No</th>
+                  <th style="padding:9px 12px;text-align:left;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;">Nama Team</th>
+                  <th style="padding:9px 12px;text-align:right;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Transaksi</th>
+                  <th style="padding:9px 12px;text-align:right;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Share</th>
+                  <th style="padding:9px 12px;text-align:left;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;min-width:120px;">Bar</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${teams.map((t, i) => {
+                  const trx  = t.transaksi || 0;
+                  const pct  = totalTrx > 0 ? ((trx / totalTrx) * 100).toFixed(1) : '0.0';
+                  const bar  = maxTrx > 0 ? Math.max(2, Math.round((trx / maxTrx) * 100)) : 2;
+                  const isTop = i === 0;
+                  return `<tr style="border-bottom:1px solid #f1f5f9;transition:background .1s;"
+                    onmouseover="this.style.background='#fffbeb'"
+                    onmouseout="this.style.background=''">
+                    <td style="padding:9px 12px;color:#94a3b8;font-size:11px;">${i + 1}</td>
+                    <td style="padding:9px 12px;">
+                      <span style="font-weight:700;color:#1e293b;">${t.team_name || ('Team ' + (t.team_id || ''))}</span>
+                      ${isTop ? '<span style="margin-left:6px;background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;">🏆 #1</span>' : ''}
+                    </td>
+                    <td style="padding:9px 12px;text-align:right;font-weight:800;color:#0284c7;font-variant-numeric:tabular-nums;">${trx.toLocaleString('id-ID')}</td>
+                    <td style="padding:9px 12px;text-align:right;color:#64748b;font-size:11px;white-space:nowrap;">${pct}%</td>
+                    <td style="padding:9px 12px;">
+                      <div style="background:#f1f5f9;border-radius:4px;height:8px;overflow:hidden;">
+                        <div style="height:100%;width:${bar}%;background:${isTop?'#f59e0b':'#fbbf24'};border-radius:4px;transition:width .4s;"></div>
+                      </div>
+                    </td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+              <tfoot>
+                <tr style="background:#f8fafc;border-top:2px solid #e2e8f0;">
+                  <td colspan="2" style="padding:9px 12px;font-weight:700;color:#1e293b;font-size:11px;">TOTAL</td>
+                  <td style="padding:9px 12px;text-align:right;font-weight:800;color:#0284c7;font-variant-numeric:tabular-nums;">${totalTrx.toLocaleString('id-ID')}</td>
+                  <td style="padding:9px 12px;text-align:right;color:#64748b;font-size:11px;">100%</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Chart bar horizontal top 10 -->
+        ${teams.length > 0 ? `
+        <div class="ins-toprod">
+          <div class="ins-toprod-title">📈 Perbandingan Transaksi (Top ${Math.min(10, teams.length)})</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+            ${teams.slice(0, 10).map((t, i) => {
+              const trx = t.transaksi || 0;
+              const bar = maxTrx > 0 ? Math.max(2, Math.round((trx / maxTrx) * 100)) : 2;
+              return `<div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:110px;text-align:right;font-size:11px;font-weight:700;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;" title="${t.team_name || t.team_id}">${t.team_name || ('Team ' + t.team_id)}</div>
+                <div style="flex:1;background:#f1f5f9;border-radius:4px;height:18px;overflow:hidden;">
+                  <div style="height:100%;width:${bar}%;background:${i===0?'#f59e0b':i<3?'#fbbf24':'#93c5fd'};border-radius:4px;display:flex;align-items:center;padding-left:6px;transition:width .4s;">
+                    <span style="font-size:10px;font-weight:700;color:#1e293b;white-space:nowrap;">${bar > 20 ? trx.toLocaleString('id-ID') : ''}</span>
+                  </div>
+                </div>
+                <div style="width:45px;text-align:right;font-size:11px;font-weight:700;color:#0284c7;flex-shrink:0;">${trx.toLocaleString('id-ID')}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
+      `;
+
+      document.getElementById('ts-container').innerHTML = html;
     }
 
     document.addEventListener('DOMContentLoaded', checkAuthStatus);
