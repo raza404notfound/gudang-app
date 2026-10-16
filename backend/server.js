@@ -1266,9 +1266,9 @@ app.get('/api/selling/raw-debug', async (req, res) => {
       buffer_length: rawBuf.length,
       hex_preview: hexFull.slice(0, 500),
       hex_full: hexFull,
-      request_hex: grpcBody.toString('hex'),
-      timeMin: timeMin.toString(),
-      timeMax: timeMax.toString()
+      request_hex: protoBody.toString('hex'),
+      timeStartSec,
+      timeEndSec
     });
   } catch (err) {
     res.json({
