@@ -1142,54 +1142,121 @@ function decodeVarint(buf, offset) {
   return { value: result, next: i };
 }
 
-function decodeTeamStatMetricResponse(buf) {
-  // Connect Protocol response: raw protobuf (tanpa gRPC-Web frame header)
-  // Response berisi outer message dengan repeated field (teams)
-  const teams = [];
-  parseTeamStatFrame(buf, teams);
-  return teams;
-}
-
 function readLengthDelimited(buf, offset) {
   const r = decodeVarint(buf, offset);
   const len = Number(r.value);
   return { data: buf.slice(r.next, r.next + len), next: r.next + len };
 }
 
-function parseTeamStatFrame(frame, teams) {
-  // Frame berisi repeated message (field 1) = satu entry tim
+function skipField(buf, pos, wireType) {
+  if (wireType === 0) { const r = decodeVarint(buf, pos); return r.next; }
+  if (wireType === 1) return pos + 8;
+  if (wireType === 2) { const r = decodeVarint(buf, pos); return r.next + Number(r.value); }
+  if (wireType === 5) return pos + 4;
+  return buf.length; // unknown — bail
+}
+
+function decodeTeamStatMetricResponse(buf) {
+  // Connect Protocol response: raw protobuf, dua outer field1:
+  //   #1 (current period): {field8: {repeated field1: team_entry}}
+  //   #2 (comparison period): {repeated field1: team_entry} — kita skip
+  //
+  // Struktur team_entry:
+  //   .field1 = team_id (varint)
+  //   .field2 (nested message):
+  //     .field1 = team_id (varint, konfirmasi)
+  //     .field2 = transaksi (varint)
+  //     .field4 = nilai_belanja (float64 LE)
+  //     .field5 = nilai_transaksi (float64 LE)
+  //     .field6 = timestamp range (skip)
+  const teams = [];
   let pos = 0;
-  while (pos < frame.length) {
-    const tagR = decodeVarint(frame, pos);
+  let outerCount = 0;
+  while (pos < buf.length) {
+    const tagR = decodeVarint(buf, pos);
+    if (tagR.next >= buf.length && tagR.value === 0n) break;
     pos = tagR.next;
-    const tag = tagR.value;
-    const fieldNum = Number(tag >> 3n);
-    const wireType = Number(tag & 7n);
-    if (fieldNum === 1 && wireType === 2) {
-      // length-delimited: satu record tim
-      const ld = readLengthDelimited(frame, pos);
+    const fieldNum = Number(tagR.value >> 3n);
+    const wireType = Number(tagR.value & 7n);
+    if (wireType === 2) {
+      const ld = readLengthDelimited(buf, pos);
       pos = ld.next;
-      const team = parseOneTeam(ld.data);
-      if (team) teams.push(team);
+      if (fieldNum === 1) {
+        outerCount++;
+        if (outerCount === 1) {
+          // Outer record 1 (current period) — parse field8 di dalam
+          parseOuterRecord(ld.data, teams);
+        }
+        // Outer record 2 (comparison) — skip
+      } else {
+        // skip field lain di level paling atas
+      }
     } else {
+      pos = skipField(buf, pos, wireType);
+    }
+  }
+  return teams;
+}
+
+function parseOuterRecord(buf, teams) {
+  // Cari field8 (wire2) yang berisi repeated team entries
+  let pos = 0;
+  while (pos < buf.length) {
+    const tagR = decodeVarint(buf, pos);
+    pos = tagR.next;
+    const fieldNum = Number(tagR.value >> 3n);
+    const wireType = Number(tagR.value & 7n);
+    if (wireType === 2) {
+      const ld = readLengthDelimited(buf, pos);
+      pos = ld.next;
+      if (fieldNum === 8) {
+        // field8 berisi repeated field1 = team entries
+        parseTeamEntries(ld.data, teams);
+      }
       // skip field lain
-      if (wireType === 0) { const r = decodeVarint(frame, pos); pos = r.next; }
-      else if (wireType === 1) { pos += 8; }
-      else if (wireType === 2) { const r = decodeVarint(frame, pos); pos = r.next + Number(r.value); }
-      else if (wireType === 5) { pos += 4; }
-      else break;
+    } else {
+      pos = skipField(buf, pos, wireType);
     }
   }
 }
 
-function parseOneTeam(buf) {
-  // field 1 = team_id (varint/string)
-  // field 2 = team_name (string)
-  // field 3 = transaksi (varint)
-  // field 4 = nilai_belanja (varint/fixed)
-  // field 5 = nilai_transaksi (varint/fixed)
+function parseTeamEntries(buf, teams) {
+  // repeated field1 = satu team entry
   let pos = 0;
-  const team = { team_id: '', team_name: '', transaksi: 0, nilai_belanja: 0, nilai_transaksi: 0 };
+  while (pos < buf.length) {
+    const tagR = decodeVarint(buf, pos);
+    pos = tagR.next;
+    const fieldNum = Number(tagR.value >> 3n);
+    const wireType = Number(tagR.value & 7n);
+    if (wireType === 2) {
+      const ld = readLengthDelimited(buf, pos);
+      pos = ld.next;
+      if (fieldNum === 1) {
+        const team = parseOneTeam(ld.data);
+        if (team) teams.push(team);
+      }
+    } else {
+      pos = skipField(buf, pos, wireType);
+    }
+  }
+}
+
+function parseTeamStatFrame(frame, teams) {
+  // Legacy wrapper — redirect ke decodeTeamStatMetricResponse logic
+  parseTeamEntries(frame, teams);
+}
+
+function parseOneTeam(buf) {
+  // Struktur entry (dari reverse-engineer hex_full):
+  //   field1 (varint) = team_id
+  //   field2 (nested):
+  //     field1 (varint) = team_id (duplikat)
+  //     field2 (varint) = transaksi (jumlah order)
+  //     field4 (f64LE) = nilai_belanja
+  //     field5 (f64LE) = nilai_transaksi (omzet)
+  //     field6 (nested) = timestamp range (skip)
+  let pos = 0;
+  const team = { team_id: 0, team_name: '', transaksi: 0, nilai_belanja: 0, nilai_transaksi: 0 };
   while (pos < buf.length) {
     const tagR = decodeVarint(buf, pos);
     pos = tagR.next;
@@ -1198,25 +1265,43 @@ function parseOneTeam(buf) {
     if (wireType === 0) {
       const r = decodeVarint(buf, pos);
       pos = r.next;
-      if (fieldNum === 1) team.team_id   = r.value.toString();
-      if (fieldNum === 3) team.transaksi = Number(r.value);
-      if (fieldNum === 4) team.nilai_belanja   = Number(r.value);
-      if (fieldNum === 5) team.nilai_transaksi = Number(r.value);
+      if (fieldNum === 1) team.team_id = Number(r.value);
     } else if (wireType === 2) {
       const ld = readLengthDelimited(buf, pos);
       pos = ld.next;
-      if (fieldNum === 1) team.team_id   = ld.data.toString('utf8');
-      if (fieldNum === 2) team.team_name = ld.data.toString('utf8');
+      if (fieldNum === 2) {
+        // Parse stats nested message
+        let sp = 0;
+        while (sp < ld.data.length) {
+          const sr = decodeVarint(ld.data, sp);
+          sp = sr.next;
+          const sfn = Number(sr.value >> 3n);
+          const swt = Number(sr.value & 7n);
+          if (swt === 0) {
+            const sv = decodeVarint(ld.data, sp); sp = sv.next;
+            if (sfn === 1) team.team_id   = Number(sv.value);
+            if (sfn === 2) team.transaksi = Number(sv.value);
+          } else if (swt === 1) {
+            const f64 = ld.data.readDoubleLE(sp); sp += 8;
+            if (sfn === 4) team.nilai_belanja   = f64;
+            if (sfn === 5) team.nilai_transaksi = f64;
+          } else if (swt === 2) {
+            const sl = readLengthDelimited(ld.data, sp); sp = sl.next;
+            // skip nested (field6 = timestamp range)
+          } else {
+            sp = skipField(ld.data, sp, swt);
+          }
+        }
+      }
     } else if (wireType === 1) {
-      const val = buf.readBigInt64LE(pos);
       pos += 8;
-      if (fieldNum === 4) team.nilai_belanja   = Number(val);
-      if (fieldNum === 5) team.nilai_transaksi = Number(val);
     } else if (wireType === 5) {
       pos += 4;
     } else break;
   }
-  if (!team.team_name && !team.team_id) return null;
+  if (!team.team_id) return null;
+  // Buat nama tim dari team_id (karena nama tidak ada di response)
+  team.team_name = `Tim ${team.team_id}`;
   return team;
 }
 
