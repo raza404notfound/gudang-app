@@ -1055,27 +1055,77 @@ function encodeBoolField(fieldNum, val) {
   return encodeField(fieldNum, 0, encodeVarint(val ? 1 : 0));
 }
 
-function encodeTeamStatMetricRequest(timeMin, timeMax) {
-  // Berdasarkan payload cURL yang dianalisa:
-  // field 1 (int32): page = 1
-  // field 2 (int32): limit = 100
-  // field 4 (fixed64): time_min (microseconds)
-  // field 5 (fixed64): time_max (microseconds)
-  // field 7 (bool): sort_desc = true
-  const parts = [
-    encodeInt32Field(1, 1),           // page
-    encodeInt32Field(2, 100),         // limit
-    encodeFixed64Field(4, timeMin),   // cmin (microseconds)
-    encodeFixed64Field(5, timeMax),   // cmax (microseconds)
-    encodeBoolField(7, true)          // sort desc
-  ];
-  const body = Buffer.concat(parts);
-  // gRPC-Web frame: 0x00 (no compression) + 4-byte big-endian length + body
-  const frame = Buffer.alloc(5 + body.length);
-  frame[0] = 0x00;
-  frame.writeUInt32BE(body.length, 1);
-  body.copy(frame, 5);
-  return frame;
+function encodeMessageField(fieldNum, msgBuf) {
+  // wireType 2 = length-delimited (nested message)
+  const lenBuf = encodeVarint(msgBuf.length);
+  const tagBuf = encodeVarint(BigInt(fieldNum) << 3n | 2n);
+  return Buffer.concat([tagBuf, lenBuf, msgBuf]);
+}
+
+function encodeTeamStatMetricRequest(timeStartSec, timeEndSec) {
+  // Decoded dari cURL asli PDC Selling (Connect Protocol, application/proto):
+  //
+  // message TeamStatMetricRequest {
+  //   message FilterWrapper {         // field 1
+  //     message Pagination {          // field 1 dalam FilterWrapper
+  //       int32 page  = 1;
+  //       int32 limit = 2;
+  //     }
+  //     message TimeRange {           // field 2 dalam FilterWrapper
+  //       message TimeBound { int64 value = 1; }  // timestamp SECONDS (varint)
+  //       TimeBound start = 1;
+  //       TimeBound end   = 2;
+  //     }
+  //   }
+  //   message Sort {                  // field 2
+  //     int32 field1 = 1;  // = 2
+  //     int32 field3 = 3;  // = 1
+  //   }
+  //   message Field4 { int32 v = 1; } // field 4, value = 1
+  // }
+  //
+  // Timestamp unit: SECONDS (bukan microseconds/milliseconds)
+  // Protocol: Connect Protocol (connect-protocol-version: 1)
+
+  // TimeBound messages: {field1: seconds}
+  const startBound = encodeInt32Field(1, Number(timeStartSec));
+  const endBound   = encodeInt32Field(1, Number(timeEndSec));
+
+  // TimeRange: {field1: startBound, field2: endBound}
+  const timeRange = Buffer.concat([
+    encodeMessageField(1, startBound),
+    encodeMessageField(2, endBound),
+  ]);
+
+  // Pagination: {page:1, limit:100}
+  const pagination = Buffer.concat([
+    encodeInt32Field(1, 1),    // page
+    encodeInt32Field(2, 100),  // limit (asli 20, kita pakai 100)
+  ]);
+
+  // FilterWrapper: {field1: pagination, field2: timeRange}
+  const filterWrapper = Buffer.concat([
+    encodeMessageField(1, pagination),
+    encodeMessageField(2, timeRange),
+  ]);
+
+  // Sort: {field1: 2, field3: 1}
+  const sort = Buffer.concat([
+    encodeInt32Field(1, 2),
+    encodeInt32Field(3, 1),
+  ]);
+
+  // Field4: {field1: 1}
+  const field4 = encodeInt32Field(1, 1);
+
+  // Outer message: Connect Protocol — raw protobuf, TANPA gRPC-Web frame
+  const body = Buffer.concat([
+    encodeMessageField(1, filterWrapper),  // field 1
+    encodeMessageField(2, sort),           // field 2
+    encodeMessageField(4, field4),         // field 4
+  ]);
+
+  return body; // langsung protobuf, bukan gRPC-Web frame
 }
 
 // ---- Protobuf decode helpers ----
@@ -1093,21 +1143,10 @@ function decodeVarint(buf, offset) {
 }
 
 function decodeTeamStatMetricResponse(buf) {
-  // gRPC-Web response: bisa ada beberapa frame
-  // Frame: 1 byte flag + 4 byte length + body
+  // Connect Protocol response: raw protobuf (tanpa gRPC-Web frame header)
+  // Response berisi outer message dengan repeated field (teams)
   const teams = [];
-  let pos = 0;
-  while (pos + 5 <= buf.length) {
-    const flag = buf[pos];
-    const len  = buf.readUInt32BE(pos + 1);
-    pos += 5;
-    if (pos + len > buf.length) break;
-    if (flag === 0x00 && len > 0) {
-      const frame = buf.slice(pos, pos + len);
-      parseTeamStatFrame(frame, teams);
-    }
-    pos += len;
-  }
+  parseTeamStatFrame(buf, teams);
   return teams;
 }
 
@@ -1194,23 +1233,24 @@ app.get('/api/selling/raw-debug', async (req, res) => {
     const dd   = String(today.getDate()).padStart(2, '0');
     const dateStr = `${yyyy}-${mm}-${dd}`;
 
-    const timeMin = BigInt(dateToTimestamp(dateStr, false)) * 1000n;
-    const timeMax = BigInt(dateToTimestamp(dateStr, true))  * 1000n;
-    const grpcBody = encodeTeamStatMetricRequest(timeMin, timeMax);
+    const timeStartSec = Math.floor(dateToTimestamp(dateStr, false) / 1000);
+    const timeEndSec   = Math.floor(dateToTimestamp(dateStr, true)  / 1000);
+    const protoBody = encodeTeamStatMetricRequest(timeStartSec, timeEndSec);
 
-    console.log('🔍 [DEBUG] Request hex:', grpcBody.toString('hex'));
+    console.log('🔍 [DEBUG] Request hex:', protoBody.toString('hex'));
 
     const apiRes = await axios.post(
       `${SELLING_BASE_URL}/selling_iface.v1.SellingStatService/TeamStatMetric`,
-      grpcBody,
+      protoBody,
       {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/grpc-web+proto',
-          'Accept': 'application/grpc-web+proto',
-          'x-grpc-web': '1',
-          'origin': 'https://selling.onlypdc.com',
-          'referer': 'https://selling.onlypdc.com/'
+          'Content-Type': 'application/proto',
+          'Accept': '*/*',
+          'connect-protocol-version': '1',
+          'x-pdc-source': 'CDQQAQ==',
+          'origin': 'https://sellingteam.pdcoke.com',
+          'referer': 'https://sellingteam.pdcoke.com/'
         },
         responseType: 'arraybuffer',
         timeout: 30000
@@ -1247,27 +1287,28 @@ app.get('/api/selling/team-stat', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, message: 'date_from dan date_to wajib diisi.' });
     }
 
-    // Millisecond timestamp → microsecond (× 1000)
-    const timeMin = BigInt(dateToTimestamp(date_from, false)) * 1000n;
-    const timeMax = BigInt(dateToTimestamp(date_to,   true))  * 1000n;
+    // Millisecond → seconds (Connect Protocol pakai seconds, bukan microseconds)
+    const timeStartSec = Math.floor(dateToTimestamp(date_from, false) / 1000);
+    const timeEndSec   = Math.floor(dateToTimestamp(date_to,   true)  / 1000);
 
     let token = await getSellingToken();
     if (!token) return res.status(503).json({ success: false, message: 'Gagal login ke PDC Selling. Cek SELLING_USER/SELLING_PASS di Railway.' });
 
-    const grpcBody = encodeTeamStatMetricRequest(timeMin, timeMax);
+    const protoBody = encodeTeamStatMetricRequest(timeStartSec, timeEndSec);
 
     async function callSellingAPI(t) {
       return axios.post(
         `${SELLING_BASE_URL}/selling_iface.v1.SellingStatService/TeamStatMetric`,
-        grpcBody,
+        protoBody,
         {
           headers: {
             'Authorization': `Bearer ${t}`,
-            'Content-Type': 'application/grpc-web+proto',
-            'Accept': 'application/grpc-web+proto',
-            'x-grpc-web': '1',
-            'origin': 'https://selling.onlypdc.com',
-            'referer': 'https://selling.onlypdc.com/'
+            'Content-Type': 'application/proto',
+            'Accept': '*/*',
+            'connect-protocol-version': '1',
+            'x-pdc-source': 'CDQQAQ==',
+            'origin': 'https://sellingteam.pdcoke.com',
+            'referer': 'https://sellingteam.pdcoke.com/'
           },
           responseType: 'arraybuffer',
           timeout: 30000
@@ -1289,12 +1330,11 @@ app.get('/api/selling/team-stat', requireAuth, async (req, res) => {
 
     const rawBuf = Buffer.from(apiRes.data);
     console.log('🔍 [SELLING] Response status:', apiRes.status);
-    console.log('🔍 [SELLING] Response headers:', JSON.stringify(apiRes.headers));
     console.log('🔍 [SELLING] Raw buffer length:', rawBuf.length);
-    console.log('🔍 [SELLING] Raw hex (first 200 bytes):', rawBuf.slice(0, 200).toString('hex'));
+    console.log('🔍 [SELLING] Raw hex (first 300 bytes):', rawBuf.slice(0, 300).toString('hex'));
 
     const teams  = decodeTeamStatMetricResponse(rawBuf);
-    console.log('🔍 [SELLING] Teams parsed:', teams.length, teams.slice(0,2));
+    console.log('🔍 [SELLING] Teams parsed:', teams.length, JSON.stringify(teams.slice(0,2)));
 
     // Urutkan berdasarkan transaksi terbesar
     teams.sort((a, b) => b.transaksi - a.transaksi);
