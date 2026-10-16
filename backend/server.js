@@ -967,7 +967,86 @@ async function fetchOverviewRange(type, wh, time_min, time_max) {
 // =============================================
 
 const SELLING_BASE_URL = 'https://selling-service-1008190962565.asia-southeast2.run.app';
+const SHARED_SERVICE_URL = 'https://shared-service-1008190962565.asia-southeast2.run.app';
 const sellingTokenCache = { token: null, time: 0 };
+
+// Cache nama tim: { id: nama } — di-refresh sekali per jam
+const teamNameCache = { map: {}, time: 0 };
+
+async function getTeamNames(token) {
+  const age = Date.now() - teamNameCache.time;
+  if (teamNameCache.time > 0 && age < 60 * 60 * 1000) return teamNameCache.map;
+
+  try {
+    // Body persis dari cURL intercept: field1 = 20-byte session fingerprint
+    const body = Buffer.from('0a142c2f453d4c304b3f1f4d3b2d3e33425062343248', 'hex');
+    const res = await axios.post(
+      `${SHARED_SERVICE_URL}/common.v1.TeamService/PublicTeamIDs`,
+      body,
+      {
+        headers: {
+          'content-type': 'application/proto',
+          'accept': '*/*',
+          'connect-protocol-version': '1',
+          'authorization': `Bearer ${token}`,
+          'origin': 'https://sellingteam.pdcoke.com',
+          'referer': 'https://sellingteam.pdcoke.com/',
+          'x-pdc-source': 'CDQQAQ=='
+        },
+        responseType: 'arraybuffer',
+        timeout: 15000
+      }
+    );
+    const buf = Buffer.from(res.data);
+    console.log('✅ [TEAM NAMES] Response length:', buf.length, 'hex[:100]:', buf.slice(0, 100).toString('hex'));
+    const map = decodePublicTeamIDs(buf);
+    if (Object.keys(map).length > 0) {
+      teamNameCache.map  = map;
+      teamNameCache.time = Date.now();
+      console.log('✅ [TEAM NAMES] Loaded', Object.keys(map).length, 'teams');
+    }
+    return map;
+  } catch (err) {
+    console.error('⚠️ [TEAM NAMES] Gagal fetch, pakai "Tim {id}":', err.message);
+    return teamNameCache.map; // fallback ke cache lama atau kosong
+  }
+}
+
+function decodePublicTeamIDs(buf) {
+  // Response: repeated message field1 = {field1=id (varint), field2=name (string), ...}
+  const map = {};
+  let pos = 0;
+  while (pos < buf.length) {
+    const tagR = decodeVarint(buf, pos); pos = tagR.next;
+    const fn = Number(tagR.value >> 3n);
+    const wt = Number(tagR.value & 7n);
+    if (wt === 2) {
+      const ld = readLengthDelimited(buf, pos); pos = ld.next;
+      if (fn === 1) {
+        // Parse satu team entry
+        let sp = 0, tid = 0, tname = '';
+        while (sp < ld.data.length) {
+          const sr = decodeVarint(ld.data, sp); sp = sr.next;
+          const sfn = Number(sr.value >> 3n);
+          const swt = Number(sr.value & 7n);
+          if (swt === 0) {
+            const sv = decodeVarint(ld.data, sp); sp = sv.next;
+            if (sfn === 1) tid = Number(sv.value);
+          } else if (swt === 2) {
+            const sl = readLengthDelimited(ld.data, sp); sp = sl.next;
+            if (sfn === 2) tname = sl.data.toString('utf8');
+          } else if (swt === 1) { sp += 8; }
+          else if (swt === 5) { sp += 4; }
+          else break;
+        }
+        if (tid && tname) map[tid] = tname;
+      }
+    } else {
+      pos = skipField(buf, pos, wt);
+    }
+  }
+  return map;
+}
 
 async function getSellingToken(forceRefresh = false) {
   const age = Date.now() - sellingTokenCache.time;
@@ -1420,6 +1499,14 @@ app.get('/api/selling/team-stat', requireAuth, async (req, res) => {
 
     const teams  = decodeTeamStatMetricResponse(rawBuf);
     console.log('🔍 [SELLING] Teams parsed:', teams.length, JSON.stringify(teams.slice(0,2)));
+
+    // Ambil nama tim dari PublicTeamIDs (di-cache 1 jam)
+    const nameMap = await getTeamNames(token);
+    teams.forEach(t => {
+      const nama = nameMap[Number(t.team_id)];
+      if (nama) t.team_name = nama;
+      // else tetap "Tim {id}" dari parseOneTeam
+    });
 
     // Urutkan berdasarkan transaksi terbesar
     teams.sort((a, b) => b.transaksi - a.transaksi);
