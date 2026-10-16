@@ -1181,6 +1181,64 @@ function parseOneTeam(buf) {
   return team;
 }
 
+// DEBUG: endpoint tanpa auth untuk inspect raw response — hapus setelah selesai debug
+app.get('/api/selling/raw-debug', async (req, res) => {
+  try {
+    const token = await getSellingToken();
+    if (!token) return res.json({ error: 'Login gagal' });
+
+    // Gunakan tanggal hari ini sebagai test
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm   = String(today.getMonth() + 1).padStart(2, '0');
+    const dd   = String(today.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+
+    const timeMin = BigInt(dateToTimestamp(dateStr, false)) * 1000n;
+    const timeMax = BigInt(dateToTimestamp(dateStr, true))  * 1000n;
+    const grpcBody = encodeTeamStatMetricRequest(timeMin, timeMax);
+
+    console.log('🔍 [DEBUG] Request hex:', grpcBody.toString('hex'));
+
+    const apiRes = await axios.post(
+      `${SELLING_BASE_URL}/selling_iface.v1.SellingStatService/TeamStatMetric`,
+      grpcBody,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/grpc-web+proto',
+          'Accept': 'application/grpc-web+proto',
+          'x-grpc-web': '1',
+          'origin': 'https://selling.onlypdc.com',
+          'referer': 'https://selling.onlypdc.com/'
+        },
+        responseType: 'arraybuffer',
+        timeout: 30000
+      }
+    );
+
+    const rawBuf = Buffer.from(apiRes.data);
+    const hexFull = rawBuf.toString('hex');
+
+    res.json({
+      http_status: apiRes.status,
+      response_headers: apiRes.headers,
+      buffer_length: rawBuf.length,
+      hex_preview: hexFull.slice(0, 500),
+      hex_full: hexFull,
+      request_hex: grpcBody.toString('hex'),
+      timeMin: timeMin.toString(),
+      timeMax: timeMax.toString()
+    });
+  } catch (err) {
+    res.json({
+      error: err.message,
+      status: err.response?.status,
+      body: err.response?.data ? Buffer.from(err.response.data).toString('utf8') : null
+    });
+  }
+});
+
 // GET /api/selling/team-stat?date_from=2026-01-01&date_to=2026-10-16
 app.get('/api/selling/team-stat', requireAuth, async (req, res) => {
   try {
