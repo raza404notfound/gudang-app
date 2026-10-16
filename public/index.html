@@ -216,6 +216,10 @@
           <span>Gudang Insight</span>
           <span style="margin-left:auto;background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;letter-spacing:.3px;flex-shrink:0;">BETA</span>
         </a>
+        <a class="nav-item" href="#statistik-team" onclick="switchTab('statistik-team', this); return false;">
+          <span class="material-symbols-outlined">groups</span>
+          <span>Statistik Team</span>
+        </a>
       </div>
       <div class="nav-section">
         <div class="section-title">PENGATURAN</div>
@@ -773,6 +777,44 @@
           <span class="material-symbols-outlined" style="font-size: 48px; color: #cbd5e1; margin-bottom: 12px;">construction</span>
           <h2 id="generic-title" style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">Menu</h2>
           <p style="font-size: 13px; color: #64748b;">Fitur ini sedang dalam pengembangan.</p>
+        </div>
+      </section>
+
+      <!-- PAGE: STATISTIK TEAM (PDC Selling) -->
+      <section id="page-statistik-team" class="page-content">
+        <!-- STICKY TOOLBAR -->
+        <div class="ins-sticky">
+          <div class="ins-toolbar" style="flex-wrap:wrap;gap:6px;">
+            <!-- Preset cepat -->
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              <button class="ins-preset-btn" onclick="tsPreset('hari-ini',this)">Hari Ini</button>
+              <button class="ins-preset-btn" onclick="tsPreset('kemarin',this)">Kemarin</button>
+              <button class="ins-preset-btn" onclick="tsPreset('seminggu',this)">Seminggu Terakhir</button>
+              <button class="ins-preset-btn aktif" onclick="tsPreset('sebulan',this)">Sebulan Terakhir</button>
+              <button class="ins-preset-btn" onclick="tsPreset('3bulan',this)">3 Bulan Terakhir</button>
+              <button class="ins-preset-btn" onclick="tsPreset('6bulan',this)">6 Bulan Terakhir</button>
+              <button class="ins-preset-btn" onclick="tsPreset('setahun',this)">Setahun Terakhir</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;">
+              <input type="date" id="ts-from" style="border:1px solid #e2e8f0;border-radius:7px;padding:6px 10px;font-size:12px;outline:none;background:#f8fafc;color:#1e293b;">
+              <span style="color:#94a3b8;font-size:12px;">—</span>
+              <input type="date" id="ts-to"   style="border:1px solid #e2e8f0;border-radius:7px;padding:6px 10px;font-size:12px;outline:none;background:#f8fafc;color:#1e293b;">
+            </div>
+            <button class="ins-apply-btn" id="ts-apply-btn" onclick="tsLoad()">
+              <span class="material-symbols-outlined" style="font-size:15px;">refresh</span> Terapkan
+            </button>
+          </div>
+        </div>
+
+        <!-- CONTENT AREA -->
+        <div class="ins-scroll" style="padding:16px;">
+          <div id="ts-container">
+            <div class="ins-empty">
+              <span class="material-symbols-outlined">groups</span>
+              <p style="font-size:13px;font-weight:600;color:#64748b;">Pilih periode &amp; klik Terapkan</p>
+              <p style="font-size:12px;margin-top:4px;">Data transaksi per team dari PDC Selling</p>
+            </div>
+          </div>
         </div>
       </section>
 
