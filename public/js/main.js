@@ -2458,16 +2458,90 @@ let allTrackedData = [];
 
     function soExportCSV() {
       if (!soDataFilter.length) return showToast('Tidak ada data untuk diekspor.', 'error');
-      const tgl  = new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' });
-      const rows = [['Tanggal Eksport','SKU','Nama Produk','Selisih']];
-      soDataFilter.forEach(r => rows.push([tgl, r.sku, r.namaProduk, r.selisih===''?'':r.selisih]));
-      const csv  = rows.map(r => r.map(v => { const s=String(v==null?'':v).replace(/"/g,'""'); return s.includes(',')||s.includes('"')?`"${s}"`:s; }).join(',')).join('\n');
-      const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' });
+
+      const now  = new Date();
+      const tgl  = now.toLocaleDateString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' });
+      const jam  = now.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+
+      // Filter aktif saat ini (untuk info header)
+      const filterStatus   = soStatusAkt || 'Semua';
+      const filterPersonil = soPersonilAktif || '-';
+      const filterRak      = (document.getElementById('so-rak-filter')?.value || '-') || '-';
+      const filterCari     = (document.getElementById('so-cari')?.value || '-') || '-';
+
+      // Helper encode CSV field
+      const esc = v => { const s = String(v == null ? '' : v).replace(/"/g,'""'); return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s}"` : s; };
+
+      // Ringkasan status
+      const total   = soDataFilter.length;
+      const minus   = soDataFilter.filter(r => Number(r.selisih) < 0).length;
+      const plus    = soDataFilter.filter(r => Number(r.selisih) > 0).length;
+      const balance = soDataFilter.filter(r => r.selisih === 0 || r.selisih === '0').length;
+      const belum   = soDataFilter.filter(r => r.selisih === '' || r.selisih == null).length;
+
+      const rows = [];
+
+      // \u2500\u2500 BLOK INFO \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+      rows.push(['LAPORAN STOCK OPNAME \u2014 PDC WAREHOUSE']);
+      rows.push(['Sesi SO',     soSesiAktif || '-']);
+      rows.push(['Tanggal Ekspor', `${tgl} ${jam}`]);
+      rows.push(['Filter Status',   filterStatus]);
+      rows.push(['Filter Personil', filterPersonil]);
+      rows.push(['Filter Rak',      filterRak]);
+      rows.push(['Kata Cari',       filterCari]);
+      rows.push([]);
+      rows.push(['RINGKASAN']);
+      rows.push(['Total Produk Ditampilkan', total]);
+      rows.push(['Minus (kurang)',  minus]);
+      rows.push(['Plus (lebih)',    plus]);
+      rows.push(['Balance (pas)',   balance]);
+      rows.push(['Belum diopname', belum]);
+      rows.push([]);
+
+      // \u2500\u2500 HEADER TABEL \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+      rows.push([
+        'No',
+        'SKU',
+        'Nama Produk',
+        'Qty Sistem',
+        'Selisih',
+        'Status',
+        'Rak',
+        'Personil',
+        'Keterangan'
+      ]);
+
+      // \u2500\u2500 DATA ROWS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+      soDataFilter.forEach((r, i) => {
+        const selisihVal = r.selisih === '' || r.selisih == null ? 'Belum' :
+                           Number(r.selisih) > 0 ? `+${r.selisih}` :
+                           String(r.selisih);
+        const statusLabel = soNormStatus(r.status) === 'Minus'   ? 'Minus'   :
+                            soNormStatus(r.status) === 'Plus'    ? 'Plus'    :
+                            soNormStatus(r.status) === 'Balance' ? 'Balance' : 'Belum';
+        rows.push([
+          i + 1,
+          r.sku        || '',
+          r.namaProduk || '',
+          r.qtySistem  ?? '',
+          selisihVal,
+          statusLabel,
+          r.rak        || '',
+          r.personil   || '',
+          r.keterangan || ''
+        ]);
+      });
+
+      const csv  = rows.map(r => r.map(esc).join(',')).join('\r\n');
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
-      a.href = url; a.download = `${soSesiAktif}_export_${new Date().toISOString().slice(0,10)}.csv`;
+      const tglFile = now.toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `SO_${soSesiAktif || 'export'}_${filterStatus}_${tglFile}.csv`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      showToast(`\u2705 Ekspor ${total} produk berhasil`, 'success');
     }
 
     // SO ACTIONS — popup uraian rusak
