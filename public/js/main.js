@@ -2456,14 +2456,18 @@ let allTrackedData = [];
       document.getElementById('so-lightbox-img').src = '';
     }
 
-    function soExportCSV() {
+    // URL Apps Script untuk export SO ke Google Sheets
+    // Ganti dengan URL Web App setelah deploy
+    const SO_SHEET_GAS_URL = 'https://script.google.com/macros/s/AKfycbx7zBJK1p1OEZGtjWaV9zVc76COolQ3QcwUicsENjnw1i7ET5Ljd6i7zgcrGKHVRQmjcg/exec';
+
+    async function soExportCSV() {
       if (!soDataFilter.length) return showToast('Tidak ada data untuk diekspor.', 'error');
 
       const now  = new Date();
       const tgl  = now.toLocaleDateString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' });
       const jam  = now.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
 
-      // Filter aktif saat ini (untuk info header)
+      // Filter aktif saat ini
       const filterStatus   = soStatusAkt || 'Semua';
       const filterPersonil = soPersonilAktif || '-';
       const filterRak      = (document.getElementById('so-rak-filter')?.value || '-') || '-';
@@ -2479,69 +2483,80 @@ let allTrackedData = [];
       const balance = soDataFilter.filter(r => r.selisih === 0 || r.selisih === '0').length;
       const belum   = soDataFilter.filter(r => r.selisih === '' || r.selisih == null).length;
 
-      const rows = [];
+      // Nama sheet tab: dari sesi SO, e.g. "SO 2026-10"
+      const sheetName = soSesiAktif
+        ? soSesiAktif.replace(/_/g, ' ')
+        : `SO ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 
-      // \u2500\u2500 BLOK INFO \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-      rows.push(['LAPORAN STOCK OPNAME \u2014 PDC WAREHOUSE']);
-      rows.push(['Sesi SO',     soSesiAktif || '-']);
-      rows.push(['Tanggal Ekspor', `${tgl} ${jam}`]);
-      rows.push(['Filter Status',   filterStatus]);
-      rows.push(['Filter Personil', filterPersonil]);
-      rows.push(['Filter Rak',      filterRak]);
-      rows.push(['Kata Cari',       filterCari]);
-      rows.push([]);
-      rows.push(['RINGKASAN']);
-      rows.push(['Total Produk Ditampilkan', total]);
-      rows.push(['Minus (kurang)',  minus]);
-      rows.push(['Plus (lebih)',    plus]);
-      rows.push(['Balance (pas)',   balance]);
-      rows.push(['Belum diopname', belum]);
-      rows.push([]);
+      // Badge text (baris 1 di sheet)
+      const badgeText = `Ekspor: ${tgl} ${jam}  |  Sesi: ${soSesiAktif || '-'}  |  Filter: ${filterStatus}  |  Personil: ${filterPersonil}  |  Rak: ${filterRak}`;
 
-      // \u2500\u2500 HEADER TABEL \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-      rows.push([
-        'No',
-        'SKU',
-        'Nama Produk',
-        'Qty Sistem',
-        'Selisih',
-        'Status',
-        'Rak',
-        'Personil',
-        'Keterangan'
+      // Data rows untuk Google Sheets (4 kolom: SKU, NAMA PRODUCT, STOCK REAL, MINUS)
+      const sheetRows = soDataFilter.map(r => [
+        r.sku        || '',
+        r.namaProduk || '',
+        r.qtySistem  != null ? Number(r.qtySistem) : '',
+        (r.selisih === '' || r.selisih == null) ? '' : Number(r.selisih)
       ]);
 
-      // \u2500\u2500 DATA ROWS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+      // Kirim ke Google Sheets via Apps Script
+      showToast('\u23F3 Mengirim ke Google Sheets...', 'info');
+      try {
+        const resp = await fetch(SO_SHEET_GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            action:    'exportSO',
+            sheetName: sheetName,
+            badgeText: badgeText,
+            rows:      sheetRows
+          })
+        });
+        const result = await resp.json();
+        if (result.success) {
+          showToast(`\u2705 ${total} produk berhasil masuk ke sheet "${sheetName}"`, 'success');
+        } else {
+          showToast(`\u26A0\uFE0F Gagal ke Sheets: ${result.error || 'Unknown error'}`, 'error');
+        }
+      } catch (err) {
+        showToast(`\u26A0\uFE0F Gagal menghubungi Sheets: ${err.message}`, 'error');
+      }
+
+      // Tetap download CSV lokal juga
+      const csvRows = [];
+      csvRows.push(['LAPORAN STOCK OPNAME \u2014 PDC WAREHOUSE']);
+      csvRows.push(['Sesi SO', soSesiAktif || '-']);
+      csvRows.push(['Tanggal Ekspor', `${tgl} ${jam}`]);
+      csvRows.push(['Filter Status',   filterStatus]);
+      csvRows.push(['Filter Personil', filterPersonil]);
+      csvRows.push(['Filter Rak',      filterRak]);
+      csvRows.push(['Kata Cari',       filterCari]);
+      csvRows.push([]);
+      csvRows.push(['RINGKASAN']);
+      csvRows.push(['Total Produk Ditampilkan', total]);
+      csvRows.push(['Minus (kurang)',  minus]);
+      csvRows.push(['Plus (lebih)',    plus]);
+      csvRows.push(['Balance (pas)',   balance]);
+      csvRows.push(['Belum diopname', belum]);
+      csvRows.push([]);
+      csvRows.push(['No','SKU','Nama Produk','Qty Sistem','Selisih','Status','Rak','Personil','Keterangan']);
       soDataFilter.forEach((r, i) => {
-        const selisihVal = r.selisih === '' || r.selisih == null ? 'Belum' :
-                           Number(r.selisih) > 0 ? `+${r.selisih}` :
-                           String(r.selisih);
+        const selisihVal  = r.selisih === '' || r.selisih == null ? 'Belum' :
+                            Number(r.selisih) > 0 ? `+${r.selisih}` : String(r.selisih);
         const statusLabel = soNormStatus(r.status) === 'Minus'   ? 'Minus'   :
                             soNormStatus(r.status) === 'Plus'    ? 'Plus'    :
                             soNormStatus(r.status) === 'Balance' ? 'Balance' : 'Belum';
-        rows.push([
-          i + 1,
-          r.sku        || '',
-          r.namaProduk || '',
-          r.qtySistem  ?? '',
-          selisihVal,
-          statusLabel,
-          r.rak        || '',
-          r.personil   || '',
-          r.keterangan || ''
-        ]);
+        csvRows.push([i+1, r.sku||'', r.namaProduk||'', r.qtySistem??'', selisihVal, statusLabel, r.rak||'', r.personil||'', r.keterangan||'']);
       });
-
-      const csv  = rows.map(r => r.map(esc).join(',')).join('\r\n');
+      const csv  = csvRows.map(r => r.map(esc).join(',')).join('\r\n');
       const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
       const tglFile = now.toISOString().slice(0, 10);
-      a.href = url;
+      a.href     = url;
       a.download = `SO_${soSesiAktif || 'export'}_${filterStatus}_${tglFile}.csv`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showToast(`\u2705 Ekspor ${total} produk berhasil`, 'success');
     }
 
     // SO ACTIONS — popup uraian rusak
