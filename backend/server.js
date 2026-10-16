@@ -959,6 +959,286 @@ async function fetchOverviewRange(type, wh, time_min, time_max) {
   }
 }
 
+// =============================================
+// PDC SELLING — STATISTIK TEAM
+// Endpoint: /selling_iface.v1.SellingStatService/TeamStatMetric
+// Protocol: gRPC-Web / protobuf (manual encode-decode)
+// Login: POST /v1/users/login?from=selling  (server PDC Gudang)
+// =============================================
+
+const SELLING_BASE_URL = 'https://selling-service-1008190962565.asia-southeast2.run.app';
+const sellingTokenCache = { token: null, time: 0 };
+
+async function getSellingToken(forceRefresh = false) {
+  const age = Date.now() - sellingTokenCache.time;
+  if (!forceRefresh && sellingTokenCache.token && age < 28 * 60 * 1000) {
+    return sellingTokenCache.token;
+  }
+  const user = process.env.SELLING_USER;
+  const pass = process.env.SELLING_PASS;
+  if (!user || !pass) {
+    console.error('❌ [SELLING] SELLING_USER / SELLING_PASS belum diisi di Railway.');
+    return null;
+  }
+  try {
+    const res = await axios.post(`${BASE_URL}/users/login`, {
+      username: user,
+      password: pass,
+      from: 'selling'
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'accept': 'application/json, text/plain, */*',
+        'origin': 'https://selling.onlypdc.com',
+        'referer': 'https://selling.onlypdc.com/'
+      },
+      timeout: 15000
+    });
+    const d = res.data?.data || res.data;
+    const token = d?.auth_token || d?.token || d?.access_token;
+    if (token) {
+      sellingTokenCache.token = token;
+      sellingTokenCache.time  = Date.now();
+      console.log('✅ [SELLING] Login sukses');
+      return token;
+    }
+  } catch (err) {
+    console.error('❌ [SELLING] Login gagal:', err.response?.data?.message || err.message);
+  }
+  return null;
+}
+
+// ---- Protobuf encode helpers ----
+function encodeVarint(val) {
+  const out = [];
+  let v = BigInt(val);
+  while (v > 127n) {
+    out.push(Number((v & 0xffn) | 0x80n));
+    v >>= 7n;
+  }
+  out.push(Number(v));
+  return Buffer.from(out);
+}
+
+function encodeFixed64LE(val) {
+  // 8-byte little-endian int64 — dipakai untuk microsecond timestamp
+  const b = Buffer.alloc(8);
+  const big = BigInt(val);
+  b.writeBigInt64LE(big, 0);
+  return b;
+}
+
+function encodeField(fieldNum, wireType, valueBuffer) {
+  const tag = encodeVarint(BigInt(fieldNum) << 3n | BigInt(wireType));
+  return Buffer.concat([tag, valueBuffer]);
+}
+
+function encodeString(fieldNum, str) {
+  const b = Buffer.from(str, 'utf8');
+  return Buffer.concat([
+    encodeField(fieldNum, 2, Buffer.concat([encodeVarint(b.length), b]))
+  ]);
+}
+
+function encodeInt32Field(fieldNum, val) {
+  return encodeField(fieldNum, 0, encodeVarint(val));
+}
+
+function encodeFixed64Field(fieldNum, val) {
+  return encodeField(fieldNum, 1, encodeFixed64LE(val));
+}
+
+function encodeBoolField(fieldNum, val) {
+  return encodeField(fieldNum, 0, encodeVarint(val ? 1 : 0));
+}
+
+function encodeTeamStatMetricRequest(timeMin, timeMax) {
+  // Berdasarkan payload cURL yang dianalisa:
+  // field 1 (int32): page = 1
+  // field 2 (int32): limit = 100
+  // field 4 (fixed64): time_min (microseconds)
+  // field 5 (fixed64): time_max (microseconds)
+  // field 7 (bool): sort_desc = true
+  const parts = [
+    encodeInt32Field(1, 1),           // page
+    encodeInt32Field(2, 100),         // limit
+    encodeFixed64Field(4, timeMin),   // cmin (microseconds)
+    encodeFixed64Field(5, timeMax),   // cmax (microseconds)
+    encodeBoolField(7, true)          // sort desc
+  ];
+  const body = Buffer.concat(parts);
+  // gRPC-Web frame: 0x00 (no compression) + 4-byte big-endian length + body
+  const frame = Buffer.alloc(5 + body.length);
+  frame[0] = 0x00;
+  frame.writeUInt32BE(body.length, 1);
+  body.copy(frame, 5);
+  return frame;
+}
+
+// ---- Protobuf decode helpers ----
+function decodeVarint(buf, offset) {
+  let result = 0n;
+  let shift = 0n;
+  let i = offset;
+  while (i < buf.length) {
+    const b = BigInt(buf[i++]);
+    result |= (b & 0x7fn) << shift;
+    shift += 7n;
+    if (!(b & 0x80n)) break;
+  }
+  return { value: result, next: i };
+}
+
+function decodeTeamStatMetricResponse(buf) {
+  // gRPC-Web response: bisa ada beberapa frame
+  // Frame: 1 byte flag + 4 byte length + body
+  const teams = [];
+  let pos = 0;
+  while (pos + 5 <= buf.length) {
+    const flag = buf[pos];
+    const len  = buf.readUInt32BE(pos + 1);
+    pos += 5;
+    if (pos + len > buf.length) break;
+    if (flag === 0x00 && len > 0) {
+      const frame = buf.slice(pos, pos + len);
+      parseTeamStatFrame(frame, teams);
+    }
+    pos += len;
+  }
+  return teams;
+}
+
+function readLengthDelimited(buf, offset) {
+  const r = decodeVarint(buf, offset);
+  const len = Number(r.value);
+  return { data: buf.slice(r.next, r.next + len), next: r.next + len };
+}
+
+function parseTeamStatFrame(frame, teams) {
+  // Frame berisi repeated message (field 1) = satu entry tim
+  let pos = 0;
+  while (pos < frame.length) {
+    const tagR = decodeVarint(frame, pos);
+    pos = tagR.next;
+    const tag = tagR.value;
+    const fieldNum = Number(tag >> 3n);
+    const wireType = Number(tag & 7n);
+    if (fieldNum === 1 && wireType === 2) {
+      // length-delimited: satu record tim
+      const ld = readLengthDelimited(frame, pos);
+      pos = ld.next;
+      const team = parseOneTeam(ld.data);
+      if (team) teams.push(team);
+    } else {
+      // skip field lain
+      if (wireType === 0) { const r = decodeVarint(frame, pos); pos = r.next; }
+      else if (wireType === 1) { pos += 8; }
+      else if (wireType === 2) { const r = decodeVarint(frame, pos); pos = r.next + Number(r.value); }
+      else if (wireType === 5) { pos += 4; }
+      else break;
+    }
+  }
+}
+
+function parseOneTeam(buf) {
+  // field 1 = team_id (varint/string)
+  // field 2 = team_name (string)
+  // field 3 = transaksi (varint)
+  // field 4 = nilai_belanja (varint/fixed)
+  // field 5 = nilai_transaksi (varint/fixed)
+  let pos = 0;
+  const team = { team_id: '', team_name: '', transaksi: 0, nilai_belanja: 0, nilai_transaksi: 0 };
+  while (pos < buf.length) {
+    const tagR = decodeVarint(buf, pos);
+    pos = tagR.next;
+    const fieldNum = Number(tagR.value >> 3n);
+    const wireType = Number(tagR.value & 7n);
+    if (wireType === 0) {
+      const r = decodeVarint(buf, pos);
+      pos = r.next;
+      if (fieldNum === 1) team.team_id   = r.value.toString();
+      if (fieldNum === 3) team.transaksi = Number(r.value);
+      if (fieldNum === 4) team.nilai_belanja   = Number(r.value);
+      if (fieldNum === 5) team.nilai_transaksi = Number(r.value);
+    } else if (wireType === 2) {
+      const ld = readLengthDelimited(buf, pos);
+      pos = ld.next;
+      if (fieldNum === 1) team.team_id   = ld.data.toString('utf8');
+      if (fieldNum === 2) team.team_name = ld.data.toString('utf8');
+    } else if (wireType === 1) {
+      const val = buf.readBigInt64LE(pos);
+      pos += 8;
+      if (fieldNum === 4) team.nilai_belanja   = Number(val);
+      if (fieldNum === 5) team.nilai_transaksi = Number(val);
+    } else if (wireType === 5) {
+      pos += 4;
+    } else break;
+  }
+  if (!team.team_name && !team.team_id) return null;
+  return team;
+}
+
+// GET /api/selling/team-stat?date_from=2026-01-01&date_to=2026-10-16
+app.get('/api/selling/team-stat', requireAuth, async (req, res) => {
+  try {
+    const { date_from, date_to } = req.query;
+    if (!date_from || !date_to) {
+      return res.status(400).json({ success: false, message: 'date_from dan date_to wajib diisi.' });
+    }
+
+    // Millisecond timestamp → microsecond (× 1000)
+    const timeMin = BigInt(dateToTimestamp(date_from, false)) * 1000n;
+    const timeMax = BigInt(dateToTimestamp(date_to,   true))  * 1000n;
+
+    let token = await getSellingToken();
+    if (!token) return res.status(503).json({ success: false, message: 'Gagal login ke PDC Selling. Cek SELLING_USER/SELLING_PASS di Railway.' });
+
+    const grpcBody = encodeTeamStatMetricRequest(timeMin, timeMax);
+
+    async function callSellingAPI(t) {
+      return axios.post(
+        `${SELLING_BASE_URL}/selling_iface.v1.SellingStatService/TeamStatMetric`,
+        grpcBody,
+        {
+          headers: {
+            'Authorization': `Bearer ${t}`,
+            'Content-Type': 'application/grpc-web+proto',
+            'Accept': 'application/grpc-web+proto',
+            'x-grpc-web': '1',
+            'origin': 'https://selling.onlypdc.com',
+            'referer': 'https://selling.onlypdc.com/'
+          },
+          responseType: 'arraybuffer',
+          timeout: 30000
+        }
+      );
+    }
+
+    let apiRes;
+    try {
+      apiRes = await callSellingAPI(token);
+    } catch (err) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        console.log('🔄 [SELLING] Token expired, login ulang...');
+        token = await getSellingToken(true);
+        if (!token) return res.status(503).json({ success: false, message: 'Re-login ke PDC Selling gagal.' });
+        apiRes = await callSellingAPI(token);
+      } else throw err;
+    }
+
+    const rawBuf = Buffer.from(apiRes.data);
+    const teams  = decodeTeamStatMetricResponse(rawBuf);
+
+    // Urutkan berdasarkan transaksi terbesar
+    teams.sort((a, b) => b.transaksi - a.transaksi);
+
+    res.json({ success: true, date_from, date_to, teams });
+  } catch (err) {
+    console.error('❌ [SELLING team-stat]', err.message);
+    res.status(500).json({ success: false, message: 'Gagal mengambil data statistik tim: ' + err.message });
+  }
+});
+
 // Fallback route
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
