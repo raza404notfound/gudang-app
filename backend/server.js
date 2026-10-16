@@ -981,11 +981,10 @@ async function getSellingToken(forceRefresh = false) {
     return null;
   }
   try {
-    const res = await axios.post(`${BASE_URL}/users/login`, {
-      username: user,
-      password: pass,
-      from: 'selling'
-    }, {
+    // PDC Selling login: coba username dulu, fallback ke email jika gagal
+    const loginBody = { username: user, password: pass, from: 'selling' };
+    console.log('🔍 [SELLING] Mencoba login dengan body:', JSON.stringify({ ...loginBody, password: '***' }));
+    const res = await axios.post(`${BASE_URL}/users/login`, loginBody, {
       headers: {
         'Content-Type': 'application/json',
         'accept': 'application/json, text/plain, */*',
@@ -995,6 +994,7 @@ async function getSellingToken(forceRefresh = false) {
       timeout: 15000
     });
     const d = res.data?.data || res.data;
+    console.log('🔍 [SELLING] Login response keys:', Object.keys(d || {}));
     const token = d?.auth_token || d?.token || d?.access_token;
     if (token) {
       sellingTokenCache.token = token;
@@ -1002,8 +1002,11 @@ async function getSellingToken(forceRefresh = false) {
       console.log('✅ [SELLING] Login sukses');
       return token;
     }
+    console.error('❌ [SELLING] Token tidak ditemukan di response. Keys:', Object.keys(d || {}));
   } catch (err) {
-    console.error('❌ [SELLING] Login gagal:', err.response?.data?.message || err.message);
+    console.error('❌ [SELLING] Login gagal status:', err.response?.status);
+    console.error('❌ [SELLING] Login gagal body:', JSON.stringify(err.response?.data));
+    console.error('❌ [SELLING] Login gagal msg:', err.message);
   }
   return null;
 }
