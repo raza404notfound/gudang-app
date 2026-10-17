@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="/css/pindah-gudang.css">
   <link rel="stylesheet" href="/css/opname-web.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
 </head>
 <body>
   <!-- TOAST CONTAINER -->
@@ -272,19 +273,39 @@
       
       <!-- PAGE: DASHBOARD -->
       <section id="page-dashboard" class="page-content">
-        <!-- Sticky header dashboard -->
-        <div class="dashboard-sticky">
-          <div class="dashboard-header">
-            <h2 style="font-size:14px;font-weight:700;color:#1e293b;letter-spacing:.3px;">DASHBOARD ADMINISTRATOR PDC</h2>
-            <div class="summary-badges">
-              <div class="badge">Total Inbound: <span class="inc" id="total-inbound">0</span> trx</div>
-              <div class="badge">Total Outbound: <span class="out" id="total-outbound">0</span> trx</div>
+        <div class="db-wrap">
+          <div class="db-kartu db-kontrol">
+            <div class="db-chip-baris" id="db-chip-gudang"></div>
+            <div class="db-tanggal-baris">
+              <label>Dari<input type="date" id="db-dari" onchange="dbTanggalManual()"></label>
+              <label>Sampai<input type="date" id="db-sampai" onchange="dbTanggalManual()"></label>
+              <button class="db-btn-muat" id="db-btn-muat" onclick="dbMuat()">
+                <span class="material-symbols-outlined">refresh</span>Muat Gudang
+              </button>
+              <div class="db-preset-baris">
+                <button class="db-preset aktif" data-p="hari" onclick="dbPilihPreset('hari', this)">Hari Ini</button>
+                <button class="db-preset" data-p="kemarin" onclick="dbPilihPreset('kemarin', this)">Kemarin</button>
+                <button class="db-preset" data-p="minggu" onclick="dbPilihPreset('minggu', this)">Seminggu</button>
+                <button class="db-preset" data-p="2minggu" onclick="dbPilihPreset('2minggu', this)">2 Minggu</button>
+                <button class="db-preset" data-p="bulan" onclick="dbPilihPreset('bulan', this)">Sebulan</button>
+                <button class="db-preset" data-p="2bulan" onclick="dbPilihPreset('2bulan', this)">2 Bulan</button>
+                <button class="db-preset" data-p="3bulan" onclick="dbPilihPreset('3bulan', this)">3 Bulan</button>
+                <button class="db-preset" data-p="6bulan" onclick="dbPilihPreset('6bulan', this)">6 Bulan</button>
+                <button class="db-preset" data-p="tahun" onclick="dbPilihPreset('tahun', this)">Setahun</button>
+              </div>
             </div>
+            <div class="db-info" id="db-info"></div>
+            <div class="db-pesan" id="db-pesan">Memuat...</div>
           </div>
-        </div>
-        <!-- Scrollable grid -->
-        <div class="dashboard-scroll">
-          <div class="grid-container" id="warehouse-grid"></div>
+
+          <div class="db-ringkas-gudang" id="db-ringkas-gudang"></div>
+
+          <div class="db-dua">
+            <div class="db-kartu db-panel" id="db-panel-inbound"></div>
+            <div class="db-kartu db-panel" id="db-panel-outbound"></div>
+          </div>
+
+          <div class="db-kartu db-panel" id="db-panel-waktu"></div>
         </div>
       </section>
 
@@ -1023,7 +1044,7 @@
             <div class="ins-empty">
               <span class="material-symbols-outlined">insights</span>
               <p style="font-size:13px;font-weight:600;color:#64748b;">Pilih tipe &amp; klik Terapkan</p>
-              <p style="font-size:12px;margin-top:4px;">Data insight 4 gudang siap ditampilkan</p>
+              <p style="font-size:12px;margin-top:4px;">Data insight 5 gudang siap ditampilkan</p>
             </div>
           </div>
         </div>
@@ -1090,5 +1111,6 @@
   <script src="/js/main.js"></script>
   <script src="/js/pindah-gudang.js"></script>
   <script src="/js/opname-web.js"></script>
+  <script src="/js/dashboard.js"></script>
 </body>
 </html>
