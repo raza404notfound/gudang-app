@@ -788,6 +788,9 @@
               <div class="pg-chip" onclick="pgSetFilter('selisih', this)">Selisih</div>
             </div>
             <div class="pg-aksi">
+              <button class="pg-btn pg-btn-ikon" id="pg-btn-panduan" onclick="pgTogglePanduan(event)" title="Panduan">
+                <span class="material-symbols-outlined">help</span>
+              </button>
               <a class="pg-btn" id="pg-btn-sheet" href="#" target="_blank" rel="noopener" style="display:none;">
                 <span class="material-symbols-outlined">table_view</span> Buka Sheet
               </a>
@@ -811,6 +814,24 @@
             <div class="pg-progress-track"><div class="pg-progress-bar" id="pg-progress-bar"></div></div>
             <div class="pg-progress-label" id="pg-progress-label">0% kode rak sudah dihitung</div>
           </div>
+          <div id="pg-bar-antrean" class="pg-bar-antrean" style="display:none;"></div>
+
+          <!-- PANDUAN SINGKAT -->
+          <div id="pg-panduan" class="pg-panduan">
+            <div class="pg-panduan-judul">
+              <span class="material-symbols-outlined">sticky_note_2</span> Panduan singkat
+              <button onclick="pgTogglePanduan(event)" aria-label="Tutup">&#10005;</button>
+            </div>
+            <ol>
+              <li><b>Rak cocok semua:</b> isi <b>Koli</b> di kartu → tekan <b>Sesuai</b> → tekan sekali lagi (<i>Tap lagi</i>).</li>
+              <li><b>Ada selisih:</b> buka kartu → <i>Isi semua sesuai Qty Web</i> → ubah Qty Real yang berbeda → isi koli → <b>Simpan</b>.</li>
+              <li><b>Barang tidak ada di daftar:</b> tambahkan di bagian bawah kartu.</li>
+              <li><b>Label karung:</b> kode rak + koli, contoh <code>0001A – Koli 1/3</code>.</li>
+              <li><b>Menyimpan…</b> = sedang dikirim, boleh lanjut ke rak lain. <b>Gagal</b> = tekan <i>Ulangi</i>.</li>
+              <li><b>Sedang dihitung …</b> = rak dipegang petugas lain, pilih rak lain.</li>
+            </ol>
+            <p>Angka yang diketik tersimpan otomatis di HP sampai berhasil masuk sheet. Jangan tutup halaman selagi ada rak <i>menunggu tersimpan</i>.</p>
+          </div>
         </div>
 
         <div class="pg-grid" id="pg-grid">
@@ -829,17 +850,18 @@
             </div>
             <div class="pg-modal-alat">
               <button class="pg-btn" onclick="pgIsiSemuaSesuai()">
-                <span class="material-symbols-outlined">done_all</span> Isi semua sesuai catatan
+                <span class="material-symbols-outlined">done_all</span> Isi semua sesuai Qty Web
               </button>
               <button class="pg-btn" onclick="pgKosongkan()">
                 <span class="material-symbols-outlined">backspace</span> Kosongkan
               </button>
             </div>
+            <div class="pg-modal-info" id="pg-modal-info" style="display:none;"></div>
             <div class="pg-modal-ringkas" id="pg-modal-ringkas"></div>
             <div class="pg-modal-body">
               <div id="pg-baris"></div>
               <div class="pg-tambah">
-                <input type="text" id="pg-tambah-nama" placeholder="Barang ditemukan tapi tidak ada di catatan">
+                <input type="text" id="pg-tambah-nama" placeholder="Barang ditemukan tapi tidak ada di web">
                 <input type="number" id="pg-tambah-qty" min="1" inputmode="numeric" placeholder="Jumlah">
                 <button class="pg-btn" onclick="pgTambahBarang()">
                   <span class="material-symbols-outlined">add</span> Tambah
@@ -849,7 +871,7 @@
             <div class="pg-modal-foot">
               <label class="pg-koli-wrap">
                 <span class="material-symbols-outlined" style="color:#b45309;">inventory_2</span> Jumlah koli
-                <input type="number" id="pg-koli" class="pg-input" min="1" inputmode="numeric" placeholder="0">
+                <input type="number" id="pg-koli" class="pg-input" min="1" inputmode="numeric" placeholder="0" oninput="pgUbahKoliModal()">
               </label>
               <button class="pg-btn-simpan" id="pg-btn-simpan" onclick="pgSimpan()">Simpan ke Sheet</button>
             </div>
