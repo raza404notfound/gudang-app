@@ -1,5 +1,5 @@
 // pindah-gudang.js — Fitur Pindah Gudang
-// Hitung stok per kode rak (contoh 0001A = shaf A1+A2+A3), catat koli,
+// Hitung stok per kode rak (contoh 0001A = shaf A1+A2+A3). Qty Real kosong = belum dihitung,
 // lalu simpan ke Google Sheet "LAPORAN BARANG" lewat server Railway.
 //
 // Fitur utama:
@@ -23,7 +23,7 @@ const PG_KUNCI_PERANGKAT = 'pg_perangkat_v1';
 
 const pgState = {
   rak: {},          // master dari CSV: { kode: { kode, items:[{id,nama,varian,img,lokasi[],qtyCsv}], totalCsv } }
-  status: {},       // dari sheet: { kode: { status:'sesuai'|'selisih', nSelisih, koli, petugas, waktu, versi } }
+  status: {},       // dari sheet: { kode: { status:'sesuai'|'selisih'|'sebagian', nSelisih, nBelum, petugas, waktu, versi } }
   sedang: {},       // { kode: { petugas, sejak } }
   sheetUrl: '',
   saya: '',
@@ -238,11 +238,11 @@ function pgEntriAntrean(kode) { return pgState.antrean.find(e => e.kodeRak === k
 
 function pgStatusEfektif(kode) {
   const e = pgEntriAntrean(kode);
-  if (e) return { status: e.prediksi.status, nSelisih: e.prediksi.nSelisih, koli: e.koli, antre: e.gagal ? 'gagal' : 'menyimpan', pesan: e.pesan };
+  if (e) return { status: e.prediksi.status, nSelisih: e.prediksi.nSelisih, nBelum: e.prediksi.nBelum, antre: e.gagal ? 'gagal' : 'menyimpan', pesan: e.pesan };
   if (pgState.konflik[kode]) return { status: 'konflik', ...pgState.konflik[kode] };
   const s = pgState.status[kode];
-  if (s && s.perluCek) return { status: 'ulang', nSelisih: s.nSelisih, koli: s.koli, petugas: s.petugas, waktu: s.waktu };
-  if (s) return { status: s.status, nSelisih: s.nSelisih, koli: s.koli, petugas: s.petugas, waktu: s.waktu };
+  if (s && s.perluCek) return { status: 'ulang', nSelisih: s.nSelisih, nBelum: s.nBelum, petugas: s.petugas, waktu: s.waktu };
+  if (s) return { status: s.status, nSelisih: s.nSelisih, nBelum: s.nBelum, petugas: s.petugas, waktu: s.waktu };
   return { status: 'belum' };
 }
 
@@ -284,21 +284,21 @@ function pgSemuaKode() {
 function pgRender() {
   if (!document.getElementById('pg-grid')) return;
   const semua = pgSemuaKode();
-  let nSesuai = 0, nSelisih = 0, totalKoli = 0;
+  let nSesuai = 0, nSelisih = 0, nSebagian = 0;
   semua.forEach(k => {
     const s = pgStatusEfektif(k);
     if (s.status === 'sesuai') nSesuai++;
     if (s.status === 'selisih') nSelisih++;
-    totalKoli += Number(s.koli || 0);
+    if (s.status === 'sebagian') nSebagian++;
   });
-  const selesai = nSesuai + nSelisih;
+  const selesai = nSesuai + nSelisih + nSebagian;
   const persen = semua.length ? Math.round(selesai / semua.length * 100) : 0;
 
   document.getElementById('pg-n-total').innerText   = pgAngka(semua.length);
   document.getElementById('pg-n-selesai').innerText = pgAngka(selesai);
   document.getElementById('pg-n-sesuai').innerText  = pgAngka(nSesuai);
   document.getElementById('pg-n-selisih').innerText = pgAngka(nSelisih);
-  document.getElementById('pg-n-koli').innerText    = pgAngka(totalKoli);
+  document.getElementById('pg-n-sebagian').innerText = pgAngka(nSebagian);
   document.getElementById('pg-progress-bar').style.width = persen + '%';
   document.getElementById('pg-progress-label').innerText = `${persen}% kode rak sudah dihitung`;
   pgUpdateBarAntrean();
@@ -318,7 +318,7 @@ function pgRender() {
     if (pgState.blok && pgBlok(k) !== pgState.blok) return false;
     if (pgState.filter !== 'semua') {
       const st = pgStatusEfektif(k).status;
-      const cocok = pgState.filter === 'belum' ? (st === 'belum' || st === 'konflik') : st === pgState.filter;
+      const cocok = pgState.filter === 'belum' ? (st === 'belum' || st === 'konflik' || st === 'sebagian') : st === pgState.filter;
       if (!cocok) return false;
     }
     if (!cari) return true;
@@ -334,7 +334,7 @@ function pgRender() {
 
   const grid = document.getElementById('pg-grid');
   const ae = document.activeElement;
-  const fokusKode = ae && ae.classList && ae.classList.contains('pg-cepat-koli') ? ae.dataset.kode : null;
+  const fokusKode = null;
   const daftar = tampil.join(',');
 
   if (grid.dataset.daftar !== daftar) {
@@ -346,10 +346,7 @@ function pgRender() {
       return html;
     }).join('');
     grid.dataset.daftar = daftar;
-    if (fokusKode) {
-      const inp = grid.querySelector(`.pg-cepat-koli[data-kode="${CSS.escape(fokusKode)}"]`);
-      if (inp) { inp.focus(); const v = inp.value; inp.value = ''; inp.value = v; }
-    }
+
   } else {
     // Hanya kartu yang berubah yang diganti; kartu yang sedang diketik dibiarkan
     tampil.forEach(k => {
@@ -379,7 +376,7 @@ function pgKartuHtml(k) {
   const total   = g ? g.totalCsv : 0;
   const kEsc = pgEsc(k);
 
-  let kelas = s.status, badge = { belum: 'Belum', sesuai: 'Sesuai', selisih: 'Selisih', konflik: 'Bentrok', ulang: 'Cek Ulang' }[s.status] || 'Belum';
+  let kelas = s.status, badge = { belum: 'Belum', sesuai: 'Sesuai', selisih: 'Selisih', konflik: 'Bentrok', ulang: 'Cek Ulang', sebagian: 'Sebagian' }[s.status] || 'Belum';
   if (s.antre === 'menyimpan') { kelas = 'menyimpan'; badge = 'Menyimpan…'; }
   if (s.antre === 'gagal')     { kelas = 'gagal';     badge = 'Gagal'; }
 
@@ -398,11 +395,12 @@ function pgKartuHtml(k) {
     foot = `<div class="pg-card-info oranye"><span class="material-symbols-outlined">update</span>Qty Web berubah setelah dihitung. Buka untuk cek ulang.</div>`;
   } else if (s.status === 'konflik') {
     foot = `<div class="pg-card-info merah">Sudah disimpan ${pgEsc(pgSiapa(s.petugas))} pukul ${pgEsc(pgJam(s.waktu))}. Buka untuk cek.</div>`;
-  } else if (s.status === 'sesuai' || s.status === 'selisih') {
-    foot = `<div class="pg-card-foot">
-        <span><span class="material-symbols-outlined">inventory_2</span>${pgAngka(s.koli)} koli</span>
-        ${s.nSelisih ? `<span class="pg-teks-merah">${s.nSelisih} produk selisih</span>` : ''}
-      </div>`;
+  } else if (s.status === 'sesuai' || s.status === 'selisih' || s.status === 'sebagian') {
+    const isi = [];
+    if (s.nSelisih) isi.push(`<span class="pg-teks-merah">${s.nSelisih} produk selisih</span>`);
+    if (s.nBelum) isi.push(`<span class="pg-teks-amber">${s.nBelum} belum dihitung</span>`);
+    if (!isi.length) isi.push(`<span class="pg-teks-hijau"><span class="material-symbols-outlined">check_circle</span>Semua sesuai</span>`);
+    foot = `<div class="pg-card-foot">${isi.join('')}</div>`;
   }
   if (lain) {
     foot += `<div class="pg-card-info amber"><span class="material-symbols-outlined">person</span>${pgEsc(pgLabelSedang(lain))}</div>`;
@@ -412,13 +410,9 @@ function pgKartuHtml(k) {
   let cepat = '';
   if (s.status === 'belum' && !s.antre && !lain && g && g.items.length) {
     const yakin = !!pgState.tapYakin[k];
-    const koliDraf = pgState.draf[k] && !pgKosong(pgState.draf[k].koli) ? pgState.draf[k].koli : '';
     cepat = `<div class="pg-cepat" onclick="event.stopPropagation()">
-        <label>Koli<input type="number" inputmode="numeric" min="1" class="pg-cepat-koli" data-kode="${kEsc}"
-          value="${pgEsc(koliDraf)}" placeholder="Koli" oninput="pgKoliKartu('${kEsc}', this.value)"
-          onkeydown="if(event.key==='Enter'){event.preventDefault(); pgCepatSesuai('${kEsc}')}"></label>
         <button class="pg-cepat-btn ${yakin ? 'yakin' : ''}" onclick="pgCepatSesuai('${kEsc}')">
-          <span class="material-symbols-outlined">${yakin ? 'touch_app' : 'check'}</span>${yakin ? 'Tap lagi' : 'Sesuai'}
+          <span class="material-symbols-outlined">${yakin ? 'touch_app' : 'check'}</span>${yakin ? 'Tap lagi untuk simpan' : 'Semua sesuai'}
         </button>
       </div>`;
   }
@@ -485,22 +479,9 @@ function pgCari(v) { pgState.cari = v || ''; if (pgState.sudahDimuat) pgRender()
 // ============================================================
 // TOMBOL CEPAT DI KARTU
 // ============================================================
-function pgKoliKartu(kode, v) {
-  const d = pgState.draf[kode] || (pgState.draf[kode] = {});
-  d.koli = v === '' ? '' : Math.max(0, Math.floor(Number(v)));
-  d.t = Date.now();
-  pgSimpanDraf();
-}
-
 function pgCepatSesuai(kode) {
   const g = pgState.rak[kode];
   if (!g) return;
-  const koli = Math.floor(Number(pgState.draf[kode]?.koli));
-  if (!koli || koli < 1) {
-    pgToast(`Isi jumlah koli untuk ${kode} dulu.`, 'warning');
-    document.querySelector(`.pg-cepat-koli[data-kode="${CSS.escape(kode)}"]`)?.focus();
-    return;
-  }
   // Tap pertama = minta yakin, tap kedua dalam 3 detik = simpan
   if (!pgState.tapYakin[kode]) {
     pgState.tapYakin[kode] = Date.now();
@@ -518,7 +499,7 @@ function pgCepatSesuai(kode) {
     id: i.id, lokasi: i.lokasi.join(', '), nama: i.nama, varian: i.varian,
     qtyCsv: i.qtyCsv, qtyKirim: i.qtyCsv, export: i.export
   }));
-  pgAntre({ kodeRak: kode, koli, items, versiDasar: pgState.status[kode]?.versi || '', paksa: false });
+  pgAntre({ kodeRak: kode, items, versiDasar: pgState.status[kode]?.versi || '', paksa: false });
 }
 
 // ============================================================
@@ -528,8 +509,9 @@ function pgSimpanAntrean() { pgTulisLokal(PG_KUNCI_ANTREAN, pgState.antrean); }
 function pgSimpanDraf()    { pgTulisLokal(PG_KUNCI_DRAF, pgState.draf); }
 
 function pgAntre(entri) {
-  const nSelisih = entri.items.filter(i => Number(i.qtyKirim) !== Number(i.qtyCsv)).length;
-  entri.prediksi = { status: nSelisih ? 'selisih' : 'sesuai', nSelisih };
+  const nBelum   = entri.items.filter(i => pgKosong(i.qtyKirim)).length;
+  const nSelisih = entri.items.filter(i => !pgKosong(i.qtyKirim) && Number(i.qtyKirim) !== Number(i.qtyCsv)).length;
+  entri.prediksi = { status: nSelisih ? 'selisih' : (nBelum ? 'sebagian' : 'sesuai'), nSelisih, nBelum };
   entri.gagal = false;
   entri.pesan = '';
   entri.t = Date.now();
@@ -558,7 +540,7 @@ async function pgProsesAntrean() {
     const data = await pgApi('/api/pindah/simpan', {
       method: 'POST',
       body: JSON.stringify({ perangkat: PG_PERANGKAT, raks: paket.map(e => ({
-        kodeRak: e.kodeRak, koli: e.koli, items: e.items, versiDasar: e.versiDasar || '', paksa: !!e.paksa
+        kodeRak: e.kodeRak, items: e.items, versiDasar: e.versiDasar || '', paksa: !!e.paksa
       })) })
     });
     pgState.coba = 0;
@@ -567,7 +549,7 @@ async function pgProsesAntrean() {
       const entri = paket.find(e => e.kodeRak === h.kodeRak);
       const masihSama = entri && pgState.antrean.includes(entri);   // belum diganti versi lebih baru
       if (h.ok) {
-        pgState.status[h.kodeRak] = { status: h.status, nSelisih: h.nSelisih, koli: h.koli,
+        pgState.status[h.kodeRak] = { status: h.status, nSelisih: h.nSelisih, nBelum: h.nBelum,
           petugas: h.petugas, waktu: h.waktu, versi: h.versi, perangkat: h.perangkat || PG_PERANGKAT, _t: Date.now() };
         if (masihSama) {
           pgState.antrean = pgState.antrean.filter(e => e !== entri);
@@ -615,7 +597,7 @@ function pgDrafDariEntri(e) {
     if (String(it.id) === 'TAMBAHAN') tambahan.push({ nama: it.nama, qty: it.qtyKirim });
     else qty[it.id] = it.qtyKirim;
   });
-  pgState.draf[e.kodeRak] = { qty, tambahan, koli: e.koli, t: Date.now() };
+  pgState.draf[e.kodeRak] = { qty, tambahan, t: Date.now() };
 }
 
 function pgUlangi(kode) {
@@ -669,7 +651,6 @@ async function pgBukaRak(kode) {
   if (d && Array.isArray(d.tambahan)) d.tambahan.forEach(t => pgState.baris.push(pgBarisTambahan(t.nama, t.qty, kode)));
 
   document.getElementById('pg-modal-kode').innerText = kode;
-  document.getElementById('pg-koli').value = d && !pgKosong(d.koli) ? d.koli : (s?.koli || '');
   document.getElementById('pg-tambah-nama').value = '';
   document.getElementById('pg-tambah-qty').value = '';
   pgRenderInfoModal();
@@ -693,12 +674,11 @@ async function pgBukaRak(kode) {
       const tambahan = [];
       (r.items || []).forEach(it => {
         if (String(it.id).startsWith('TAMBAHAN')) tambahan.push({ nama: it.nama, qty: it.qtyKirim });
-        else qty[it.id] = it.qtyKirim;
+        else qty[it.id] = pgKosong(it.qtyKirim) ? null : it.qtyKirim;
       });
       pgState.baris = pgBarisDariMaster(g, qty);
       tambahan.forEach(t => pgState.baris.push(pgBarisTambahan(t.nama, t.qty, kode)));
       pgState.modalVersi = r.versi || pgState.modalVersi;
-      if (r.koli && !(d && !pgKosong(d.koli))) document.getElementById('pg-koli').value = r.koli;
       pgRenderBaris();
     } catch (err) {
       if (pgState.aktif === kode) pgToast('Gagal memuat hitungan tersimpan: ' + err.message, 'error');
@@ -823,8 +803,7 @@ function pgDrafModal() {
     if (b.tambahan) tambahan.push({ nama: b.nama, qty: b.qtyKirim });
     else qty[b.id] = b.qtyKirim;
   });
-  const koliV = document.getElementById('pg-koli').value;
-  pgState.draf[kode] = { qty, tambahan, koli: koliV === '' ? '' : Math.floor(Number(koliV)), t: Date.now() };
+  pgState.draf[kode] = { qty, tambahan, t: Date.now() };
   pgSimpanDraf();
 }
 
@@ -835,7 +814,6 @@ function pgUbahQty(i, v) {
   pgDrafModal();
 }
 
-function pgUbahKoliModal() { pgDrafModal(); }
 
 function pgUpdateSelisih(i) {
   const b = pgState.baris[i];
@@ -858,7 +836,7 @@ function pgUpdateRingkasModal() {
     `<span>${pgAngka(pgState.baris.length)} produk</span>
      <span>Qty Web <b>${pgAngka(totCsv)}</b> pcs</span>
      <span>Qty Real <b>${pgAngka(total)}</b> pcs</span>
-     ${kosong ? `<span class="pg-teks-amber">${kosong} belum diisi</span>` : ''}
+     ${kosong ? `<span class="pg-teks-amber">${kosong} belum dihitung</span>` : ''}
      ${selisih ? `<span class="pg-teks-merah">${selisih} selisih</span>` : (kosong ? '' : '<span class="pg-teks-hijau">Semua sesuai</span>')}`;
 }
 
@@ -867,7 +845,7 @@ function pgEnterBerikut(e, i) {
   e.preventDefault();
   const next = document.querySelector(`.pg-input[data-i="${i + 1}"]`);
   if (next) { next.focus(); next.select(); }
-  else document.getElementById('pg-koli').focus();
+  else document.getElementById('pg-btn-simpan').focus();
 }
 
 function pgIsiSemuaSesuai() {
@@ -909,27 +887,21 @@ function pgHapusTambahan(i) {
 async function pgSimpan() {
   const kode = pgState.aktif;
   if (!kode) return;
+  // Qty Real kosong = belum dihitung. Boleh disimpan, asal minimal satu produk sudah diisi.
   const kosong = pgState.baris.filter(b => pgKosong(b.qtyKirim));
-  if (kosong.length) {
-    pgToast(`${kosong.length} produk belum diisi Qty Real-nya. Isi 0 kalau barangnya tidak ada.`, 'warning');
-    const idx = pgState.baris.indexOf(kosong[0]);
-    document.querySelector(`.pg-input[data-i="${idx}"]`)?.focus();
-    return;
-  }
-  const koli = Math.floor(Number(document.getElementById('pg-koli').value));
-  if (!koli || koli < 1) {
-    pgToast('Isi jumlah koli (karung) untuk kode rak ini.', 'warning');
-    document.getElementById('pg-koli').focus();
+  if (kosong.length === pgState.baris.length) {
+    pgToast('Belum ada Qty Real yang diisi. Isi minimal satu produk (isi 0 kalau barangnya tidak ada).', 'warning');
+    document.querySelector('.pg-input[data-i="0"]')?.focus();
     return;
   }
 
-  // Konfirmasi hanya bila perlu: ada selisih, atau akan menimpa hitungan orang lain
-  const daftarSelisih = pgState.baris.filter(b => b.qtyKirim !== b.qtyCsv)
+  // Konfirmasi hanya bila perlu: ada selisih, ada yang belum dihitung, atau akan menimpa hitungan orang lain
+  const daftarSelisih = pgState.baris.filter(b => !pgKosong(b.qtyKirim) && b.qtyKirim !== b.qtyCsv)
     .sort((a, b) => Math.abs(b.qtyKirim - b.qtyCsv) - Math.abs(a.qtyKirim - a.qtyCsv));
   const selisih = daftarSelisih.length;
   const bentrok = pgState.konflik[kode] || pgState.modalBaru;
-  if (selisih || bentrok) {
-    let pesan = `Kode rak ${kode}: ${pgState.baris.length} produk, ${koli} koli.`;
+  if (selisih || kosong.length || bentrok) {
+    let pesan = `Kode rak ${kode}: ${pgState.baris.length} produk.`;
     if (selisih) {
       // Tampilkan selisih terbesar supaya salah ketik (misal 36 padahal 3) mudah terlihat
       pesan += ` Ada ${selisih} produk selisih, terbesar:\n` + daftarSelisih.slice(0, 3).map(b => {
@@ -938,7 +910,8 @@ async function pgSimpan() {
         return `• ${nama}: Web ${b.qtyCsv} → Real ${b.qtyKirim} (${d > 0 ? '+' : ''}${d})`;
       }).join('\n') + (selisih > 3 ? `\n…dan ${selisih - 3} lainnya.` : '') + '\n';
     }
-    if (bentrok) pesan += ` Rak ini sudah disimpan oleh ${pgSiapa(bentrok.petugas)} pukul ${pgJam(bentrok.waktu)} dan akan ditimpa.`;
+    if (kosong.length) pesan += `\n${kosong.length} produk masih kosong dan dicatat "Belum Dihitung".`;
+    if (bentrok) pesan += `\nRak ini sudah disimpan oleh ${pgSiapa(bentrok.petugas)} pukul ${pgJam(bentrok.waktu)} dan akan ditimpa.`;
     const ok = await pgKonfirmasi('Simpan Hitungan', pesan, bentrok ? 'Ya, Timpa' : 'Ya, Simpan');
     if (!ok) return;
   }
@@ -947,11 +920,11 @@ async function pgSimpan() {
   const items = pgState.baris.map(b => ({
     id: b.tambahan ? 'TAMBAHAN' : b.id,
     lokasi: b.lokasi, nama: b.nama, varian: b.varian || '',
-    qtyCsv: Number(b.qtyCsv) || 0, qtyKirim: Number(b.qtyKirim) || 0, export: b.export || ''
+    qtyCsv: Number(b.qtyCsv) || 0, qtyKirim: pgKosong(b.qtyKirim) ? '' : Number(b.qtyKirim), export: b.export || ''
   }));
   const versiDasar = pgState.modalVersi;
   pgTutupModal();
-  pgAntre({ kodeRak: kode, koli, items, versiDasar, paksa: !!bentrok });
+  pgAntre({ kodeRak: kode, items, versiDasar, paksa: !!bentrok });
 }
 
 // ============================================================
