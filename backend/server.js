@@ -840,11 +840,10 @@ app.get('/api/pindah/rak', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/pindah/upload — ganti isi tab "Data CSV" (khusus admin & superuser)
+// POST /api/pindah/upload — ganti isi tab "Data CSV" (khusus superuser)
 app.post('/api/pindah/upload', requireAuth, async (req, res) => {
-  const role = req.sessionUser.role;
-  if (role !== 'admin' && role !== 'superuser') {
-    return res.status(403).json({ success: false, message: 'Upload CSV hanya untuk admin atau superuser.' });
+  if (req.sessionUser.role !== 'superuser') {
+    return res.status(403).json({ success: false, message: 'Upload CSV hanya untuk akun superuser.' });
   }
   const { rows } = req.body;
   if (!Array.isArray(rows) || !rows.length) {
@@ -869,7 +868,8 @@ app.post('/api/pindah/simpan', requireAuth, async (req, res) => {
   const oleh = req.sessionUser.username;
   const waktu = waktuWIB();
   try {
-    const data = await pindahPost({ action: 'pgSimpan', raks, oleh, waktu });
+    const perangkat = String(req.body.perangkat || '').slice(0, 60);
+    const data = await pindahPost({ action: 'pgSimpan', raks, oleh, waktu, perangkat });
     res.json(data.success
       ? { success: true, hasil: data.hasil || [], oleh, waktu }
       : { success: false, message: data.message || 'Gagal simpan.' });
@@ -884,7 +884,10 @@ app.post('/api/pindah/tandai', requireAuth, async (req, res) => {
   const { kodeRak, aksi } = req.body;
   if (!kodeRak) return res.status(400).json({ success: false, message: 'kodeRak wajib.' });
   try {
-    const data = await pindahPost({ action: 'pgTandai', kodeRak, aksi: aksi === 'tutup' ? 'tutup' : 'buka', oleh: req.sessionUser.username }, 20000);
+    const data = await pindahPost({
+      action: 'pgTandai', kodeRak, aksi: aksi === 'tutup' ? 'tutup' : 'buka', oleh: req.sessionUser.username,
+      perangkat: String(req.body.perangkat || '').slice(0, 60), jenis: String(req.body.jenis || '').slice(0, 30)
+    }, 20000);
     res.json({ success: !!data.success, message: data.message || '' });
   } catch (err) {
     res.status(500).json({ success: false, message: pesanErrorPindah(err) });
