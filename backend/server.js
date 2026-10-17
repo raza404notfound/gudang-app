@@ -948,10 +948,14 @@ app.post('/api/pindah/tandai', requireAuth, async (req, res) => {
 // =============================================
 
 // Helper buat timestamp dari tanggal string YYYY-MM-DD
+// Selalu pakai jam WIB (UTC+7), bukan jam server.
+// Server Railway berjalan di UTC; tanpa ini "Hari Ini" bergeser 7 jam
+// (07:00 WIB s/d 06:59 WIB besok), sehingga angkanya tidak sama dengan web PDC.
 function dateToTimestamp(dateStr, isEnd = false) {
   const [y, m, d] = dateStr.split('-').map(Number);
-  if (isEnd) return new Date(y, m-1, d, 23, 59, 59, 999).getTime();
-  return new Date(y, m-1, d, 0, 0, 0, 0).getTime();
+  const WIB = 7 * 60 * 60 * 1000;
+  if (isEnd) return Date.UTC(y, m - 1, d, 23, 59, 59, 999) - WIB;
+  return Date.UTC(y, m - 1, d, 0, 0, 0, 0) - WIB;
 }
 
 // Fetch by_status — breakdown per status (Menunggu, Dikemas, Diserahkan, dll)
@@ -1193,6 +1197,38 @@ async function getTeamNames(token) {
   }
 }
 
+// Field nama di PublicTeamIDs ternyata pesan bersarang (berisi nama, kode, "selling",
+// nomor HP, dll). Ambil teks yang terbaca, utamakan yang diawali "Team".
+function teksDariProto(buf, kedalaman = 0, hasil = []) {
+  let pos = 0;
+  try {
+    while (pos < buf.length) {
+      const tag = decodeVarint(buf, pos); pos = tag.next;
+      const wt = Number(tag.value & 7n);
+      if (wt === 0) { pos = decodeVarint(buf, pos).next; }
+      else if (wt === 1) { pos += 8; }
+      else if (wt === 5) { pos += 4; }
+      else if (wt === 2) {
+        const ld = readLengthDelimited(buf, pos); pos = ld.next;
+        const t = ld.data.toString('utf8');
+        if (/^[\x20-\x7E\u00A0-\uFFFF]+$/.test(t) && !t.includes('\uFFFD')) hasil.push(t.trim());
+        else if (kedalaman < 3) teksDariProto(ld.data, kedalaman + 1, hasil);
+      } else break;
+      if (pos > buf.length) break;
+    }
+  } catch (e) { /* bukan protobuf, abaikan */ }
+  return hasil;
+}
+function namaTimDariProto(buf) {
+  const teks = teksDariProto(buf).filter(Boolean);
+  if (!teks.length) {
+    const polos = buf.toString('utf8');
+    const m = polos.match(/Team\s*\w+/i);
+    return m ? m[0] : '';
+  }
+  return teks.find(t => /^team\b/i.test(t)) || teks[0];
+}
+
 function decodePublicTeamIDs(buf) {
   // Response: repeated message field1 = {field1=id (varint), field2=name (string), ...}
   const map = {};
@@ -1215,7 +1251,7 @@ function decodePublicTeamIDs(buf) {
             if (sfn === 1) tid = Number(sv.value);
           } else if (swt === 2) {
             const sl = readLengthDelimited(ld.data, sp); sp = sl.next;
-            if (sfn === 2) tname = sl.data.toString('utf8');
+            if (sfn === 2) tname = namaTimDariProto(sl.data);
           } else if (swt === 1) { sp += 8; }
           else if (swt === 5) { sp += 4; }
           else break;
@@ -1566,7 +1602,7 @@ function parseOneTeam(buf) {
 }
 
 // DEBUG: endpoint tanpa auth untuk inspect raw response — hapus setelah selesai debug
-app.get('/api/selling/raw-debug', async (req, res) => {
+app.get('/api/selling/raw-debug', requireSuperuser, async (req, res) => {
   try {
     const token = await getSellingToken();
     if (!token) return res.json({ error: 'Login gagal' });
