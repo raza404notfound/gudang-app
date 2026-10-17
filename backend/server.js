@@ -24,7 +24,8 @@ const WAREHOUSES = [
   { id: 'pdc',    name: 'PDC Warehouse',    username: process.env.WH_PDC_USER,    password: process.env.WH_PDC_PASS,    warehouse_id: '38' },
   { id: 'febri',  name: 'Febri Warehouse',  username: process.env.WH_FEBRI_USER,  password: process.env.WH_FEBRI_PASS,  warehouse_id: '67' },
   { id: 'palem',  name: 'Palem Warehouse',  username: process.env.WH_PALEM_USER,  password: process.env.WH_PALEM_PASS,  warehouse_id: '94' },
-  { id: 'cemara', name: 'Cemara Warehouse', username: process.env.WH_CEMARA_USER, password: process.env.WH_CEMARA_PASS, warehouse_id: '96' }
+  { id: 'cemara', name: 'Cemara Warehouse', username: process.env.WH_CEMARA_USER, password: process.env.WH_CEMARA_PASS, warehouse_id: '96' },
+  { id: 'sakura', name: 'Sakura Warehouse', username: process.env.WH_SAKURA_USER, password: process.env.WH_SAKURA_PASS, warehouse_id: '124' }
 ];
 
 const REQUIRED_ENV = [
@@ -33,6 +34,7 @@ const REQUIRED_ENV = [
   'WH_FEBRI_USER',  'WH_FEBRI_PASS',
   'WH_PALEM_USER',  'WH_PALEM_PASS',
   'WH_CEMARA_USER', 'WH_CEMARA_PASS',
+  'WH_SAKURA_USER', 'WH_SAKURA_PASS',
   'SUPERUSER_KEY',  'SHEET_SCRIPT_URL', 'PINDAH_SCRIPT_URL'
 ];
 const MISSING_ENV = REQUIRED_ENV.filter(key => !process.env[key]);
@@ -52,11 +54,14 @@ const lastCacheTime   = { inbound: 0, outbound: 0 };
 const CACHE_DURATION  = 60 * 1000;
 const BASE_URL        = 'https://pdcgudang.et.r.appspot.com/v1';
 
+// "Hari ini" menurut jam WIB (server Railway berjalan di UTC)
 function getTodayTimestamps() {
-  const now = new Date();
+  const WIB = 7 * 60 * 60 * 1000;
+  const w = new Date(Date.now() + WIB);   // komponen UTC dari objek ini = jam WIB
+  const y = w.getUTCFullYear(), m = w.getUTCMonth(), d = w.getUTCDate();
   return {
-    time_min: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime(),
-    time_max: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime()
+    time_min: Date.UTC(y, m, d, 0, 0, 0, 0) - WIB,
+    time_max: Date.UTC(y, m, d, 23, 59, 59, 999) - WIB
   };
 }
 
@@ -102,6 +107,18 @@ async function getWarehouseToken(wh) {
     const resData = response.data?.data || response.data;
     const token = resData?.auth_token || resData?.token || resData?.access_token;
     console.timeEnd(`⏱️ login-${wh.id}`);
+    if (token && !wh.warehouse_id) {
+      // Coba temukan warehouse_id dari respons login (untuk gudang yang ID-nya belum diisi)
+      const kandidat = resData?.warehouse_id ?? resData?.user?.warehouse_id ?? resData?.warehouse?.id
+        ?? (Array.isArray(resData?.warehouses) ? resData.warehouses[0]?.id : undefined)
+        ?? (Array.isArray(resData?.user?.warehouses) ? resData.user.warehouses[0]?.id : undefined);
+      if (kandidat) {
+        wh.warehouse_id = String(kandidat);
+        console.log(`ℹ️  [WAREHOUSE ID] ${wh.name} = ${wh.warehouse_id} (dari respons login). Simpan di Railway agar pasti.`);
+      } else {
+        console.warn(`⚠️  [WAREHOUSE ID] ${wh.name} tidak ditemukan di respons login. Isi variable ID-nya di Railway.`);
+      }
+    }
     if (token) {
       tokenCache[wh.id]     = token;
       tokenCacheTime[wh.id] = Date.now();
@@ -121,6 +138,11 @@ async function fetchOverview(type, wh) {
   if (!token) {
     console.timeEnd(`⏱️ overview-${type}-${wh.id}`);
     return { total_trx: 0, status_error: 'Login Failed' };
+  }
+
+  if (!wh.warehouse_id) {
+    console.timeEnd(`⏱️ overview-${type}-${wh.id}`);
+    return { total_trx: 0, status_error: 'ID gudang belum diisi (WH_' + wh.id.toUpperCase() + '_ID)' };
   }
 
   const { time_min, time_max } = getTodayTimestamps();
