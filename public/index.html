@@ -18,6 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
   <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/pindah-gudang.css">
 </head>
 <body>
   <!-- TOAST CONTAINER -->
@@ -207,6 +208,9 @@
         </a>
         <a class="nav-item" href="#lacak-awb" onclick="switchTab('lacak-awb', this); return false;">
           <span class="material-symbols-outlined">local_shipping</span><span>Lacak AWB</span>
+        </a>
+        <a class="nav-item" href="#pindah-gudang" onclick="switchTab('pindah-gudang', this); return false;">
+          <span class="material-symbols-outlined">swap_horiz</span><span>Pindah Gudang</span>
         </a>
       </div>
       <div class="nav-section">
@@ -772,6 +776,87 @@
 
       </section>
 
+      <!-- PAGE: PINDAH GUDANG -->
+      <section id="page-pindah-gudang" class="page-content">
+        <div class="pg-sticky">
+          <div class="pg-toolbar">
+            <input type="text" id="pg-cari" placeholder="Cari kode rak / nama produk..." oninput="pgCari(this.value)">
+            <div class="pg-chips">
+              <div class="pg-chip aktif" onclick="pgSetFilter('semua', this)">Semua</div>
+              <div class="pg-chip" onclick="pgSetFilter('belum', this)">Belum</div>
+              <div class="pg-chip" onclick="pgSetFilter('sesuai', this)">Sesuai</div>
+              <div class="pg-chip" onclick="pgSetFilter('selisih', this)">Selisih</div>
+            </div>
+            <div class="pg-aksi">
+              <a class="pg-btn" id="pg-btn-sheet" href="#" target="_blank" rel="noopener" style="display:none;">
+                <span class="material-symbols-outlined">table_view</span> Buka Sheet
+              </a>
+              <button class="pg-btn" id="pg-btn-refresh" onclick="pgMuat()">
+                <span class="material-symbols-outlined">refresh</span> Muat Ulang
+              </button>
+              <button class="pg-btn pg-btn-kuning" id="pg-btn-upload" onclick="pgPilihCsv()" style="display:none;">
+                <span class="material-symbols-outlined">upload_file</span> Upload CSV
+              </button>
+              <input type="file" id="pg-file-csv" accept=".csv,.tsv,.txt,text/csv" style="display:none;" onchange="pgUploadCsv(this)">
+            </div>
+          </div>
+          <div class="pg-stats">
+            <div class="pg-stat"><div class="num" id="pg-n-total">0</div><div class="lbl">Kode rak</div></div>
+            <div class="pg-stat amber"><div class="num" id="pg-n-selesai">0</div><div class="lbl">Sudah dihitung</div></div>
+            <div class="pg-stat hijau"><div class="num" id="pg-n-sesuai">0</div><div class="lbl">Sesuai</div></div>
+            <div class="pg-stat merah"><div class="num" id="pg-n-selisih">0</div><div class="lbl">Ada selisih</div></div>
+            <div class="pg-stat"><div class="num" id="pg-n-koli">0</div><div class="lbl">Total koli</div></div>
+          </div>
+          <div class="pg-progress">
+            <div class="pg-progress-track"><div class="pg-progress-bar" id="pg-progress-bar"></div></div>
+            <div class="pg-progress-label" id="pg-progress-label">0% kode rak sudah dihitung</div>
+          </div>
+        </div>
+
+        <div class="pg-grid" id="pg-grid">
+          <div class="pg-state-box"><span class="material-symbols-outlined">swap_horiz</span><p>Memuat...</p></div>
+        </div>
+
+        <!-- MODAL HITUNG PER KODE RAK -->
+        <div id="pg-modal-overlay" onclick="pgTutupModal(event)">
+          <div class="pg-modal">
+            <div class="pg-modal-head">
+              <div>
+                <div class="kode" id="pg-modal-kode">-</div>
+                <div class="sub" id="pg-modal-sub"></div>
+              </div>
+              <button class="tutup" onclick="pgTutupModal()" aria-label="Tutup">&#10005;</button>
+            </div>
+            <div class="pg-modal-alat">
+              <button class="pg-btn" onclick="pgIsiSemuaSesuai()">
+                <span class="material-symbols-outlined">done_all</span> Isi semua sesuai catatan
+              </button>
+              <button class="pg-btn" onclick="pgKosongkan()">
+                <span class="material-symbols-outlined">backspace</span> Kosongkan
+              </button>
+            </div>
+            <div class="pg-modal-ringkas" id="pg-modal-ringkas"></div>
+            <div class="pg-modal-body">
+              <div id="pg-baris"></div>
+              <div class="pg-tambah">
+                <input type="text" id="pg-tambah-nama" placeholder="Barang ditemukan tapi tidak ada di catatan">
+                <input type="number" id="pg-tambah-qty" min="1" inputmode="numeric" placeholder="Jumlah">
+                <button class="pg-btn" onclick="pgTambahBarang()">
+                  <span class="material-symbols-outlined">add</span> Tambah
+                </button>
+              </div>
+            </div>
+            <div class="pg-modal-foot">
+              <label class="pg-koli-wrap">
+                <span class="material-symbols-outlined" style="color:#b45309;">inventory_2</span> Jumlah koli
+                <input type="number" id="pg-koli" class="pg-input" min="1" inputmode="numeric" placeholder="0">
+              </label>
+              <button class="pg-btn-simpan" id="pg-btn-simpan" onclick="pgSimpan()">Simpan ke Sheet</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="page-generic" class="page-content">
         <div style="background:#fff; padding:60px 20px; border-radius:8px; border:1px solid #e2e8f0; text-align: center;">
           <span class="material-symbols-outlined" style="font-size: 48px; color: #cbd5e1; margin-bottom: 12px;">construction</span>
@@ -938,5 +1023,6 @@
 </main>
   <script src="/js/audio.js"></script>
   <script src="/js/main.js"></script>
+  <script src="/js/pindah-gudang.js"></script>
 </body>
 </html>
