@@ -1,0 +1,64 @@
+/* opname-web.css — menu lipat sidebar, form barang rusak, dan halaman Opname WEB */
+
+/* ---------- Menu lipat "Laporan Opname" ---------- */
+.nav-group { margin-bottom: 2px; }
+.nav-group-toggle {
+  width: 100%; background: none; border: none; font-family: inherit; text-align: left;
+}
+.nav-group-panah { margin-left: auto; font-size: 18px !important; transition: transform .2s; }
+.nav-group.buka .nav-group-panah { transform: rotate(180deg); }
+.nav-group.punya-aktif > .nav-group-toggle { color: #92400e; font-weight: 700; }
+.nav-group.punya-aktif > .nav-group-toggle .material-symbols-outlined { color: #d97706; }
+.nav-group-isi {
+  display: flex; flex-direction: column; overflow: hidden;
+  max-height: 0; transition: max-height .22s ease;
+  margin-left: 20px; border-left: 1.5px solid #e2e8f0; padding-left: 6px;
+}
+.nav-group.buka .nav-group-isi { max-height: 200px; }
+.nav-group-isi .nav-sub { padding: 7px 10px; font-size: 12.5px; }
+html.dark .nav-group-isi { border-left-color: #334155; }
+
+/* ---------- Form barang rusak (Opname Sheet & Opname WEB) ---------- */
+.rusak-form { padding: 14px 18px 18px; border-top: 1px solid #f1f5f9; background: #fafafa; }
+.rusak-form-judul { font-size: 11px; font-weight: 700; color: #be123c; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
+.rusak-form-baris { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.rusak-form-baris input {
+  border: 1px solid #e2e8f0; border-radius: 7px; padding: 8px 10px; font-size: 13px; outline: none;
+  background: #fff; color: #1e293b; font-family: inherit;
+}
+.rusak-form-baris input[type=number] { width: 120px; }
+.rusak-form-baris input[type=text] { flex: 1 1 180px; }
+.rusak-form-baris input:focus { border-color: #fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,.15); }
+.rusak-form-msg { font-size: 12px; min-height: 16px; margin-bottom: 8px; }
+html.dark .rusak-form { background: var(--bg-page); border-top-color: var(--border-color); }
+
+/* ---------- Halaman Opname WEB (salinan aturan Opname Sheet) ---------- */
+#page-opname-web.active { display: flex !important; flex-direction: column; height: calc(100vh - 54px); overflow: hidden; }
+
+#ow-detail-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(15,23,42,.6); z-index: 9500;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(3px);
+}
+#ow-detail-overlay.open { display: flex; animation: doFadeIn .18s ease; }
+
+#ow-lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.78); z-index: 9999; align-items: center; justify-content: center; }
+#ow-lightbox.open { display: flex; }
+#ow-lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 10px; box-shadow: 0 8px 40px rgba(0,0,0,.5); }
+#ow-lightbox-close { position: absolute; top: 18px; right: 24px; color: #fff; font-size: 30px; cursor: pointer; background: none; border: none; line-height: 1; }
+
+#ow-rusak-modal { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 9998; align-items: center; justify-content: center; }
+
+.ow-badge-cek {
+  position: absolute; top: 34px; right: 8px; background: #ffedd5; color: #c2410c;
+  font-size: 9.5px; font-weight: 800; padding: 2px 7px; border-radius: 10px; letter-spacing: .2px;
+}
+.pi-card { position: relative; }
+.ow-detail-info { padding: 10px 14px; font-size: 12px; color: #64748b; border-top: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 3px; }
+.ow-teks-oranye { color: #c2410c; }
+.ow-muted { color: #94a3b8; font-size: 11px; }
+.ow-riwayat-baris {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 7px 10px; border: 1px solid #f1f5f9; border-radius: 7px; margin-bottom: 5px; background: #fafafa; font-size: 12px;
+}
