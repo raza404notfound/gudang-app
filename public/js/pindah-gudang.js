@@ -1,23 +1,53 @@
 // pindah-gudang.js — Fitur Pindah Gudang
 // Hitung stok per kode rak (contoh 0001A = shaf A1+A2+A3), catat koli,
 // lalu simpan ke Google Sheet "LAPORAN BARANG" lewat server Railway.
+//
+// Fitur utama:
+// - Foto produk di setiap kartu, tombol cepat "Sesuai" untuk rak yang cocok
+// - Draf otomatis di HP: angka yang diketik tidak hilang sampai berhasil tersimpan
+// - Antrean simpan: klik cepat antar rak aman, dikirim berurutan & per paket
+// - Coba ulang otomatis, tanda gagal di kartu
+// - Sinkron berkala antar petugas tanpa mengganggu angka yang sedang diketik
+// - Tanda "sedang dihitung oleh ..." dan peringatan sebelum menimpa hitungan orang lain
+//
 // Berdiri sendiri: tidak mengubah main.js, hanya memakai showToast, showConfirm,
 // currentUserRole, dan PAGE_DATA_LOADERS yang sudah ada di main.js.
 
-const PG_ASSET_BASE = 'https://pdcgudang.et.r.appspot.com/v1/assets/get';
+const PG_ASSET_BASE   = 'https://pdcgudang.et.r.appspot.com/v1/assets/get';
+const PG_SINKRON_MS   = 30000;   // sinkron status antar petugas
+const PG_DETAK_MS     = 60000;   // perpanjang tanda "sedang dihitung"
+const PG_PAKET_MAKS   = 10;      // maksimal rak per sekali kirim
+const PG_KUNCI_ANTREAN = 'pg_antrean_v1';
+const PG_KUNCI_DRAF    = 'pg_draf_v1';
 
 const pgState = {
-  rak: {},          // { '0001A': { kode, items: [{id,nama,varian,img,lokasi[],qtyCsv}], totalCsv } }
-  hitung: {},       // { '0001A': { items:[{id,lokasi,nama,varian,qtyCsv,qtyKirim}], petugas, waktu } }
-  koli: {},         // { '0001A': 3 }
+  rak: {},          // master dari CSV: { kode: { kode, items:[{id,nama,varian,img,lokasi[],qtyCsv}], totalCsv } }
+  status: {},       // dari sheet: { kode: { status:'sesuai'|'selisih', nSelisih, koli, petugas, waktu, versi } }
+  sedang: {},       // { kode: { petugas, sejak } }
   sheetUrl: '',
+  saya: '',
   sudahDimuat: false,
   sedangMuat: false,
+  sinkronJalan: false,
   filter: 'semua',
   cari: '',
-  aktif: null,      // kode rak yang sedang dibuka di modal
-  baris: [],        // isi modal: [{id,nama,varian,img,lokasi,qtyCsv,qtyKirim,tambahan}]
-  simpanJalan: false
+  // modal
+  aktif: null,
+  baris: [],
+  modalVersi: '',
+  modalDiubah: false,
+  modalBaru: null,  // { petugas, waktu } bila rak ini disimpan orang lain saat modal terbuka
+  // antrean & draf
+  antrean: [],
+  draf: {},
+  kirimJalan: false,
+  coba: 0,
+  konflik: {},      // { kode: { petugas, waktu } }
+  tapYakin: {},     // { kode: timestamp } konfirmasi tombol Sesuai di kartu
+  kartuHtml: {},
+  timerSinkron: null,
+  timerDetak: null,
+  timerKirim: null
 };
 
 // Daftarkan ke router main.js supaya menu & refresh (#pindah-gudang) berfungsi
@@ -25,7 +55,9 @@ if (typeof PAGE_DATA_LOADERS !== 'undefined') {
   PAGE_DATA_LOADERS['pindah-gudang'] = () => pgInit();
 }
 
-// ---------- Helper ----------
+// ============================================================
+// HELPER
+// ============================================================
 function pgEsc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 }
@@ -38,10 +70,19 @@ async function pgKonfirmasi(judul, pesan, tombol) {
   return confirm(judul + '\n\n' + pesan);
 }
 function pgAngka(n) { return Number(n || 0).toLocaleString('id-ID'); }
+function pgJam(w) { const m = String(w || '').match(/(\d{2}:\d{2})\s*$/); return m ? m[1] : String(w || ''); }
+function pgKosong(v) { return v === null || v === undefined || v === '' || Number.isNaN(v); }
 
 // Aturan kode rak: buang angka shaf di belakang. 0001A1 → 0001A, 0007DD1 → 0007DD
 function pgKodeRak(lokasi) {
   return String(lokasi || '').trim().toUpperCase().replace(/\d+$/, '');
+}
+
+function pgBacaLokal(kunci, awal) {
+  try { const v = localStorage.getItem(kunci); return v ? JSON.parse(v) : awal; } catch (e) { return awal; }
+}
+function pgTulisLokal(kunci, nilai) {
+  try { localStorage.setItem(kunci, JSON.stringify(nilai)); } catch (e) { /* penyimpanan HP penuh / diblokir */ }
 }
 
 async function pgApi(url, opsi = {}) {
@@ -52,17 +93,28 @@ async function pgApi(url, opsi = {}) {
       'x-session-token': sessionStorage.getItem('sessionToken') || ''
     }
   });
-  if (res.status === 401) throw new Error('Sesi habis. Silakan login ulang.');
+  if (res.status === 401) { const e = new Error('Sesi habis. Silakan login ulang.'); e.status = 401; throw e; }
   let data;
   try { data = await res.json(); } catch (e) { throw new Error('Respons server tidak valid.'); }
-  if (!data.success) throw new Error(data.message || 'Permintaan gagal.');
+  if (!data.success) { const e = new Error(data.message || 'Permintaan gagal.'); e.status = res.status; throw e; }
   return data;
 }
 
-// ---------- Muat data ----------
+function pgHalamanAktif() {
+  const el = document.getElementById('page-pindah-gudang');
+  return !!(el && el.classList.contains('active'));
+}
+
+// ============================================================
+// MUAT DATA
+// ============================================================
 function pgInit() {
   pgTampilkanTombolUpload();
+  pgState.saya = pgState.saya || sessionStorage.getItem('sessionUser') || '';
   if (!pgState.sudahDimuat && !pgState.sedangMuat) pgMuat();
+  else pgSinkron();
+  pgMulaiSinkron();
+  pgProsesAntrean();
 }
 
 function pgTampilkanTombolUpload() {
@@ -79,9 +131,10 @@ async function pgMuat() {
   try {
     const data = await pgApi('/api/pindah/data');
     pgSusunMaster(data.master || []);
-    pgState.hitung   = data.hitung || {};
-    pgState.koli     = data.koli || {};
+    pgState.status   = data.status || {};
+    pgState.sedang   = data.sedang || {};
     pgState.sheetUrl = data.url || '';
+    if (data.saya) pgState.saya = data.saya;
     pgState.sudahDimuat = true;
     const link = document.getElementById('pg-btn-sheet');
     if (link) {
@@ -121,21 +174,76 @@ function pgSusunMaster(master) {
   });
   Object.values(rak).forEach(g => {
     g.items.sort((a, b) => (a.lokasi[0] || '').localeCompare(b.lokasi[0] || '') || a.nama.localeCompare(b.nama));
+    // Foto untuk kartu: produk dengan stok terbanyak lebih dulu
+    g.foto = g.items.filter(i => i.img).sort((a, b) => b.qtyCsv - a.qtyCsv).slice(0, 3).map(i => i.img);
     delete g.peta;
   });
   pgState.rak = rak;
 }
 
-function pgStatusRak(kode) {
-  const h = pgState.hitung[kode];
-  if (!h) return 'belum';
-  return h.items.some(i => Number(i.qtyKirim) !== Number(i.qtyCsv)) ? 'selisih' : 'sesuai';
+// ============================================================
+// SINKRON BERKALA (tidak pernah menyentuh angka yang sedang diketik)
+// ============================================================
+function pgMulaiSinkron() {
+  if (pgState.timerSinkron) return;
+  pgState.timerSinkron = setInterval(() => {
+    if (!document.hidden && pgHalamanAktif()) pgSinkron();
+  }, PG_SINKRON_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && pgHalamanAktif()) { pgSinkron(); pgProsesAntrean(); }
+  });
 }
 
-// ---------- Render grid ----------
+async function pgSinkron() {
+  if (pgState.sinkronJalan || !pgState.sudahDimuat) return;
+  pgState.sinkronJalan = true;
+  const mulai = Date.now();
+  try {
+    const d = await pgApi('/api/pindah/status');
+    const baru = d.status || {};
+    // Hasil simpan lokal yang lebih baru dari permintaan ini tetap dipakai
+    Object.keys(pgState.status).forEach(k => {
+      const lama = pgState.status[k];
+      if (lama && lama._t && lama._t > mulai) baru[k] = lama;
+    });
+    pgState.status = baru;
+    pgState.sedang = d.sedang || {};
+    pgCekModalTerbaru();
+    pgRender();
+  } catch (e) {
+    // diam saja, dicoba lagi di putaran berikutnya
+  } finally {
+    pgState.sinkronJalan = false;
+  }
+}
+
+// ============================================================
+// STATUS EFEKTIF (sheet + antrean lokal)
+// ============================================================
+function pgEntriAntrean(kode) { return pgState.antrean.find(e => e.kodeRak === kode); }
+
+function pgStatusEfektif(kode) {
+  const e = pgEntriAntrean(kode);
+  if (e) return { status: e.prediksi.status, nSelisih: e.prediksi.nSelisih, koli: e.koli, antre: e.gagal ? 'gagal' : 'menyimpan', pesan: e.pesan };
+  if (pgState.konflik[kode]) return { status: 'konflik', ...pgState.konflik[kode] };
+  const s = pgState.status[kode];
+  if (s) return { status: s.status, nSelisih: s.nSelisih, koli: s.koli, petugas: s.petugas, waktu: s.waktu };
+  return { status: 'belum' };
+}
+
+function pgSedangLain(kode) {
+  const s = pgState.sedang[kode];
+  return s && s.petugas && s.petugas !== pgState.saya ? s : null;
+}
+
+// ============================================================
+// RENDER GRID
+// ============================================================
 function pgSetStateBox(ikon, pesan) {
   const grid = document.getElementById('pg-grid');
   if (!grid) return;
+  grid.dataset.daftar = '';
+  pgState.kartuHtml = {};
   grid.innerHTML = `<div class="pg-state-box">
       <span class="material-symbols-outlined ${ikon === 'sync' ? 'pg-putar' : ''}">${ikon}</span>
       <p>${pgEsc(pesan)}</p>
@@ -143,18 +251,19 @@ function pgSetStateBox(ikon, pesan) {
 }
 
 function pgSemuaKode() {
-  const set = new Set([...Object.keys(pgState.rak), ...Object.keys(pgState.hitung)]);
+  const set = new Set([...Object.keys(pgState.rak), ...Object.keys(pgState.status)]);
   return [...set].sort();
 }
 
 function pgRender() {
+  if (!document.getElementById('pg-grid')) return;
   const semua = pgSemuaKode();
   let nSesuai = 0, nSelisih = 0, totalKoli = 0;
   semua.forEach(k => {
-    const s = pgStatusRak(k);
-    if (s === 'sesuai') nSesuai++;
-    if (s === 'selisih') nSelisih++;
-    totalKoli += Number(pgState.koli[k] || 0);
+    const s = pgStatusEfektif(k);
+    if (s.status === 'sesuai') nSesuai++;
+    if (s.status === 'selisih') nSelisih++;
+    totalKoli += Number(s.koli || 0);
   });
   const selesai = nSesuai + nSelisih;
   const persen = semua.length ? Math.round(selesai / semua.length * 100) : 0;
@@ -166,7 +275,9 @@ function pgRender() {
   document.getElementById('pg-n-koli').innerText    = pgAngka(totalKoli);
   document.getElementById('pg-progress-bar').style.width = persen + '%';
   document.getElementById('pg-progress-label').innerText = `${persen}% kode rak sudah dihitung`;
+  pgUpdateBarAntrean();
 
+  if (!pgState.sudahDimuat) return;
   if (!semua.length) {
     pgSetStateBox('upload_file', 'Belum ada data. Upload CSV stok terlebih dahulu (tombol Upload CSV, khusus admin).');
     return;
@@ -174,7 +285,11 @@ function pgRender() {
 
   const cari = pgState.cari.trim().toUpperCase();
   const tampil = semua.filter(k => {
-    if (pgState.filter !== 'semua' && pgStatusRak(k) !== pgState.filter) return false;
+    if (pgState.filter !== 'semua') {
+      const st = pgStatusEfektif(k).status;
+      const cocok = pgState.filter === 'belum' ? (st === 'belum' || st === 'konflik') : st === pgState.filter;
+      if (!cocok) return false;
+    }
     if (!cari) return true;
     if (k.includes(cari)) return true;
     const g = pgState.rak[k];
@@ -186,27 +301,105 @@ function pgRender() {
     return;
   }
 
-  const labelStatus = { belum: 'Belum', sesuai: 'Sesuai', selisih: 'Selisih' };
-  document.getElementById('pg-grid').innerHTML = tampil.map(k => {
-    const g = pgState.rak[k];
-    const s = pgStatusRak(k);
-    const nProduk = g ? g.items.length : (pgState.hitung[k]?.items.length || 0);
-    const total   = g ? g.totalCsv : 0;
-    const koli    = pgState.koli[k];
-    let nSel = 0;
-    if (s === 'selisih') nSel = pgState.hitung[k].items.filter(i => Number(i.qtyKirim) !== Number(i.qtyCsv)).length;
-    return `<button class="pg-card pg-card-${s}" onclick="pgBukaRak('${pgEsc(k)}')">
-        <div class="pg-card-top">
-          <span class="pg-card-kode">${pgEsc(k)}</span>
-          <span class="pg-badge pg-badge-${s}">${labelStatus[s]}</span>
-        </div>
-        <div class="pg-card-meta">${pgAngka(nProduk)} produk · ${pgAngka(total)} pcs</div>
-        <div class="pg-card-foot">
-          ${koli ? `<span><span class="material-symbols-outlined">inventory_2</span>${pgAngka(koli)} koli</span>` : '<span class="pg-muted">Belum ada koli</span>'}
-          ${nSel ? `<span class="pg-teks-merah">${nSel} produk selisih</span>` : ''}
-        </div>
-      </button>`;
-  }).join('');
+  const grid = document.getElementById('pg-grid');
+  const ae = document.activeElement;
+  const fokusKode = ae && ae.classList && ae.classList.contains('pg-cepat-koli') ? ae.dataset.kode : null;
+  const daftar = tampil.join(',');
+
+  if (grid.dataset.daftar !== daftar) {
+    // Susunan kartu berubah (filter / cari / data baru): bangun ulang
+    pgState.kartuHtml = {};
+    grid.innerHTML = tampil.map(k => {
+      const html = pgKartuHtml(k);
+      pgState.kartuHtml[k] = html;
+      return html;
+    }).join('');
+    grid.dataset.daftar = daftar;
+    if (fokusKode) {
+      const inp = grid.querySelector(`.pg-cepat-koli[data-kode="${CSS.escape(fokusKode)}"]`);
+      if (inp) { inp.focus(); const v = inp.value; inp.value = ''; inp.value = v; }
+    }
+  } else {
+    // Hanya kartu yang berubah yang diganti; kartu yang sedang diketik dibiarkan
+    tampil.forEach(k => {
+      if (k === fokusKode) return;
+      const html = pgKartuHtml(k);
+      if (pgState.kartuHtml[k] === html) return;
+      const el = grid.querySelector(`.pg-card[data-kode="${CSS.escape(k)}"]`);
+      if (el) { el.outerHTML = html; pgState.kartuHtml[k] = html; }
+    });
+  }
+}
+
+function pgRenderKartu(kode) {
+  const grid = document.getElementById('pg-grid');
+  const el = grid && grid.querySelector(`.pg-card[data-kode="${CSS.escape(kode)}"]`);
+  if (!el) return;
+  const html = pgKartuHtml(kode);
+  el.outerHTML = html;
+  pgState.kartuHtml[kode] = html;
+}
+
+function pgKartuHtml(k) {
+  const g = pgState.rak[k];
+  const s = pgStatusEfektif(k);
+  const lain = pgSedangLain(k);
+  const nProduk = g ? g.items.length : 0;
+  const total   = g ? g.totalCsv : 0;
+  const kEsc = pgEsc(k);
+
+  let kelas = s.status, badge = { belum: 'Belum', sesuai: 'Sesuai', selisih: 'Selisih', konflik: 'Bentrok' }[s.status] || 'Belum';
+  if (s.antre === 'menyimpan') { kelas = 'menyimpan'; badge = 'Menyimpan…'; }
+  if (s.antre === 'gagal')     { kelas = 'gagal';     badge = 'Gagal'; }
+
+  const foto = g && g.foto && g.foto.length
+    ? `<div class="pg-foto">${g.foto.map(id =>
+        `<img loading="lazy" src="${PG_ASSET_BASE}?id=${encodeURIComponent(id)}&thumbnail=true" alt="" onerror="this.style.visibility='hidden'">`).join('')}
+        ${nProduk > g.foto.length ? `<span class="pg-foto-lagi">+${nProduk - g.foto.length}</span>` : ''}</div>`
+    : '';
+
+  let foot = '';
+  if (s.antre === 'gagal') {
+    foot = `<div class="pg-card-info merah">Gagal simpan. <button class="pg-link" onclick="event.stopPropagation(); pgUlangi('${kEsc}')">Ulangi</button></div>`;
+  } else if (s.antre === 'menyimpan') {
+    foot = `<div class="pg-card-info amber"><span class="material-symbols-outlined pg-putar">sync</span>Mengirim ke sheet…</div>`;
+  } else if (s.status === 'konflik') {
+    foot = `<div class="pg-card-info merah">Sudah disimpan ${pgEsc(s.petugas)} pukul ${pgEsc(pgJam(s.waktu))}. Buka untuk cek.</div>`;
+  } else if (s.status === 'sesuai' || s.status === 'selisih') {
+    foot = `<div class="pg-card-foot">
+        <span><span class="material-symbols-outlined">inventory_2</span>${pgAngka(s.koli)} koli</span>
+        ${s.nSelisih ? `<span class="pg-teks-merah">${s.nSelisih} produk selisih</span>` : ''}
+      </div>`;
+  }
+  if (lain) {
+    foot += `<div class="pg-card-info amber"><span class="material-symbols-outlined">person</span>Sedang dihitung ${pgEsc(lain.petugas)}</div>`;
+  }
+
+  // Tombol cepat: hanya untuk rak yang belum dihitung, tidak sedang dipegang orang lain
+  let cepat = '';
+  if (s.status === 'belum' && !s.antre && !lain && g && g.items.length) {
+    const yakin = !!pgState.tapYakin[k];
+    const koliDraf = pgState.draf[k] && !pgKosong(pgState.draf[k].koli) ? pgState.draf[k].koli : '';
+    cepat = `<div class="pg-cepat" onclick="event.stopPropagation()">
+        <label>Koli<input type="number" inputmode="numeric" min="1" class="pg-cepat-koli" data-kode="${kEsc}"
+          value="${pgEsc(koliDraf)}" placeholder="Koli" oninput="pgKoliKartu('${kEsc}', this.value)"
+          onkeydown="if(event.key==='Enter'){event.preventDefault(); pgCepatSesuai('${kEsc}')}"></label>
+        <button class="pg-cepat-btn ${yakin ? 'yakin' : ''}" onclick="pgCepatSesuai('${kEsc}')">
+          <span class="material-symbols-outlined">${yakin ? 'touch_app' : 'check'}</span>${yakin ? 'Tap lagi' : 'Sesuai'}
+        </button>
+      </div>`;
+  }
+
+  return `<div class="pg-card pg-card-${kelas}${lain ? ' pg-card-dipegang' : ''}" data-kode="${kEsc}" onclick="pgBukaRak('${kEsc}')">
+      <div class="pg-card-top">
+        <span class="pg-card-kode">${kEsc}</span>
+        <span class="pg-badge pg-badge-${kelas}">${badge}</span>
+      </div>
+      ${foto}
+      <div class="pg-card-meta">${pgAngka(nProduk)} produk · ${pgAngka(total)} pcs</div>
+      ${foot}
+      ${cepat}
+    </div>`;
 }
 
 function pgSetFilter(f, el) {
@@ -217,46 +410,298 @@ function pgSetFilter(f, el) {
 }
 function pgCari(v) { pgState.cari = v || ''; if (pgState.sudahDimuat) pgRender(); }
 
-// ---------- Modal hitung ----------
-function pgBukaRak(kode) {
-  pgState.aktif = kode;
-  const g = pgState.rak[kode];
-  const h = pgState.hitung[kode];
-  const tersimpan = {};
-  (h?.items || []).forEach(i => { tersimpan[i.id] = i; });
+// ============================================================
+// TOMBOL CEPAT DI KARTU
+// ============================================================
+function pgKoliKartu(kode, v) {
+  const d = pgState.draf[kode] || (pgState.draf[kode] = {});
+  d.koli = v === '' ? '' : Math.max(0, Math.floor(Number(v)));
+  d.t = Date.now();
+  pgSimpanDraf();
+}
 
-  pgState.baris = (g ? g.items : []).map(i => ({
-    id: i.id, nama: i.nama, varian: i.varian, img: i.img,
-    lokasi: i.lokasi.join(', '),
-    qtyCsv: i.qtyCsv,
-    qtyKirim: tersimpan[i.id] ? Number(tersimpan[i.id].qtyKirim) : null,
-    tambahan: false
+function pgCepatSesuai(kode) {
+  const g = pgState.rak[kode];
+  if (!g) return;
+  const koli = Math.floor(Number(pgState.draf[kode]?.koli));
+  if (!koli || koli < 1) {
+    pgToast(`Isi jumlah koli untuk ${kode} dulu.`, 'warning');
+    document.querySelector(`.pg-cepat-koli[data-kode="${CSS.escape(kode)}"]`)?.focus();
+    return;
+  }
+  // Tap pertama = minta yakin, tap kedua dalam 3 detik = simpan
+  if (!pgState.tapYakin[kode]) {
+    pgState.tapYakin[kode] = Date.now();
+    pgRenderKartu(kode);
+    setTimeout(() => {
+      if (pgState.tapYakin[kode] && Date.now() - pgState.tapYakin[kode] >= 2900) {
+        delete pgState.tapYakin[kode];
+        pgRenderKartu(kode);
+      }
+    }, 3000);
+    return;
+  }
+  delete pgState.tapYakin[kode];
+  const items = g.items.map(i => ({
+    id: i.id, lokasi: i.lokasi.join(', '), nama: i.nama, varian: i.varian,
+    qtyCsv: i.qtyCsv, qtyKirim: i.qtyCsv
   }));
-  // Barang tambahan yang dulu dicatat tapi tidak ada di CSV
-  (h?.items || []).forEach(i => {
-    if (!g || !g.items.some(x => x.id === i.id)) {
-      pgState.baris.push({ id: i.id, nama: i.nama, varian: i.varian || '', img: '', lokasi: i.lokasi || kode,
-        qtyCsv: Number(i.qtyCsv) || 0, qtyKirim: Number(i.qtyKirim), tambahan: true });
+  pgAntre({ kodeRak: kode, koli, items, versiDasar: pgState.status[kode]?.versi || '', paksa: false });
+}
+
+// ============================================================
+// ANTREAN SIMPAN
+// ============================================================
+function pgSimpanAntrean() { pgTulisLokal(PG_KUNCI_ANTREAN, pgState.antrean); }
+function pgSimpanDraf()    { pgTulisLokal(PG_KUNCI_DRAF, pgState.draf); }
+
+function pgAntre(entri) {
+  const nSelisih = entri.items.filter(i => Number(i.qtyKirim) !== Number(i.qtyCsv)).length;
+  entri.prediksi = { status: nSelisih ? 'selisih' : 'sesuai', nSelisih };
+  entri.gagal = false;
+  entri.pesan = '';
+  entri.t = Date.now();
+  const idx = pgState.antrean.findIndex(e => e.kodeRak === entri.kodeRak);
+  if (idx >= 0) pgState.antrean[idx] = entri; else pgState.antrean.push(entri);
+  delete pgState.konflik[entri.kodeRak];
+  pgSimpanAntrean();
+  pgRender();
+  pgProsesAntrean();
+}
+
+async function pgProsesAntrean() {
+  if (pgState.kirimJalan) return;
+  clearTimeout(pgState.timerKirim);
+  const siap = pgState.antrean.filter(e => !e.gagal);
+  if (!siap.length) return;
+  if (navigator.onLine === false) {
+    pgState.timerKirim = setTimeout(pgProsesAntrean, 5000);
+    return;
+  }
+  pgState.kirimJalan = true;
+  pgUpdateBarAntrean();
+  const paket = siap.slice(0, PG_PAKET_MAKS);
+  let jeda = 300;
+  try {
+    const data = await pgApi('/api/pindah/simpan', {
+      method: 'POST',
+      body: JSON.stringify({ raks: paket.map(e => ({
+        kodeRak: e.kodeRak, koli: e.koli, items: e.items, versiDasar: e.versiDasar || '', paksa: !!e.paksa
+      })) })
+    });
+    pgState.coba = 0;
+    let nKonflik = 0;
+    (data.hasil || []).forEach(h => {
+      const entri = paket.find(e => e.kodeRak === h.kodeRak);
+      const masihSama = entri && pgState.antrean.includes(entri);   // belum diganti versi lebih baru
+      if (h.ok) {
+        pgState.status[h.kodeRak] = { status: h.status, nSelisih: h.nSelisih, koli: h.koli,
+          petugas: h.petugas, waktu: h.waktu, versi: h.versi, _t: Date.now() };
+        if (masihSama) {
+          pgState.antrean = pgState.antrean.filter(e => e !== entri);
+          delete pgState.draf[h.kodeRak];
+        } else {
+          const baru = pgEntriAntrean(h.kodeRak);
+          if (baru) baru.versiDasar = h.versi;
+        }
+      } else if (h.konflik) {
+        nKonflik++;
+        pgState.konflik[h.kodeRak] = { petugas: h.petugas, waktu: h.waktu };
+        if (masihSama) {
+          pgState.antrean = pgState.antrean.filter(e => e !== entri);
+          // Simpan hitungan kita sebagai draf supaya bisa dicek dan disimpan ulang
+          pgDrafDariEntri(entri);
+        }
+      } else if (masihSama) {
+        entri.gagal = true;
+        entri.pesan = h.message || 'Gagal simpan.';
+      }
+    });
+    if (nKonflik) pgToast(`${nKonflik} rak sudah disimpan petugas lain. Buka kartunya untuk cek sebelum menimpa.`, 'warning');
+  } catch (err) {
+    pgState.coba++;
+    if (err.status === 401 || pgState.coba >= 3) {
+      paket.forEach(e => { if (pgState.antrean.includes(e)) { e.gagal = true; e.pesan = err.message; } });
+      pgState.coba = 0;
+      pgToast(`Gagal menyimpan ${paket.length} rak: ${err.message}`, 'error');
+    } else {
+      jeda = 3000 * Math.pow(2, pgState.coba - 1);   // 3 detik, lalu 6 detik
     }
+  } finally {
+    pgState.kirimJalan = false;
+    pgSimpanAntrean();
+    pgSimpanDraf();
+    pgRender();
+    if (pgState.antrean.some(e => !e.gagal)) pgState.timerKirim = setTimeout(pgProsesAntrean, jeda);
+  }
+}
+
+function pgDrafDariEntri(e) {
+  const qty = {};
+  const tambahan = [];
+  e.items.forEach(it => {
+    if (String(it.id) === 'TAMBAHAN') tambahan.push({ nama: it.nama, qty: it.qtyKirim });
+    else qty[it.id] = it.qtyKirim;
   });
+  pgState.draf[e.kodeRak] = { qty, tambahan, koli: e.koli, t: Date.now() };
+}
+
+function pgUlangi(kode) {
+  const e = pgEntriAntrean(kode);
+  if (!e) return;
+  e.gagal = false; e.pesan = '';
+  pgState.coba = 0;
+  pgSimpanAntrean();
+  pgRender();
+  pgProsesAntrean();
+}
+
+function pgUlangiSemua() {
+  pgState.antrean.forEach(e => { e.gagal = false; e.pesan = ''; });
+  pgState.coba = 0;
+  pgSimpanAntrean();
+  pgRender();
+  pgProsesAntrean();
+}
+
+function pgUpdateBarAntrean() {
+  const bar = document.getElementById('pg-bar-antrean');
+  if (!bar) return;
+  const nGagal = pgState.antrean.filter(e => e.gagal).length;
+  const nTunggu = pgState.antrean.length - nGagal;
+  if (!pgState.antrean.length) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  bar.className = 'pg-bar-antrean' + (nGagal ? ' ada-gagal' : '');
+  bar.innerHTML = `
+    ${nTunggu ? `<span><span class="material-symbols-outlined pg-putar">sync</span>${nTunggu} rak menunggu tersimpan</span>` : ''}
+    ${nGagal ? `<span class="pg-teks-merah">${nGagal} rak gagal tersimpan</span>
+      <button class="pg-btn" onclick="pgUlangiSemua()"><span class="material-symbols-outlined">replay</span>Coba lagi semua</button>` : ''}
+    <span class="pg-muted pg-bar-catatan">Jangan tutup halaman sampai selesai</span>`;
+}
+
+// ============================================================
+// MODAL HITUNG PER KODE RAK
+// ============================================================
+async function pgBukaRak(kode) {
+  pgState.aktif = kode;
+  pgState.modalDiubah = false;
+  pgState.modalBaru = null;
+  delete pgState.tapYakin[kode];
+  const g = pgState.rak[kode];
+  const d = pgState.draf[kode];
+  const s = pgState.status[kode];
+  pgState.modalVersi = s?.versi || '';
+
+  // Isi awal: dari draf bila ada, kalau tidak dari daftar CSV (kosong)
+  pgState.baris = pgBarisDariMaster(g, d && d.qty ? d.qty : null);
+  if (d && Array.isArray(d.tambahan)) d.tambahan.forEach(t => pgState.baris.push(pgBarisTambahan(t.nama, t.qty, kode)));
 
   document.getElementById('pg-modal-kode').innerText = kode;
-  document.getElementById('pg-modal-sub').innerText = h
-    ? `Sudah dihitung oleh ${h.petugas || '-'} · ${h.waktu || ''}. Simpan lagi akan menimpa data lama.`
-    : 'Hitung barang di semua shaf rak ini, lalu isi jumlah nyata.';
-  document.getElementById('pg-koli').value = pgState.koli[kode] || '';
+  document.getElementById('pg-koli').value = d && !pgKosong(d.koli) ? d.koli : (s?.koli || '');
   document.getElementById('pg-tambah-nama').value = '';
   document.getElementById('pg-tambah-qty').value = '';
+  pgRenderInfoModal();
   pgRenderBaris();
   document.getElementById('pg-modal-overlay').classList.add('tampil');
   document.body.style.overflow = 'hidden';
+
+  // Tanda "sedang dihitung" + perpanjang tiap menit
+  pgTandai(kode, 'buka');
+  clearInterval(pgState.timerDetak);
+  pgState.timerDetak = setInterval(() => { if (pgState.aktif === kode) pgTandai(kode, 'buka'); }, PG_DETAK_MS);
+
+  // Ambil isi terbaru dari sheet bila rak ini sudah pernah dihitung (tanpa menimpa draf)
+  const perluServer = s || pgState.konflik[kode];
+  if (perluServer && !(d && d.qty)) {
+    pgSetInfo('memuat', 'Memuat hitungan tersimpan...');
+    try {
+      const r = await pgApi('/api/pindah/rak?kode=' + encodeURIComponent(kode));
+      if (pgState.aktif !== kode || pgState.modalDiubah) return;
+      const qty = {};
+      const tambahan = [];
+      (r.items || []).forEach(it => {
+        if (String(it.id).startsWith('TAMBAHAN')) tambahan.push({ nama: it.nama, qty: it.qtyKirim });
+        else qty[it.id] = it.qtyKirim;
+      });
+      pgState.baris = pgBarisDariMaster(g, qty);
+      tambahan.forEach(t => pgState.baris.push(pgBarisTambahan(t.nama, t.qty, kode)));
+      pgState.modalVersi = r.versi || pgState.modalVersi;
+      if (r.koli && !(d && !pgKosong(d.koli))) document.getElementById('pg-koli').value = r.koli;
+      pgRenderBaris();
+    } catch (err) {
+      if (pgState.aktif === kode) pgToast('Gagal memuat hitungan tersimpan: ' + err.message, 'error');
+    }
+    if (pgState.aktif === kode) pgRenderInfoModal();
+  }
+}
+
+function pgBarisDariMaster(g, qty) {
+  return (g ? g.items : []).map(i => ({
+    id: i.id, nama: i.nama, varian: i.varian, img: i.img,
+    lokasi: i.lokasi.join(', '),
+    qtyCsv: i.qtyCsv,
+    qtyKirim: qty && !pgKosong(qty[i.id]) ? Number(qty[i.id]) : null,
+    tambahan: false
+  }));
+}
+function pgBarisTambahan(nama, qty, kode) {
+  return { id: 'TAMBAHAN-' + Math.random().toString(36).slice(2, 8), nama, varian: '', img: '', lokasi: kode,
+           qtyCsv: 0, qtyKirim: pgKosong(qty) ? null : Number(qty), tambahan: true };
+}
+
+function pgSetInfo(jenis, teks) {
+  const el = document.getElementById('pg-modal-info');
+  if (!el) return;
+  if (!teks) { el.style.display = 'none'; return; }
+  el.className = 'pg-modal-info ' + jenis;
+  el.innerHTML = teks;
+  el.style.display = 'block';
+}
+
+function pgRenderInfoModal() {
+  const kode = pgState.aktif;
+  if (!kode) return;
+  const pesan = [];
+  let jenis = 'biasa';
+  const s = pgState.status[kode];
+  const lain = pgSedangLain(kode);
+  const e = pgEntriAntrean(kode);
+  const k = pgState.konflik[kode] || pgState.modalBaru;
+
+  if (k) { jenis = 'merah'; pesan.push(`Rak ini sudah disimpan oleh <b>${pgEsc(k.petugas)}</b> pukul ${pgEsc(pgJam(k.waktu))}. Kalau Anda simpan, hitungan itu akan ditimpa.`); }
+  if (e && e.gagal) { jenis = 'merah'; pesan.push(`Simpanan terakhir gagal: ${pgEsc(e.pesan)}. Tekan Simpan untuk mencoba lagi.`); }
+  else if (e) { jenis = jenis === 'merah' ? jenis : 'amber'; pesan.push('Hitungan rak ini sedang dikirim ke sheet.'); }
+  if (lain) { jenis = jenis === 'merah' ? jenis : 'amber'; pesan.push(`Sedang dihitung juga oleh <b>${pgEsc(lain.petugas)}</b>. Pastikan tidak menghitung rak yang sama.`); }
+  if (pgState.draf[kode] && pgState.draf[kode].qty) pesan.push('Angka di bawah dari draf di HP ini (belum tersimpan ke sheet).');
+  else if (s && !k) pesan.push(`Sudah dihitung oleh ${pgEsc(s.petugas)} pukul ${pgEsc(pgJam(s.waktu))}. Simpan lagi akan memperbarui data.`);
+
+  document.getElementById('pg-modal-sub').innerText = 'Hitung semua shaf rak ini, lalu isi Qty Real.';
+  pgSetInfo(jenis, pesan.join('<br>'));
+}
+
+// Dipanggil saat sinkron: beri tahu bila rak yang sedang dibuka disimpan orang lain
+function pgCekModalTerbaru() {
+  const kode = pgState.aktif;
+  if (!kode) return;
+  const s = pgState.status[kode];
+  if (s && s.versi && s.versi !== pgState.modalVersi && s.petugas !== pgState.saya) {
+    pgState.modalBaru = { petugas: s.petugas, waktu: s.waktu };
+  }
+  pgRenderInfoModal();
 }
 
 function pgTutupModal(e) {
   if (e && e.target && e.target.id !== 'pg-modal-overlay') return;
+  const kode = pgState.aktif;
   document.getElementById('pg-modal-overlay').classList.remove('tampil');
   document.body.style.overflow = '';
+  clearInterval(pgState.timerDetak);
   pgState.aktif = null;
+  if (kode) { pgTandai(kode, 'tutup'); pgRenderKartu(kode); }
+}
+
+function pgTandai(kode, aksi) {
+  pgApi('/api/pindah/tandai', { method: 'POST', body: JSON.stringify({ kodeRak: kode, aksi }) }).catch(() => {});
 }
 
 function pgRenderBaris() {
@@ -272,13 +717,13 @@ function pgRenderBaris() {
           ${img}
           <div class="pg-baris-info">
             <div class="pg-baris-nama">${pgEsc(b.nama)}${b.varian ? ` <span class="pg-muted">· ${pgEsc(b.varian)}</span>` : ''}</div>
-            <div class="pg-baris-sub">${b.tambahan ? '<span class="pg-tag-tambahan">Tidak ada di CSV</span>' : pgEsc(b.lokasi)}</div>
+            <div class="pg-baris-sub">${b.tambahan ? '<span class="pg-tag-tambahan">Tidak ada di web</span>' : pgEsc(b.lokasi)}</div>
           </div>
           <div class="pg-baris-angka">
-            <div class="pg-catatan"><span>Catatan</span><b>${pgAngka(b.qtyCsv)}</b></div>
+            <div class="pg-catatan"><span>Qty Web</span><b>${pgAngka(b.qtyCsv)}</b></div>
             <input type="number" inputmode="numeric" min="0" class="pg-input" data-i="${i}"
-              value="${b.qtyKirim === null || b.qtyKirim === undefined || Number.isNaN(b.qtyKirim) ? '' : b.qtyKirim}"
-              placeholder="Nyata" oninput="pgUbahQty(${i}, this.value)" onkeydown="pgEnterBerikut(event, ${i})">
+              value="${pgKosong(b.qtyKirim) ? '' : b.qtyKirim}"
+              placeholder="Real" oninput="pgUbahQty(${i}, this.value)" onkeydown="pgEnterBerikut(event, ${i})">
             <div class="pg-selisih" id="pg-selisih-${i}"></div>
             ${b.tambahan ? `<button class="pg-hapus" title="Hapus" onclick="pgHapusTambahan(${i})"><span class="material-symbols-outlined">close</span></button>` : ''}
           </div>
@@ -289,11 +734,30 @@ function pgRenderBaris() {
   pgUpdateRingkasModal();
 }
 
+// Simpan isi modal sebagai draf di HP (dipanggil setiap ada perubahan)
+function pgDrafModal() {
+  const kode = pgState.aktif;
+  if (!kode) return;
+  pgState.modalDiubah = true;
+  const qty = {};
+  const tambahan = [];
+  pgState.baris.forEach(b => {
+    if (b.tambahan) tambahan.push({ nama: b.nama, qty: b.qtyKirim });
+    else qty[b.id] = b.qtyKirim;
+  });
+  const koliV = document.getElementById('pg-koli').value;
+  pgState.draf[kode] = { qty, tambahan, koli: koliV === '' ? '' : Math.floor(Number(koliV)), t: Date.now() };
+  pgSimpanDraf();
+}
+
 function pgUbahQty(i, v) {
   pgState.baris[i].qtyKirim = v === '' ? null : Math.max(0, Math.floor(Number(v)));
   pgUpdateSelisih(i);
   pgUpdateRingkasModal();
+  pgDrafModal();
 }
+
+function pgUbahKoliModal() { pgDrafModal(); }
 
 function pgUpdateSelisih(i) {
   const b = pgState.baris[i];
@@ -301,21 +765,21 @@ function pgUpdateSelisih(i) {
   const row = document.getElementById('pg-baris-' + i);
   if (!el || !row) return;
   row.classList.remove('pg-ok', 'pg-kurang', 'pg-lebih');
-  if (b.qtyKirim === null || b.qtyKirim === undefined || Number.isNaN(b.qtyKirim)) { el.innerHTML = ''; return; }
+  if (pgKosong(b.qtyKirim)) { el.innerHTML = ''; return; }
   const d = b.qtyKirim - b.qtyCsv;
   if (d === 0) { el.innerHTML = '<span class="material-symbols-outlined">check_circle</span>'; row.classList.add('pg-ok'); }
   else { el.innerText = (d > 0 ? '+' : '') + d; row.classList.add(d < 0 ? 'pg-kurang' : 'pg-lebih'); }
 }
 
 function pgUpdateRingkasModal() {
-  const kosong  = pgState.baris.filter(b => b.qtyKirim === null || b.qtyKirim === undefined || Number.isNaN(b.qtyKirim)).length;
-  const selisih = pgState.baris.filter(b => b.qtyKirim !== null && b.qtyKirim !== undefined && b.qtyKirim !== b.qtyCsv).length;
+  const kosong  = pgState.baris.filter(b => pgKosong(b.qtyKirim)).length;
+  const selisih = pgState.baris.filter(b => !pgKosong(b.qtyKirim) && b.qtyKirim !== b.qtyCsv).length;
   const total   = pgState.baris.reduce((s, b) => s + (Number(b.qtyKirim) || 0), 0);
   const totCsv  = pgState.baris.reduce((s, b) => s + (Number(b.qtyCsv) || 0), 0);
   document.getElementById('pg-modal-ringkas').innerHTML =
     `<span>${pgAngka(pgState.baris.length)} produk</span>
-     <span>Catatan <b>${pgAngka(totCsv)}</b> pcs</span>
-     <span>Dihitung <b>${pgAngka(total)}</b> pcs</span>
+     <span>Qty Web <b>${pgAngka(totCsv)}</b> pcs</span>
+     <span>Qty Real <b>${pgAngka(total)}</b> pcs</span>
      ${kosong ? `<span class="pg-teks-amber">${kosong} belum diisi</span>` : ''}
      ${selisih ? `<span class="pg-teks-merah">${selisih} selisih</span>` : (kosong ? '' : '<span class="pg-teks-hijau">Semua sesuai</span>')}`;
 }
@@ -331,12 +795,19 @@ function pgEnterBerikut(e, i) {
 function pgIsiSemuaSesuai() {
   pgState.baris.forEach(b => { if (!b.tambahan) b.qtyKirim = b.qtyCsv; });
   pgRenderBaris();
+  pgDrafModal();
 }
 
-function pgKosongkan() {
+async function pgKosongkan() {
+  const ok = await pgKonfirmasi('Kosongkan', 'Semua angka Qty Real dan barang tambahan di rak ini akan dihapus dari draf.', 'Ya, Kosongkan');
+  if (!ok) return;
   pgState.baris = pgState.baris.filter(b => !b.tambahan);
   pgState.baris.forEach(b => { b.qtyKirim = null; });
+  delete pgState.draf[pgState.aktif];
+  pgSimpanDraf();
+  pgState.modalDiubah = true;
   pgRenderBaris();
+  pgRenderInfoModal();
 }
 
 function pgTambahBarang() {
@@ -344,24 +815,25 @@ function pgTambahBarang() {
   const qty  = Math.floor(Number(document.getElementById('pg-tambah-qty').value));
   if (!nama) { pgToast('Isi nama atau kode barang yang ditemukan.', 'warning'); return; }
   if (!qty || qty < 1) { pgToast('Isi jumlah barang (minimal 1).', 'warning'); return; }
-  pgState.baris.push({ id: 'TAMBAHAN-' + Date.now(), nama, varian: '', img: '', lokasi: pgState.aktif,
-    qtyCsv: 0, qtyKirim: qty, tambahan: true });
+  pgState.baris.push(pgBarisTambahan(nama, qty, pgState.aktif));
   document.getElementById('pg-tambah-nama').value = '';
   document.getElementById('pg-tambah-qty').value = '';
   pgRenderBaris();
+  pgDrafModal();
 }
 
 function pgHapusTambahan(i) {
   pgState.baris.splice(i, 1);
   pgRenderBaris();
+  pgDrafModal();
 }
 
 async function pgSimpan() {
-  if (pgState.simpanJalan) return;
   const kode = pgState.aktif;
-  const kosong = pgState.baris.filter(b => b.qtyKirim === null || b.qtyKirim === undefined || Number.isNaN(b.qtyKirim));
+  if (!kode) return;
+  const kosong = pgState.baris.filter(b => pgKosong(b.qtyKirim));
   if (kosong.length) {
-    pgToast(`${kosong.length} produk belum diisi jumlah nyatanya. Isi 0 kalau barangnya tidak ada.`, 'warning');
+    pgToast(`${kosong.length} produk belum diisi Qty Real-nya. Isi 0 kalau barangnya tidak ada.`, 'warning');
     const idx = pgState.baris.indexOf(kosong[0]);
     document.querySelector(`.pg-input[data-i="${idx}"]`)?.focus();
     return;
@@ -373,46 +845,51 @@ async function pgSimpan() {
     return;
   }
 
+  // Konfirmasi hanya bila perlu: ada selisih, atau akan menimpa hitungan orang lain
   const selisih = pgState.baris.filter(b => b.qtyKirim !== b.qtyCsv).length;
-  const sudahAda = !!pgState.hitung[kode];
-  let pesan = `Kode rak ${kode}: ${pgState.baris.length} produk, ${koli} koli.`;
-  if (selisih) pesan += ` Ada ${selisih} produk selisih.`;
-  if (sudahAda) pesan += ' Data hitung sebelumnya akan ditimpa.';
-  const ok = await pgKonfirmasi('Simpan Hitungan', pesan, 'Ya, Simpan');
-  if (!ok) return;
-
-  const btn = document.getElementById('pg-btn-simpan');
-  pgState.simpanJalan = true;
-  btn.disabled = true; btn.innerText = 'Menyimpan...';
-  try {
-    const items = pgState.baris.map(b => ({
-      id: b.tambahan ? 'TAMBAHAN' : b.id,
-      lokasi: b.lokasi, nama: b.nama, varian: b.varian || '',
-      qtyCsv: Number(b.qtyCsv) || 0, qtyKirim: Number(b.qtyKirim) || 0
-    }));
-    const data = await pgApi('/api/pindah/simpan', { method: 'POST', body: JSON.stringify({ kodeRak: kode, koli, items }) });
-    pgState.hitung[kode] = {
-      items: items.map((it, i) => ({ ...it, id: it.id === 'TAMBAHAN' ? 'TAMBAHAN-' + i : it.id })),
-      petugas: data.oleh, waktu: data.waktu
-    };
-    pgState.koli[kode] = koli;
-    pgToast(`Kode rak ${kode} tersimpan ke sheet.`, 'success');
-    pgTutupModal();
-    pgRender();
-  } catch (err) {
-    pgToast(err.message, 'error');
-  } finally {
-    pgState.simpanJalan = false;
-    btn.disabled = false; btn.innerText = 'Simpan ke Sheet';
+  const bentrok = pgState.konflik[kode] || pgState.modalBaru;
+  if (selisih || bentrok) {
+    let pesan = `Kode rak ${kode}: ${pgState.baris.length} produk, ${koli} koli.`;
+    if (selisih) pesan += ` Ada ${selisih} produk selisih.`;
+    if (bentrok) pesan += ` Rak ini sudah disimpan oleh ${bentrok.petugas} pukul ${pgJam(bentrok.waktu)} dan akan ditimpa.`;
+    const ok = await pgKonfirmasi('Simpan Hitungan', pesan, bentrok ? 'Ya, Timpa' : 'Ya, Simpan');
+    if (!ok) return;
   }
+
+  pgDrafModal();   // pastikan draf terbaru tersimpan sampai pengiriman berhasil
+  const items = pgState.baris.map(b => ({
+    id: b.tambahan ? 'TAMBAHAN' : b.id,
+    lokasi: b.lokasi, nama: b.nama, varian: b.varian || '',
+    qtyCsv: Number(b.qtyCsv) || 0, qtyKirim: Number(b.qtyKirim) || 0
+  }));
+  const versiDasar = pgState.modalVersi;
+  pgTutupModal();
+  pgAntre({ kodeRak: kode, koli, items, versiDasar, paksa: !!bentrok });
 }
 
-// ---------- Upload CSV (admin & superuser) ----------
+// ============================================================
+// PANDUAN
+// ============================================================
+function pgTogglePanduan(e) {
+  if (e) e.stopPropagation();
+  const el = document.getElementById('pg-panduan');
+  el.classList.toggle('tampil');
+}
+document.addEventListener('click', e => {
+  const el = document.getElementById('pg-panduan');
+  if (el && el.classList.contains('tampil') && !el.contains(e.target) && !e.target.closest('#pg-btn-panduan')) {
+    el.classList.remove('tampil');
+  }
+});
+
+// ============================================================
+// UPLOAD CSV (admin & superuser)
+// ============================================================
 function pgPilihCsv() { document.getElementById('pg-file-csv').click(); }
 
 // Parser CSV sederhana: mendukung tab, koma, titik koma, dan tanda kutip
 function pgParseCsv(teks) {
-  teks = teks.replace(/^\uFEFF/, '');
+  teks = teks.replace(/^﻿/, '');
   const barisPertama = teks.split(/\r?\n/, 1)[0] || '';
   const pemisah = barisPertama.includes('\t') ? '\t' : (barisPertama.split(';').length > barisPertama.split(',').length ? ';' : ',');
   const hasil = []; let baris = []; let sel = ''; let kutip = false;
@@ -472,11 +949,11 @@ async function pgUploadCsv(input) {
 
   const nRak  = new Set(data.map(d => d[0])).size;
   const total = data.reduce((s, d) => s + d[5], 0);
-  const nHitung = Object.keys(pgState.hitung).length;
+  const nHitung = Object.keys(pgState.status).length;
   let pesan = `${pgAngka(data.length)} baris, ${pgAngka(nRak)} kode rak, ${pgAngka(total)} pcs.`;
   if (dilewati) pesan += ` ${pgAngka(dilewati)} baris dilewati (data uji coba atau tidak lengkap).`;
   pesan += ' Tab "Data CSV" di sheet akan diganti dengan file ini.';
-  if (nHitung) pesan += ` PERHATIAN: ${nHitung} kode rak sudah dihitung. Hasil hitungnya tetap tersimpan, tapi angka catatan bisa berbeda dengan CSV baru.`;
+  if (nHitung) pesan += ` PERHATIAN: ${nHitung} kode rak sudah dihitung. Hasil hitungnya tetap tersimpan, tapi Qty Web bisa berbeda dengan CSV baru.`;
   const ok = await pgKonfirmasi('Upload CSV Stok', pesan, 'Ya, Upload');
   if (!ok) return;
 
@@ -496,7 +973,24 @@ async function pgUploadCsv(input) {
   }
 }
 
-// Tutup modal dengan tombol Esc
+// ============================================================
+// AWAL: pulihkan antrean & draf dari HP, pasang pengaman
+// ============================================================
+pgState.antrean = pgBacaLokal(PG_KUNCI_ANTREAN, []);
+pgState.draf    = pgBacaLokal(PG_KUNCI_DRAF, {});
+if (!Array.isArray(pgState.antrean)) pgState.antrean = [];
+// Draf lebih dari 3 hari dianggap basi
+Object.keys(pgState.draf).forEach(k => {
+  if (!pgState.draf[k] || Date.now() - (pgState.draf[k].t || 0) > 3 * 24 * 3600 * 1000) delete pgState.draf[k];
+});
+
+window.addEventListener('beforeunload', e => {
+  if (pgState.antrean.length) { e.preventDefault(); e.returnValue = ''; }
+});
+window.addEventListener('online', () => pgProsesAntrean());
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && pgState.aktif) pgTutupModal();
 });
+
+// Lanjutkan antrean yang tertinggal (misal HP sempat ter-refresh) walau belum membuka menu ini
+if (pgState.antrean.length) setTimeout(() => { if (sessionStorage.getItem('sessionToken')) pgProsesAntrean(); }, 3000);
