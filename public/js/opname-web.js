@@ -350,7 +350,7 @@ function owOpenDetail(kunciEnc) {
         <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Riwayat Hitung ${owEsc(owNamaBulan(owSesiAktif))}</div>
         ${row.riwayat.slice().reverse().map(h => `
           <div class="ow-riwayat-baris">
-            <div><b>${h.qtyReal}</b> <span class="ow-muted">dari Qty Web ${h.qtyWeb}</span> · ${owEsc(h.petugas)}</div>
+            <div><b>${h.qtyReal === '' ? 'Belum dihitung' : h.qtyReal}</b> <span class="ow-muted">dari Qty Web ${h.qtyWeb}</span> · ${owEsc(h.petugas)}</div>
             <div class="ow-muted">${owEsc(h.waktu)}${h.export ? ' · ' + owEsc(h.export) : ''}</div>
           </div>`).join('')}
       </div>` : ''}`;
