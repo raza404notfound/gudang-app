@@ -32,6 +32,10 @@ const pgState = {
   sinkronJalan: false,
   filter: 'semua',
   cari: '',
+  tim: '',          // filter tim ('' = semua)
+  blok: '',         // filter blok ('' = semua)
+  exportInfo: [],   // [{ label, waktuExport, baris }]
+  exportTim: {},    // { tim: 'YYYY-MM-DD HH:MM' } export terbaru per tim
   // modal
   aktif: null,
   baris: [],
@@ -53,7 +57,7 @@ const pgState = {
 
 // Daftarkan ke router main.js supaya menu & refresh (#pindah-gudang) berfungsi
 if (typeof PAGE_DATA_LOADERS !== 'undefined') {
-  PAGE_DATA_LOADERS['pindah-gudang'] = () => pgInit();
+  PAGE_DATA_LOADERS['stok-opname'] = () => pgInit();
 }
 
 // ============================================================
@@ -72,6 +76,8 @@ async function pgKonfirmasi(judul, pesan, tombol) {
 }
 function pgAngka(n) { return Number(n || 0).toLocaleString('id-ID'); }
 function pgJam(w) { const m = String(w || '').match(/(\d{2}:\d{2})\s*$/); return m ? m[1] : String(w || ''); }
+function pgTim(id) { return String(id || '').split('-')[0].trim(); }
+function pgBlok(kode) { const m = String(kode || '').match(/[A-Z]+$/); return m ? m[0] : 'Lain'; }
 function pgKosong(v) { return v === null || v === undefined || v === '' || Number.isNaN(v); }
 
 // Aturan kode rak: buang angka shaf di belakang. 0001A1 → 0001A, 0007DD1 → 0007DD
@@ -102,7 +108,7 @@ async function pgApi(url, opsi = {}) {
 }
 
 function pgHalamanAktif() {
-  const el = document.getElementById('page-pindah-gudang');
+  const el = document.getElementById('page-stok-opname');
   return !!(el && el.classList.contains('active'));
 }
 
@@ -135,6 +141,8 @@ async function pgMuat() {
     pgState.status   = data.status || {};
     pgState.sedang   = data.sedang || {};
     pgState.sheetUrl = data.url || '';
+    pgState.exportInfo = data.exportInfo || [];
+    pgState.exportTim  = data.exportTim || {};
     if (data.saya) pgState.saya = data.saya;
     pgState.sudahDimuat = true;
     const link = document.getElementById('pg-btn-sheet');
@@ -142,6 +150,8 @@ async function pgMuat() {
       link.href = pgState.sheetUrl || '#';
       link.style.display = pgState.sheetUrl ? 'inline-flex' : 'none';
     }
+    pgRenderLabelExport();
+    pgRenderChipFilter();
     pgRender();
   } catch (err) {
     pgSetStateBox('error', err.message);
@@ -152,7 +162,7 @@ async function pgMuat() {
   }
 }
 
-// master: [[kodeRak, lokasi, idProduk, nama, varian, qty, kodeGambar], ...]
+// master: [[kodeRak, lokasi, idProduk, nama, varian, qty, kodeGambar, tim, labelExport, waktuExport], ...]
 // Produk yang sama di beberapa shaf (misal XX01A1 & XX01A2) digabung jadi satu baris.
 function pgSusunMaster(master) {
   const rak = {};
@@ -160,11 +170,12 @@ function pgSusunMaster(master) {
     const kode = String(r[0] || '').trim();
     const id   = String(r[2] || '').trim();
     if (!kode || !id) return;
-    if (!rak[kode]) rak[kode] = { kode, peta: {}, items: [], totalCsv: 0 };
+    if (!rak[kode]) rak[kode] = { kode, peta: {}, items: [], totalCsv: 0, tim: {}, export: {} };
     const g = rak[kode];
     const qty = Number(r[5]) || 0;
     if (!g.peta[id]) {
-      g.peta[id] = { id, nama: String(r[3] || ''), varian: String(r[4] || ''), img: String(r[6] || ''), lokasi: [], qtyCsv: 0 };
+      g.peta[id] = { id, nama: String(r[3] || ''), varian: String(r[4] || ''), img: String(r[6] || ''), lokasi: [], qtyCsv: 0,
+                     tim: String(r[7] || '') || pgTim(id), export: String(r[8] || '') };
       g.items.push(g.peta[id]);
     }
     const it = g.peta[id];
@@ -172,6 +183,8 @@ function pgSusunMaster(master) {
     const lok = String(r[1] || '').trim();
     if (lok && !it.lokasi.includes(lok)) it.lokasi.push(lok);
     g.totalCsv += qty;
+    g.tim[it.tim] = true;
+    if (it.export) g.export[it.export] = true;
   });
   Object.values(rak).forEach(g => {
     g.items.sort((a, b) => (a.lokasi[0] || '').localeCompare(b.lokasi[0] || '') || a.nama.localeCompare(b.nama));
@@ -228,6 +241,7 @@ function pgStatusEfektif(kode) {
   if (e) return { status: e.prediksi.status, nSelisih: e.prediksi.nSelisih, koli: e.koli, antre: e.gagal ? 'gagal' : 'menyimpan', pesan: e.pesan };
   if (pgState.konflik[kode]) return { status: 'konflik', ...pgState.konflik[kode] };
   const s = pgState.status[kode];
+  if (s && s.perluCek) return { status: 'ulang', nSelisih: s.nSelisih, koli: s.koli, petugas: s.petugas, waktu: s.waktu };
   if (s) return { status: s.status, nSelisih: s.nSelisih, koli: s.koli, petugas: s.petugas, waktu: s.waktu };
   return { status: 'belum' };
 }
@@ -297,6 +311,11 @@ function pgRender() {
 
   const cari = pgState.cari.trim().toUpperCase();
   const tampil = semua.filter(k => {
+    if (pgState.tim) {
+      const g = pgState.rak[k];
+      if (!g || !g.tim[pgState.tim]) return false;
+    }
+    if (pgState.blok && pgBlok(k) !== pgState.blok) return false;
     if (pgState.filter !== 'semua') {
       const st = pgStatusEfektif(k).status;
       const cocok = pgState.filter === 'belum' ? (st === 'belum' || st === 'konflik') : st === pgState.filter;
@@ -360,7 +379,7 @@ function pgKartuHtml(k) {
   const total   = g ? g.totalCsv : 0;
   const kEsc = pgEsc(k);
 
-  let kelas = s.status, badge = { belum: 'Belum', sesuai: 'Sesuai', selisih: 'Selisih', konflik: 'Bentrok' }[s.status] || 'Belum';
+  let kelas = s.status, badge = { belum: 'Belum', sesuai: 'Sesuai', selisih: 'Selisih', konflik: 'Bentrok', ulang: 'Cek Ulang' }[s.status] || 'Belum';
   if (s.antre === 'menyimpan') { kelas = 'menyimpan'; badge = 'Menyimpan…'; }
   if (s.antre === 'gagal')     { kelas = 'gagal';     badge = 'Gagal'; }
 
@@ -375,6 +394,8 @@ function pgKartuHtml(k) {
     foot = `<div class="pg-card-info merah">Gagal simpan. <button class="pg-link" onclick="event.stopPropagation(); pgUlangi('${kEsc}')">Ulangi</button></div>`;
   } else if (s.antre === 'menyimpan') {
     foot = `<div class="pg-card-info amber"><span class="material-symbols-outlined pg-putar">sync</span>Mengirim ke sheet…</div>`;
+  } else if (s.status === 'ulang') {
+    foot = `<div class="pg-card-info oranye"><span class="material-symbols-outlined">update</span>Qty Web berubah setelah dihitung. Buka untuk cek ulang.</div>`;
   } else if (s.status === 'konflik') {
     foot = `<div class="pg-card-info merah">Sudah disimpan ${pgEsc(pgSiapa(s.petugas))} pukul ${pgEsc(pgJam(s.waktu))}. Buka untuk cek.</div>`;
   } else if (s.status === 'sesuai' || s.status === 'selisih') {
@@ -413,6 +434,45 @@ function pgKartuHtml(k) {
       ${cepat}
     </div>`;
 }
+
+// Label sumber data, contoh: "17 Okt 2026 07:38 · Semua Tim"
+function pgRenderLabelExport() {
+  const el = document.getElementById('pg-label-export');
+  if (!el) return;
+  if (!pgState.exportInfo.length) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = `<span class="pg-label-judul"><span class="material-symbols-outlined">description</span>Data CSV</span>
+    <span class="pg-label-isi">${pgState.exportInfo.map(e => `<span>${pgEsc(e.label)}</span>`).join('')}</span>`;
+}
+
+// Chip Tim dan Blok dibuat otomatis dari data
+function pgRenderChipFilter() {
+  const timHit = {}, blokHit = {};
+  Object.values(pgState.rak).forEach(g => {
+    Object.keys(g.tim).forEach(t => { timHit[t] = (timHit[t] || 0) + 1; });
+    const b = pgBlok(g.kode);
+    blokHit[b] = (blokHit[b] || 0) + 1;
+  });
+  const urutTim = Object.keys(timHit).sort((a, b) => {
+    const na = /^\d+$/.test(a), nb = /^\d+$/.test(b);
+    if (na && nb) return Number(a) - Number(b);
+    if (na !== nb) return na ? -1 : 1;
+    return a.localeCompare(b);
+  });
+  const urutBlok = Object.keys(blokHit).sort((a, b) => a.length - b.length || a.localeCompare(b));
+  if (pgState.tim && !timHit[pgState.tim]) pgState.tim = '';
+  if (pgState.blok && !blokHit[pgState.blok]) pgState.blok = '';
+  const chip = (fn, nilai, label, n, aktif) =>
+    `<button class="pg-chip-kecil ${aktif ? 'aktif' : ''}" onclick="${fn}('${pgEsc(nilai)}')">${pgEsc(label)}${n !== null ? `<small>${n}</small>` : ''}</button>`;
+  const elT = document.getElementById('pg-chip-tim');
+  const elB = document.getElementById('pg-chip-blok');
+  if (elT) elT.innerHTML = `<span class="pg-chip-label">Tim</span>` + chip('pgSetTim', '', 'Semua', null, !pgState.tim) +
+    urutTim.map(t => chip('pgSetTim', t, t, timHit[t], pgState.tim === t)).join('');
+  if (elB) elB.innerHTML = `<span class="pg-chip-label">Blok</span>` + chip('pgSetBlok', '', 'Semua', null, !pgState.blok) +
+    urutBlok.map(b => chip('pgSetBlok', b, b, blokHit[b], pgState.blok === b)).join('');
+}
+function pgSetTim(t)  { pgState.tim = t;  pgRenderChipFilter(); pgRender(); }
+function pgSetBlok(b) { pgState.blok = b; pgRenderChipFilter(); pgRender(); }
 
 function pgSetFilter(f, el) {
   pgState.filter = f;
@@ -456,7 +516,7 @@ function pgCepatSesuai(kode) {
   delete pgState.tapYakin[kode];
   const items = g.items.map(i => ({
     id: i.id, lokasi: i.lokasi.join(', '), nama: i.nama, varian: i.varian,
-    qtyCsv: i.qtyCsv, qtyKirim: i.qtyCsv
+    qtyCsv: i.qtyCsv, qtyKirim: i.qtyCsv, export: i.export
   }));
   pgAntre({ kodeRak: kode, koli, items, versiDasar: pgState.status[kode]?.versi || '', paksa: false });
 }
@@ -653,12 +713,12 @@ function pgBarisDariMaster(g, qty) {
     lokasi: i.lokasi.join(', '),
     qtyCsv: i.qtyCsv,
     qtyKirim: qty && !pgKosong(qty[i.id]) ? Number(qty[i.id]) : null,
-    tambahan: false
+    tambahan: false, tim: i.tim, export: i.export
   }));
 }
 function pgBarisTambahan(nama, qty, kode) {
   return { id: 'TAMBAHAN-' + Math.random().toString(36).slice(2, 8), nama, varian: '', img: '', lokasi: kode,
-           qtyCsv: 0, qtyKirim: pgKosong(qty) ? null : Number(qty), tambahan: true };
+           qtyCsv: 0, qtyKirim: pgKosong(qty) ? null : Number(qty), tambahan: true, tim: '', export: '' };
 }
 
 function pgSetInfo(jenis, teks) {
@@ -680,6 +740,7 @@ function pgRenderInfoModal() {
   const e = pgEntriAntrean(kode);
   const k = pgState.konflik[kode] || pgState.modalBaru;
 
+  if (s && s.perluCek && !k) { jenis = 'oranye'; pesan.push('<b>Qty Web berubah</b> setelah rak ini dihitung (ada upload CSV baru). Cek ulang Qty Real lalu simpan.'); }
   if (k) { jenis = 'merah'; pesan.push(`Rak ini sudah disimpan oleh <b>${pgEsc(pgSiapa(k.petugas))}</b> pukul ${pgEsc(pgJam(k.waktu))}. Kalau Anda simpan, hitungan itu akan ditimpa.`); }
   if (e && e.gagal) { jenis = 'merah'; pesan.push(`Simpanan terakhir gagal: ${pgEsc(e.pesan)}. Tekan Simpan untuk mencoba lagi.`); }
   else if (e) { jenis = jenis === 'merah' ? jenis : 'amber'; pesan.push('Hitungan rak ini sedang dikirim ke sheet.'); }
@@ -687,7 +748,11 @@ function pgRenderInfoModal() {
   if (pgState.draf[kode] && pgState.draf[kode].qty) pesan.push('Angka di bawah dari draf di HP ini (belum tersimpan ke sheet).');
   else if (s && !k) pesan.push(`Sudah dihitung oleh ${pgEsc(s.petugas)} pukul ${pgEsc(pgJam(s.waktu))}. Simpan lagi akan memperbarui data.`);
 
-  document.getElementById('pg-modal-sub').innerText = 'Hitung semua shaf rak ini, lalu isi Qty Real.';
+  const g = pgState.rak[kode];
+  const labels = g ? Object.keys(g.export) : [];
+  document.getElementById('pg-modal-sub').innerText = labels.length
+    ? 'Qty Web dari export ' + labels.join(' & ')
+    : 'Hitung semua shaf rak ini, lalu isi Qty Real.';
   pgSetInfo(jenis, pesan.join('<br>'));
 }
 
@@ -725,11 +790,12 @@ function pgRenderBaris() {
       const img = b.img
         ? `<img class="pg-thumb" loading="lazy" src="${PG_ASSET_BASE}?id=${encodeURIComponent(b.img)}&thumbnail=true" onerror="this.outerHTML='<div class=&quot;pg-thumb pg-thumb-kosong&quot;><span class=&quot;material-symbols-outlined&quot;>image_not_supported</span></div>'">`
         : `<div class="pg-thumb pg-thumb-kosong"><span class="material-symbols-outlined">${b.tambahan ? 'add_box' : 'image_not_supported'}</span></div>`;
-      return `<div class="pg-baris" id="pg-baris-${i}">
+      const timPilih = pgState.tim && b.tim === pgState.tim;
+      return `<div class="pg-baris${timPilih ? ' pg-baris-tim' : ''}" id="pg-baris-${i}">
           ${img}
           <div class="pg-baris-info">
             <div class="pg-baris-nama">${pgEsc(b.nama)}${b.varian ? ` <span class="pg-muted">· ${pgEsc(b.varian)}</span>` : ''}</div>
-            <div class="pg-baris-sub">${b.tambahan ? '<span class="pg-tag-tambahan">Tidak ada di web</span>' : pgEsc(b.lokasi)}</div>
+            <div class="pg-baris-sub">${b.tambahan ? '<span class="pg-tag-tambahan">Tidak ada di web</span>' : pgEsc(b.lokasi)}${b.tim ? ` <span class="pg-tag-tim${timPilih ? ' pilih' : ''}">Tim ${pgEsc(b.tim)}</span>` : ''}</div>
           </div>
           <div class="pg-baris-angka">
             <div class="pg-catatan"><span>Qty Web</span><b>${pgAngka(b.qtyCsv)}</b></div>
@@ -881,7 +947,7 @@ async function pgSimpan() {
   const items = pgState.baris.map(b => ({
     id: b.tambahan ? 'TAMBAHAN' : b.id,
     lokasi: b.lokasi, nama: b.nama, varian: b.varian || '',
-    qtyCsv: Number(b.qtyCsv) || 0, qtyKirim: Number(b.qtyKirim) || 0
+    qtyCsv: Number(b.qtyCsv) || 0, qtyKirim: Number(b.qtyKirim) || 0, export: b.export || ''
   }));
   const versiDasar = pgState.modalVersi;
   pgTutupModal();
@@ -934,6 +1000,27 @@ function pgParseCsv(teks) {
   return hasil;
 }
 
+const PG_BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const pgPad = n => String(n).padStart(2, '0');
+
+// Waktu export dari nama file, contoh rack_sku_stock_17_10_2026_T_07_38.csv → "2026-10-17 07:38"
+function pgWaktuDariNamaFile(nama) {
+  const m = String(nama || '').match(/(\d{1,2})_(\d{1,2})_(\d{4})_T_(\d{1,2})_(\d{2})/i);
+  if (!m) return '';
+  const [, d, mo, y, h, mi] = m.map(Number);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59) return '';
+  return `${y}-${pgPad(mo)}-${pgPad(d)} ${pgPad(h)}:${pgPad(mi)}`;
+}
+function pgWaktuSekarang() {
+  const n = new Date();
+  return `${n.getFullYear()}-${pgPad(n.getMonth() + 1)}-${pgPad(n.getDate())} ${pgPad(n.getHours())}:${pgPad(n.getMinutes())}`;
+}
+// "2026-10-17 07:38" → "17 Okt 2026 07:38"
+function pgFormatWaktu(w) {
+  const m = String(w || '').match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
+  return m ? `${Number(m[3])} ${PG_BULAN[Number(m[2]) - 1]} ${m[1]} ${m[4]}:${m[5]}` : String(w || '');
+}
+
 async function pgUploadCsv(input) {
   const file = input.files && input.files[0];
   input.value = '';
@@ -944,7 +1031,7 @@ async function pgUploadCsv(input) {
   if (rows.length < 2) { pgToast('CSV kosong.', 'error'); return; }
 
   // Catatan: di export ini kolom "SKU" berisi lokasi rak (0001A1),
-  // sedangkan kolom "Rack" berisi ID produk.
+  // sedangkan kolom "Rack" berisi ID produk (diawali kode tim, contoh 93-...).
   const head = rows[0].map(h => h.trim().toLowerCase());
   const col = n => head.indexOf(n);
   const iLok = col('sku'), iId = col('rack'), iQty = col('quantity');
@@ -964,26 +1051,52 @@ async function pgUploadCsv(input) {
       iNama >= 0 ? String(r[iNama] || '').trim() : '',
       iVar  >= 0 ? String(r[iVar]  || '').trim() : '',
       qty,
-      iImg  >= 0 ? String(r[iImg]  || '').trim() : '']);
+      iImg  >= 0 ? String(r[iImg]  || '').trim() : '',
+      pgTim(id)]);
   });
   if (!data.length) { pgToast('Tidak ada baris yang valid di CSV.', 'error'); return; }
 
+  // Tim di file vs tim yang sudah ada → upload penuh atau per tim
+  const timFile = [...new Set(data.map(d => d[7]))].sort();
+  const timAda = new Set();
+  Object.values(pgState.rak).forEach(g => Object.keys(g.tim).forEach(t => timAda.add(t)));
+  const semua = !timAda.size || [...timAda].every(t => timFile.includes(t));
+
+  // Label export: "17 Okt 2026 07:38 · Tim 93"
+  let waktuExport = pgWaktuDariNamaFile(file.name);
+  const dariUpload = !waktuExport;
+  if (dariUpload) waktuExport = pgWaktuSekarang();
+  const label = `${pgFormatWaktu(waktuExport)} · ${semua ? 'Semua Tim' : 'Tim ' + timFile.join(', ')}${dariUpload ? ' (waktu upload)' : ''}`;
+
+  // Peringatan supaya tidak salah pilih file
+  const peringatan = [];
+  if (!dariUpload && waktuExport.slice(0, 10) !== pgWaktuSekarang().slice(0, 10)) {
+    peringatan.push(`File ini export ${pgFormatWaktu(waktuExport)}, BUKAN hari ini.`);
+  }
+  const lebihBaru = timFile.filter(t => pgState.exportTim[t] && pgState.exportTim[t] > waktuExport);
+  if (lebihBaru.length) {
+    peringatan.push(`Data tim ${lebihBaru.join(', ')} di sheet lebih baru (${pgFormatWaktu(pgState.exportTim[lebihBaru[0]])}) daripada file ini.`);
+  }
+
   const nRak  = new Set(data.map(d => d[0])).size;
   const total = data.reduce((s, d) => s + d[5], 0);
-  const nHitung = Object.keys(pgState.status).length;
-  let pesan = `${pgAngka(data.length)} baris, ${pgAngka(nRak)} kode rak, ${pgAngka(total)} pcs.`;
-  if (dilewati) pesan += ` ${pgAngka(dilewati)} baris dilewati (data uji coba atau tidak lengkap).`;
-  pesan += ' Tab "Data CSV" di sheet akan diganti dengan file ini.';
-  if (nHitung) pesan += ` PERHATIAN: ${nHitung} kode rak sudah dihitung. Hasil hitungnya tetap tersimpan, tapi Qty Web bisa berbeda dengan CSV baru.`;
-  const ok = await pgKonfirmasi('Upload CSV Stok', pesan, 'Ya, Upload');
+  let pesan = (peringatan.length ? 'PERHATIAN: ' + peringatan.join(' ') + '\n\n' : '') +
+    `Label: ${label}\n${pgAngka(data.length)} baris, ${pgAngka(nRak)} kode rak, ${pgAngka(total)} pcs.`;
+  if (dilewati) pesan += ` ${pgAngka(dilewati)} baris dilewati (uji coba / tidak lengkap).`;
+  pesan += semua
+    ? '\nSemua data CSV diganti. Data lama dipindah ke Arsip CSV.'
+    : `\nHanya data tim ${timFile.join(', ')} yang diganti, tim lain tetap. Data lama dipindah ke Arsip CSV.`;
+  if (Object.keys(pgState.status).length) pesan += '\nRak yang sudah dihitung dan Qty Web-nya berubah akan ditandai "Cek Ulang".';
+  const ok = await pgKonfirmasi(peringatan.length ? 'Periksa File CSV' : 'Upload CSV Stok', pesan, 'Ya, Upload');
   if (!ok) return;
 
   const btn = document.getElementById('pg-btn-upload');
   btn.disabled = true;
   pgSetStateBox('sync', 'Mengirim CSV ke sheet...');
   try {
-    const res = await pgApi('/api/pindah/upload', { method: 'POST', body: JSON.stringify({ rows: data }) });
-    pgToast(res.message || 'CSV berhasil diupload.', 'success');
+    const res = await pgApi('/api/pindah/upload', { method: 'POST', body: JSON.stringify({
+      rows: data, mode: semua ? 'semua' : 'tim', label, waktuExport, namaFile: file.name }) });
+    pgToast(res.message || 'CSV berhasil diupload.', (res.perluCek || []).length ? 'warning' : 'success');
     pgState.sudahDimuat = false;
     await pgMuat();
   } catch (err) {
