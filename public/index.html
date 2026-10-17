@@ -854,7 +854,7 @@
             <div class="pg-stat amber"><div class="num" id="pg-n-selesai">0</div><div class="lbl">Sudah dihitung</div></div>
             <div class="pg-stat hijau"><div class="num" id="pg-n-sesuai">0</div><div class="lbl">Sesuai</div></div>
             <div class="pg-stat merah"><div class="num" id="pg-n-selisih">0</div><div class="lbl">Ada selisih</div></div>
-            <div class="pg-stat"><div class="num" id="pg-n-koli">0</div><div class="lbl">Total koli</div></div>
+            <div class="pg-stat amber"><div class="num" id="pg-n-sebagian">0</div><div class="lbl">Sebagian</div></div>
           </div>
           <div class="pg-progress">
             <div class="pg-progress-track"><div class="pg-progress-bar" id="pg-progress-bar"></div></div>
@@ -869,10 +869,10 @@
               <button onclick="pgTogglePanduan(event)" aria-label="Tutup">&#10005;</button>
             </div>
             <ol>
-              <li><b>Rak cocok semua:</b> isi <b>Koli</b> di kartu → tekan <b>Sesuai</b> → tekan sekali lagi (<i>Tap lagi</i>).</li>
-              <li><b>Ada selisih:</b> buka kartu → <i>Isi semua sesuai Qty Web</i> → ubah Qty Real yang berbeda → isi koli → <b>Simpan</b>.</li>
+              <li><b>Rak cocok semua:</b> tekan <b>Semua sesuai</b> di kartu → tekan sekali lagi (<i>Tap lagi untuk simpan</i>).</li>
+              <li><b>Ada selisih:</b> buka kartu → <i>Isi semua sesuai Qty Web</i> → ubah Qty Real yang berbeda → <b>Simpan</b>.</li>
+              <li><b>Qty Real kosong</b> = belum dihitung, tetap bisa disimpan. Barang tidak ada? Isi <b>0</b>.</li>
               <li><b>Barang tidak ada di daftar:</b> tambahkan di bagian bawah kartu.</li>
-              <li><b>Label karung:</b> kode rak + koli, contoh <code>0001A – Koli 1/3</code>.</li>
               <li><b>Menyimpan…</b> = sedang dikirim, boleh lanjut ke rak lain. <b>Gagal</b> = tekan <i>Ulangi</i>.</li>
               <li><b>Sedang dihitung …</b> = rak dipegang petugas lain, pilih rak lain.</li>
             </ol>
@@ -915,10 +915,7 @@
               </div>
             </div>
             <div class="pg-modal-foot">
-              <label class="pg-koli-wrap">
-                <span class="material-symbols-outlined" style="color:#b45309;">inventory_2</span> Jumlah koli
-                <input type="number" id="pg-koli" class="pg-input" min="1" inputmode="numeric" placeholder="0" oninput="pgUbahKoliModal()">
-              </label>
+              <span class="pg-foot-catatan">Qty Real kosong dicatat "Belum Dihitung"</span>
               <button class="pg-btn-simpan" id="pg-btn-simpan" onclick="pgSimpan()">Simpan ke Sheet</button>
             </div>
           </div>
