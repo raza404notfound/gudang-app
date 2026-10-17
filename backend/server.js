@@ -810,7 +810,8 @@ app.get('/api/pindah/data', requireAuth, async (req, res) => {
   try {
     const data = await pindahGet({ action: 'pgLoad' });
     if (!data.success) return res.json({ success: false, message: data.message || 'Gagal memuat data pindah gudang.' });
-    res.json({ success: true, master: data.master || [], status: data.status || {}, sedang: data.sedang || {}, url: data.url || '', saya: req.sessionUser.username });
+    res.json({ success: true, master: data.master || [], status: data.status || {}, sedang: data.sedang || {}, url: data.url || '',
+      exportInfo: data.exportInfo || [], exportTim: data.exportTim || {}, saya: req.sessionUser.username, role: req.sessionUser.role });
   } catch (err) {
     console.error('Pindah load error:', err.message);
     res.status(500).json({ success: false, message: pesanErrorPindah(err) });
@@ -845,13 +846,20 @@ app.post('/api/pindah/upload', requireAuth, async (req, res) => {
   if (req.sessionUser.role !== 'superuser') {
     return res.status(403).json({ success: false, message: 'Upload CSV hanya untuk akun superuser.' });
   }
-  const { rows } = req.body;
+  const { rows, mode, label, waktuExport, namaFile } = req.body;
   if (!Array.isArray(rows) || !rows.length) {
     return res.status(400).json({ success: false, message: 'Data CSV kosong.' });
   }
+  if (!label) return res.status(400).json({ success: false, message: 'Label export wajib ada.' });
   try {
-    const data = await pindahPost({ action: 'pgUpload', rows, oleh: req.sessionUser.username, waktu: waktuWIB() });
-    res.json(data.success ? { success: true, message: data.message } : { success: false, message: data.message || 'Gagal upload CSV.' });
+    const data = await pindahPost({
+      action: 'pgUpload', rows, mode: mode === 'semua' ? 'semua' : 'tim',
+      label: String(label).slice(0, 120), waktuExport: String(waktuExport || '').slice(0, 20),
+      namaFile: String(namaFile || '').slice(0, 200), oleh: req.sessionUser.username, waktu: waktuWIB()
+    });
+    res.json(data.success
+      ? { success: true, message: data.message, perluCek: data.perluCek || [] }
+      : { success: false, message: data.message || 'Gagal upload CSV.' });
   } catch (err) {
     console.error('Pindah upload error:', err.message);
     res.status(500).json({ success: false, message: pesanErrorPindah(err) });
@@ -875,6 +883,47 @@ app.post('/api/pindah/simpan', requireAuth, async (req, res) => {
       : { success: false, message: data.message || 'Gagal simpan.' });
   } catch (err) {
     console.error('Pindah simpan error:', err.message);
+    res.status(500).json({ success: false, message: pesanErrorPindah(err) });
+  }
+});
+
+// GET /api/pindah/opname?bulan=SO+2026-10 — data per produk untuk menu Opname WEB
+app.get('/api/pindah/opname', requireAuth, async (req, res) => {
+  try {
+    const data = await pindahGet({ action: 'pgOpname', bulan: String(req.query.bulan || '') }, 60000);
+    res.json(data.success ? data : { success: false, message: data.message || 'Gagal memuat Opname WEB.' });
+  } catch (err) {
+    console.error('Opname web error:', err.message);
+    res.status(500).json({ success: false, message: pesanErrorPindah(err) });
+  }
+});
+
+// GET /api/pindah/rusak?id=...&bulan=... — riwayat barang rusak (Opname WEB)
+app.get('/api/pindah/rusak', requireAuth, async (req, res) => {
+  const id = String(req.query.id || '').trim();
+  if (!id) return res.status(400).json({ success: false, message: 'Parameter id wajib.' });
+  try {
+    const data = await pindahGet({ action: 'pgRusakRiwayat', id, bulan: String(req.query.bulan || '') }, 30000);
+    res.json(data.success ? { success: true, rows: data.rows || [] } : { success: false, message: data.message });
+  } catch (err) {
+    res.status(500).json({ success: false, message: pesanErrorPindah(err) });
+  }
+});
+
+// POST /api/pindah/rusak — simpan laporan barang rusak (Opname WEB)
+app.post('/api/pindah/rusak', requireAuth, async (req, res) => {
+  const { id, nama, kodeRak, bulan, jumlah, keterangan } = req.body;
+  if (!id || !(Number(jumlah) >= 1)) {
+    return res.status(400).json({ success: false, message: 'ID produk dan jumlah rusak wajib diisi.' });
+  }
+  const oleh = req.sessionUser.username;
+  const waktu = waktuWIB();
+  try {
+    const data = await pindahPost({ action: 'pgRusak', id, nama: nama || '', kodeRak: kodeRak || '', bulan: bulan || '',
+      jumlah: Number(jumlah), keterangan: keterangan || '', oleh, waktu });
+    res.json(data.success ? { success: true, message: data.message, oleh, dicatatPada: waktu }
+                          : { success: false, message: data.message || 'Gagal simpan.' });
+  } catch (err) {
     res.status(500).json({ success: false, message: pesanErrorPindah(err) });
   }
 });
