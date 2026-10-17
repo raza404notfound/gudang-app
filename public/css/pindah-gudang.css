@@ -304,3 +304,10 @@
 .pg-tag-tim { display: inline-block; font-size: 10px; font-weight: 700; padding: 0 6px; border-radius: 8px; background: var(--hover-bg, #f1f5f9); color: var(--text-secondary, #64748b); }
 .pg-tag-tim.pilih { background: #1e293b; color: #fbbf24; }
 .pg-baris.pg-baris-tim { box-shadow: inset 3px 0 0 #1e293b; }
+
+/* Tanpa koli: tombol cepat penuh, catatan di kaki modal */
+.pg-cepat-btn { width: 100%; }
+.pg-card-foot .pg-teks-hijau .material-symbols-outlined { font-size: 14px; color: #16a34a; }
+.pg-card-sebagian { border-left-color: #f59e0b; }
+.pg-badge-sebagian { background: #fef3c7; color: #92400e; }
+.pg-foot-catatan { font-size: 11.5px; color: var(--text-secondary, #94a3b8); }
