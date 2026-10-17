@@ -867,7 +867,7 @@ app.post('/api/pindah/upload', requireAuth, async (req, res) => {
 });
 
 // POST /api/pindah/simpan — simpan satu paket hasil hitung (bisa beberapa kode rak)
-// body: { raks: [{ kodeRak, koli, items, versiDasar, paksa }] }
+// body: { raks: [{ kodeRak, items, versiDasar, paksa }] }  (qtyKirim kosong = belum dihitung)
 app.post('/api/pindah/simpan', requireAuth, async (req, res) => {
   const raks = Array.isArray(req.body.raks) ? req.body.raks.slice(0, 25) : null;
   if (!raks || !raks.length) {
