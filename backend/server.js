@@ -966,6 +966,85 @@ app.post('/api/pindah/tandai', requireAuth, async (req, res) => {
 });
 
 // =============================================
+// DASHBOARD GUDANG — semua gudang, rentang tanggal bebas
+// GET /api/dashboard/gudang?dari=YYYY-MM-DD&sampai=YYYY-MM-DD
+// Per gudang: overview inbound, overview outbound, dan waktu proses (process_time, API v2)
+// =============================================
+const dashGudangCache = {};   // { 'dari|sampai': { t, data } }
+const DASH_GUDANG_TTL = 60 * 1000;
+
+// GET ke API PDC dengan token gudang; login ulang sekali bila token kedaluwarsa
+async function pdcGudangGet(wh, url) {
+  for (let coba = 0; coba < 2; coba++) {
+    const token = await getWarehouseToken(wh);
+    if (!token) throw new Error('Login gagal');
+    try {
+      const r = await axios.get(url, {
+        headers: {
+          'authorization': `Bearer ${token}`,
+          'accept': 'application/json, text/plain, */*',
+          'origin': 'https://warehouse.onlypdc.com',
+          'referer': 'https://warehouse.onlypdc.com/',
+          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36'
+        },
+        timeout: 30000
+      });
+      return r.data?.data ?? r.data;
+    } catch (err) {
+      const st = err.response?.status;
+      if ((st === 401 || st === 403) && coba === 0) {
+        delete tokenCache[wh.id]; delete tokenCacheTime[wh.id];
+        continue;
+      }
+      throw new Error(err.response?.data?.message || err.message);
+    }
+  }
+}
+
+async function ambilDataGudang(wh, time_min, time_max) {
+  const hasil = { id: wh.id, name: wh.name, inbound: [], outbound: [], prosesWaktu: null, error: [] };
+  if (!wh.warehouse_id) { hasil.error.push('ID gudang belum diisi'); return hasil; }
+  const q = `time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
+  const BASE_V2 = BASE_URL.replace(/\/v1$/, '/v2');
+  const [inb, out, waktu] = await Promise.allSettled([
+    pdcGudangGet(wh, `${BASE_URL}/warehouses/insight/overview?type=inbound&${q}`),
+    pdcGudangGet(wh, `${BASE_URL}/warehouses/insight/overview?type=outbound&${q}`),
+    pdcGudangGet(wh, `${BASE_V2}/warehouses/insight/process_time?from=warehouse&warehouse_id=${wh.warehouse_id}&domain_id=${wh.warehouse_id}&time_min=${time_min}&time_max=${time_max}`)
+  ]);
+  if (inb.status === 'fulfilled' && Array.isArray(inb.value)) hasil.inbound = inb.value; else if (inb.status === 'rejected') hasil.error.push('Inbound: ' + inb.reason.message);
+  if (out.status === 'fulfilled' && Array.isArray(out.value)) hasil.outbound = out.value; else if (out.status === 'rejected') hasil.error.push('Outbound: ' + out.reason.message);
+  if (waktu.status === 'fulfilled' && waktu.value && typeof waktu.value === 'object') hasil.prosesWaktu = waktu.value;
+  else if (waktu.status === 'rejected') hasil.error.push('Waktu proses: ' + waktu.reason.message);
+  return hasil;
+}
+
+app.get('/api/dashboard/gudang', requireAuth, async (req, res) => {
+  const pola = /^\d{4}-\d{2}-\d{2}$/;
+  const dari = String(req.query.dari || ''), sampai = String(req.query.sampai || '');
+  if (!pola.test(dari) || !pola.test(sampai)) return res.status(400).json({ success: false, message: 'Format tanggal harus YYYY-MM-DD.' });
+  const time_min = dateToTimestamp(dari, false), time_max = dateToTimestamp(sampai, true);
+  if (time_max < time_min) return res.status(400).json({ success: false, message: 'Tanggal "Sampai" lebih awal dari "Dari".' });
+  if (time_max - time_min > 370 * 24 * 3600 * 1000) return res.status(400).json({ success: false, message: 'Rentang maksimal 1 tahun.' });
+
+  const kunci = dari + '|' + sampai;
+  const c = dashGudangCache[kunci];
+  if (c && Date.now() - c.t < DASH_GUDANG_TTL && req.query.force !== 'true') {
+    return res.json({ ...c.data, cache: true });
+  }
+  try {
+    const gudang = await Promise.all(WAREHOUSES.map(wh => ambilDataGudang(wh, time_min, time_max)));
+    const data = { success: true, dari, sampai, diambil: waktuWIB(), gudang };
+    dashGudangCache[kunci] = { t: Date.now(), data };
+    // Bersihkan cache lama supaya memori tidak membengkak
+    Object.keys(dashGudangCache).forEach(k => { if (Date.now() - dashGudangCache[k].t > 10 * DASH_GUDANG_TTL) delete dashGudangCache[k]; });
+    res.json(data);
+  } catch (err) {
+    console.error('Dashboard gudang error:', err.message);
+    res.status(500).json({ success: false, message: 'Gagal memuat data gudang: ' + err.message });
+  }
+});
+
+// =============================================
 // GUDANG INSIGHT
 // =============================================
 
