@@ -19,6 +19,7 @@ const PG_DETAK_MS     = 60000;   // perpanjang tanda "sedang dihitung"
 const PG_PAKET_MAKS   = 10;      // maksimal rak per sekali kirim
 const PG_KUNCI_ANTREAN = 'pg_antrean_v1';
 const PG_KUNCI_DRAF    = 'pg_draf_v1';
+const PG_KUNCI_PERANGKAT = 'pg_perangkat_v1';
 
 const pgState = {
   rak: {},          // master dari CSV: { kode: { kode, items:[{id,nama,varian,img,lokasi[],qtyCsv}], totalCsv } }
@@ -120,7 +121,7 @@ function pgInit() {
 function pgTampilkanTombolUpload() {
   const role = (typeof currentUserRole !== 'undefined' && currentUserRole) || sessionStorage.getItem('sessionRole') || '';
   const btn = document.getElementById('pg-btn-upload');
-  if (btn) btn.style.display = (role === 'admin' || role === 'superuser') ? 'inline-flex' : 'none';
+  if (btn) btn.style.display = role === 'superuser' ? 'inline-flex' : 'none';
 }
 
 async function pgMuat() {
@@ -231,9 +232,20 @@ function pgStatusEfektif(kode) {
   return { status: 'belum' };
 }
 
+// Penanda dari perangkat lain (termasuk akun yang sama di HP lain)
 function pgSedangLain(kode) {
-  const s = pgState.sedang[kode];
-  return s && s.petugas && s.petugas !== pgState.saya ? s : null;
+  const daftar = [].concat(pgState.sedang[kode] || []);
+  return daftar.find(s => s && s.petugas && (s.perangkat ? s.perangkat !== PG_PERANGKAT : s.petugas !== pgState.saya)) || null;
+}
+function pgSiapa(petugas) { return petugas === pgState.saya ? 'akun Anda di perangkat lain' : petugas; }
+function pgLabelSedang(s) {
+  if (!s) return '';
+  if (s.petugas === pgState.saya) return 'Sedang dihitung di perangkat lain' + (s.jenis ? ' (' + s.jenis + ')' : '');
+  return 'Sedang dihitung ' + s.petugas;
+}
+// Apakah simpanan terakhir rak ini berasal dari perangkat ini
+function pgDariSaya(s) {
+  return !!s && s.petugas === pgState.saya && (!s.perangkat || s.perangkat === PG_PERANGKAT);
 }
 
 // ============================================================
@@ -279,7 +291,7 @@ function pgRender() {
 
   if (!pgState.sudahDimuat) return;
   if (!semua.length) {
-    pgSetStateBox('upload_file', 'Belum ada data. Upload CSV stok terlebih dahulu (tombol Upload CSV, khusus admin).');
+    pgSetStateBox('upload_file', 'Belum ada data. Upload CSV stok terlebih dahulu (tombol Upload CSV, khusus superuser).');
     return;
   }
 
@@ -364,7 +376,7 @@ function pgKartuHtml(k) {
   } else if (s.antre === 'menyimpan') {
     foot = `<div class="pg-card-info amber"><span class="material-symbols-outlined pg-putar">sync</span>Mengirim ke sheet…</div>`;
   } else if (s.status === 'konflik') {
-    foot = `<div class="pg-card-info merah">Sudah disimpan ${pgEsc(s.petugas)} pukul ${pgEsc(pgJam(s.waktu))}. Buka untuk cek.</div>`;
+    foot = `<div class="pg-card-info merah">Sudah disimpan ${pgEsc(pgSiapa(s.petugas))} pukul ${pgEsc(pgJam(s.waktu))}. Buka untuk cek.</div>`;
   } else if (s.status === 'sesuai' || s.status === 'selisih') {
     foot = `<div class="pg-card-foot">
         <span><span class="material-symbols-outlined">inventory_2</span>${pgAngka(s.koli)} koli</span>
@@ -372,7 +384,7 @@ function pgKartuHtml(k) {
       </div>`;
   }
   if (lain) {
-    foot += `<div class="pg-card-info amber"><span class="material-symbols-outlined">person</span>Sedang dihitung ${pgEsc(lain.petugas)}</div>`;
+    foot += `<div class="pg-card-info amber"><span class="material-symbols-outlined">person</span>${pgEsc(pgLabelSedang(lain))}</div>`;
   }
 
   // Tombol cepat: hanya untuk rak yang belum dihitung, tidak sedang dipegang orang lain
@@ -485,7 +497,7 @@ async function pgProsesAntrean() {
   try {
     const data = await pgApi('/api/pindah/simpan', {
       method: 'POST',
-      body: JSON.stringify({ raks: paket.map(e => ({
+      body: JSON.stringify({ perangkat: PG_PERANGKAT, raks: paket.map(e => ({
         kodeRak: e.kodeRak, koli: e.koli, items: e.items, versiDasar: e.versiDasar || '', paksa: !!e.paksa
       })) })
     });
@@ -496,7 +508,7 @@ async function pgProsesAntrean() {
       const masihSama = entri && pgState.antrean.includes(entri);   // belum diganti versi lebih baru
       if (h.ok) {
         pgState.status[h.kodeRak] = { status: h.status, nSelisih: h.nSelisih, koli: h.koli,
-          petugas: h.petugas, waktu: h.waktu, versi: h.versi, _t: Date.now() };
+          petugas: h.petugas, waktu: h.waktu, versi: h.versi, perangkat: h.perangkat || PG_PERANGKAT, _t: Date.now() };
         if (masihSama) {
           pgState.antrean = pgState.antrean.filter(e => e !== entri);
           delete pgState.draf[h.kodeRak];
@@ -668,10 +680,10 @@ function pgRenderInfoModal() {
   const e = pgEntriAntrean(kode);
   const k = pgState.konflik[kode] || pgState.modalBaru;
 
-  if (k) { jenis = 'merah'; pesan.push(`Rak ini sudah disimpan oleh <b>${pgEsc(k.petugas)}</b> pukul ${pgEsc(pgJam(k.waktu))}. Kalau Anda simpan, hitungan itu akan ditimpa.`); }
+  if (k) { jenis = 'merah'; pesan.push(`Rak ini sudah disimpan oleh <b>${pgEsc(pgSiapa(k.petugas))}</b> pukul ${pgEsc(pgJam(k.waktu))}. Kalau Anda simpan, hitungan itu akan ditimpa.`); }
   if (e && e.gagal) { jenis = 'merah'; pesan.push(`Simpanan terakhir gagal: ${pgEsc(e.pesan)}. Tekan Simpan untuk mencoba lagi.`); }
   else if (e) { jenis = jenis === 'merah' ? jenis : 'amber'; pesan.push('Hitungan rak ini sedang dikirim ke sheet.'); }
-  if (lain) { jenis = jenis === 'merah' ? jenis : 'amber'; pesan.push(`Sedang dihitung juga oleh <b>${pgEsc(lain.petugas)}</b>. Pastikan tidak menghitung rak yang sama.`); }
+  if (lain) { jenis = jenis === 'merah' ? jenis : 'amber'; pesan.push(`<b>${pgEsc(pgLabelSedang(lain))}</b>. Pastikan rak ini tidak dihitung dua kali.`); }
   if (pgState.draf[kode] && pgState.draf[kode].qty) pesan.push('Angka di bawah dari draf di HP ini (belum tersimpan ke sheet).');
   else if (s && !k) pesan.push(`Sudah dihitung oleh ${pgEsc(s.petugas)} pukul ${pgEsc(pgJam(s.waktu))}. Simpan lagi akan memperbarui data.`);
 
@@ -684,7 +696,7 @@ function pgCekModalTerbaru() {
   const kode = pgState.aktif;
   if (!kode) return;
   const s = pgState.status[kode];
-  if (s && s.versi && s.versi !== pgState.modalVersi && s.petugas !== pgState.saya) {
+  if (s && s.versi && s.versi !== pgState.modalVersi && !pgDariSaya(s)) {
     pgState.modalBaru = { petugas: s.petugas, waktu: s.waktu };
   }
   pgRenderInfoModal();
@@ -701,7 +713,7 @@ function pgTutupModal(e) {
 }
 
 function pgTandai(kode, aksi) {
-  pgApi('/api/pindah/tandai', { method: 'POST', body: JSON.stringify({ kodeRak: kode, aksi }) }).catch(() => {});
+  pgApi('/api/pindah/tandai', { method: 'POST', body: JSON.stringify({ kodeRak: kode, aksi, perangkat: PG_PERANGKAT, jenis: PG_JENIS }) }).catch(() => {});
 }
 
 function pgRenderBaris() {
@@ -846,12 +858,21 @@ async function pgSimpan() {
   }
 
   // Konfirmasi hanya bila perlu: ada selisih, atau akan menimpa hitungan orang lain
-  const selisih = pgState.baris.filter(b => b.qtyKirim !== b.qtyCsv).length;
+  const daftarSelisih = pgState.baris.filter(b => b.qtyKirim !== b.qtyCsv)
+    .sort((a, b) => Math.abs(b.qtyKirim - b.qtyCsv) - Math.abs(a.qtyKirim - a.qtyCsv));
+  const selisih = daftarSelisih.length;
   const bentrok = pgState.konflik[kode] || pgState.modalBaru;
   if (selisih || bentrok) {
     let pesan = `Kode rak ${kode}: ${pgState.baris.length} produk, ${koli} koli.`;
-    if (selisih) pesan += ` Ada ${selisih} produk selisih.`;
-    if (bentrok) pesan += ` Rak ini sudah disimpan oleh ${bentrok.petugas} pukul ${pgJam(bentrok.waktu)} dan akan ditimpa.`;
+    if (selisih) {
+      // Tampilkan selisih terbesar supaya salah ketik (misal 36 padahal 3) mudah terlihat
+      pesan += ` Ada ${selisih} produk selisih, terbesar:\n` + daftarSelisih.slice(0, 3).map(b => {
+        const d = b.qtyKirim - b.qtyCsv;
+        const nama = b.nama.length > 34 ? b.nama.slice(0, 33) + '…' : b.nama;
+        return `• ${nama}: Web ${b.qtyCsv} → Real ${b.qtyKirim} (${d > 0 ? '+' : ''}${d})`;
+      }).join('\n') + (selisih > 3 ? `\n…dan ${selisih - 3} lainnya.` : '') + '\n';
+    }
+    if (bentrok) pesan += ` Rak ini sudah disimpan oleh ${pgSiapa(bentrok.petugas)} pukul ${pgJam(bentrok.waktu)} dan akan ditimpa.`;
     const ok = await pgKonfirmasi('Simpan Hitungan', pesan, bentrok ? 'Ya, Timpa' : 'Ya, Simpan');
     if (!ok) return;
   }
@@ -972,6 +993,26 @@ async function pgUploadCsv(input) {
     btn.disabled = false;
   }
 }
+
+// ============================================================
+// IDENTITAS PERANGKAT — supaya satu akun di beberapa HP tetap terbedakan
+// ============================================================
+function pgJenisPerangkat() {
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod/i.test(ua)) return 'iPhone/iPad';
+  if (/Android/i.test(ua)) return /Mobile/i.test(ua) ? 'HP Android' : 'Tablet Android';
+  return 'Laptop/PC';
+}
+const PG_PERANGKAT = (() => {
+  let id = '';
+  try { id = localStorage.getItem(PG_KUNCI_PERANGKAT) || ''; } catch (e) {}
+  if (!id) {
+    id = 'p-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    try { localStorage.setItem(PG_KUNCI_PERANGKAT, id); } catch (e) {}
+  }
+  return id;
+})();
+const PG_JENIS = pgJenisPerangkat();
 
 // ============================================================
 // AWAL: pulihkan antrean & draf dari HP, pasang pengaman
