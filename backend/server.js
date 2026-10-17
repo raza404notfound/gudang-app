@@ -33,7 +33,7 @@ const REQUIRED_ENV = [
   'WH_FEBRI_USER',  'WH_FEBRI_PASS',
   'WH_PALEM_USER',  'WH_PALEM_PASS',
   'WH_CEMARA_USER', 'WH_CEMARA_PASS',
-  'SUPERUSER_KEY',  'SHEET_SCRIPT_URL'
+  'SUPERUSER_KEY',  'SHEET_SCRIPT_URL', 'PINDAH_SCRIPT_URL'
 ];
 const MISSING_ENV = REQUIRED_ENV.filter(key => !process.env[key]);
 if (MISSING_ENV.length > 0) {
@@ -759,6 +759,99 @@ app.post('/api/so/rusak', requireAuth, async (req, res) => {
   } catch(err) {
     console.error('SO simpan rusak error:', err.message);
     res.status(500).json({ success: false, message: 'Gagal terhubung ke Apps Script.' });
+  }
+});
+
+// =============================================
+// PINDAH GUDANG — sheet LAPORAN BARANG
+// Memakai Apps Script terpisah, URL-nya di Railway Variables: PINDAH_SCRIPT_URL
+// =============================================
+const PINDAH_SCRIPT_URL = process.env.PINDAH_SCRIPT_URL || '';
+
+function cekPindahUrl() {
+  if (!PINDAH_SCRIPT_URL) {
+    const err = new Error('PINDAH_SCRIPT_URL belum diisi di Railway Variables.');
+    err.config = true;
+    throw err;
+  }
+}
+function cekJsonPindah(data) {
+  if (!data || typeof data !== 'object') {
+    const err = new Error('Apps Script Pindah Gudang tidak mengembalikan data. Cek deploy Web App (akses: Siapa saja).');
+    err.config = true;
+    throw err;
+  }
+  return data;
+}
+async function pindahGet(params, timeout = 45000) {
+  cekPindahUrl();
+  const r = await axios.get(PINDAH_SCRIPT_URL, { params, timeout });
+  return cekJsonPindah(r.data);
+}
+async function pindahPost(body, timeout = 120000) {
+  cekPindahUrl();
+  const r = await axios.post(PINDAH_SCRIPT_URL, body, {
+    headers: { 'Content-Type': 'application/json' }, timeout,
+    maxBodyLength: Infinity, maxContentLength: Infinity
+  });
+  return cekJsonPindah(r.data);
+}
+function waktuWIB() {
+  const wib = new Date(Date.now() + 7 * 60 * 60 * 1000);
+  const pad = n => String(n).padStart(2, '0');
+  return `${wib.getUTCFullYear()}-${pad(wib.getUTCMonth() + 1)}-${pad(wib.getUTCDate())} ${pad(wib.getUTCHours())}:${pad(wib.getUTCMinutes())}`;
+}
+function pesanErrorPindah(err) {
+  return err.config ? err.message : 'Gagal terhubung ke Apps Script Pindah Gudang.';
+}
+
+// GET /api/pindah/data — data CSV + hasil hitung + koli
+app.get('/api/pindah/data', requireAuth, async (req, res) => {
+  try {
+    const data = await pindahGet({ action: 'pgLoad' });
+    if (!data.success) return res.json({ success: false, message: data.message || 'Gagal memuat data pindah gudang.' });
+    res.json({ success: true, master: data.master || [], hitung: data.hitung || {}, koli: data.koli || {}, url: data.url || '' });
+  } catch (err) {
+    console.error('Pindah load error:', err.message);
+    res.status(500).json({ success: false, message: pesanErrorPindah(err) });
+  }
+});
+
+// POST /api/pindah/upload — ganti isi tab "Data CSV" (khusus admin & superuser)
+app.post('/api/pindah/upload', requireAuth, async (req, res) => {
+  const role = req.sessionUser.role;
+  if (role !== 'admin' && role !== 'superuser') {
+    return res.status(403).json({ success: false, message: 'Upload CSV hanya untuk admin atau superuser.' });
+  }
+  const { rows } = req.body;
+  if (!Array.isArray(rows) || !rows.length) {
+    return res.status(400).json({ success: false, message: 'Data CSV kosong.' });
+  }
+  try {
+    const data = await pindahPost({ action: 'pgUpload', rows, oleh: req.sessionUser.username, waktu: waktuWIB() });
+    res.json(data.success ? { success: true, message: data.message } : { success: false, message: data.message || 'Gagal upload CSV.' });
+  } catch (err) {
+    console.error('Pindah upload error:', err.message);
+    res.status(500).json({ success: false, message: pesanErrorPindah(err) });
+  }
+});
+
+// POST /api/pindah/simpan — simpan hasil hitung satu kode rak
+app.post('/api/pindah/simpan', requireAuth, async (req, res) => {
+  const { kodeRak, koli, items } = req.body;
+  if (!kodeRak || !Array.isArray(items) || !(Number(koli) >= 1)) {
+    return res.status(400).json({ success: false, message: 'kodeRak, koli, dan items wajib diisi.' });
+  }
+  const oleh = req.sessionUser.username;
+  const waktu = waktuWIB();
+  try {
+    const data = await pindahPost({ action: 'pgSimpan', kodeRak, koli: Number(koli), items, oleh, waktu });
+    res.json(data.success
+      ? { success: true, message: data.message, oleh, waktu }
+      : { success: false, message: data.message || 'Gagal simpan.' });
+  } catch (err) {
+    console.error('Pindah simpan error:', err.message);
+    res.status(500).json({ success: false, message: pesanErrorPindah(err) });
   }
 });
 
