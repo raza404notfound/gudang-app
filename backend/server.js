@@ -828,7 +828,8 @@ app.get('/api/pindah/data', requireAuth, async (req, res) => {
   try {
     const data = await pindahGet({ action: 'pgLoad' });
     if (!data.success) return res.json({ success: false, message: data.message || 'Gagal memuat data pindah gudang.' });
-    res.json({ success: true, master: data.master || [], status: data.status || {}, sedang: data.sedang || {}, url: data.url || '',
+    res.json({ success: true, master: data.master || [], status: data.status || {}, sedang: {},
+      url: req.sessionUser.role === 'superuser' ? (data.url || '') : '',
       exportInfo: data.exportInfo || [], exportTim: data.exportTim || {}, saya: req.sessionUser.username, role: req.sessionUser.role });
   } catch (err) {
     console.error('Pindah load error:', err.message);
@@ -875,6 +876,7 @@ app.post('/api/pindah/upload', requireAuth, async (req, res) => {
       label: String(label).slice(0, 120), waktuExport: String(waktuExport || '').slice(0, 20),
       namaFile: String(namaFile || '').slice(0, 200), oleh: req.sessionUser.username, waktu: waktuWIB()
     });
+    if (data.success) siarkanPindah('muatUlang', { oleh: req.sessionUser.username });
     res.json(data.success
       ? { success: true, message: data.message, perluCek: data.perluCek || [] }
       : { success: false, message: data.message || 'Gagal upload CSV.' });
@@ -896,6 +898,14 @@ app.post('/api/pindah/simpan', requireAuth, async (req, res) => {
   try {
     const perangkat = String(req.body.perangkat || '').slice(0, 60);
     const data = await pindahPost({ action: 'pgSimpan', raks, oleh, waktu, perangkat });
+    if (data.success) {
+      const ok = (data.hasil || []).filter(h => h.ok);
+      if (ok.length) {
+        ok.forEach(h => lepasSedangMemori(h.kodeRak, perangkat));
+        siarkanPindah('simpan', { hasil: ok });
+        siarkanSedang();
+      }
+    }
     res.json(data.success
       ? { success: true, hasil: data.hasil || [], oleh, waktu }
       : { success: false, message: data.message || 'Gagal simpan.' });
@@ -946,19 +956,96 @@ app.post('/api/pindah/rusak', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/pindah/tandai — tanda "sedang dihitung" { kodeRak, aksi: 'buka'|'tutup' }
-app.post('/api/pindah/tandai', requireAuth, async (req, res) => {
-  const { kodeRak, aksi } = req.body;
-  if (!kodeRak) return res.status(400).json({ success: false, message: 'kodeRak wajib.' });
-  try {
-    const data = await pindahPost({
-      action: 'pgTandai', kodeRak, aksi: aksi === 'tutup' ? 'tutup' : 'buka', oleh: req.sessionUser.username,
-      perangkat: String(req.body.perangkat || '').slice(0, 60), jenis: String(req.body.jenis || '').slice(0, 30)
-    }, 20000);
-    res.json({ success: !!data.success, message: data.message || '' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: pesanErrorPindah(err) });
+// =============================================
+// REALTIME STOK OPNAME
+// "Sedang dihitung" disimpan di memori server (bukan sheet) lalu langsung
+// disiarkan ke semua layar lewat Server-Sent Events (/api/pindah/stream).
+// Hasil simpan juga disiarkan, jadi kartu di layar lain berubah seketika.
+// =============================================
+const SEDANG_BATAS_MS = 2 * 60 * 1000;   // tanda hilang bila tidak ada detak 2 menit
+const sedangMemori = {};                 // { kodeRak: { perangkatId: { petugas, perangkat, jenis, sejak, detak } } }
+const pendengarPindah = new Set();       // koneksi SSE yang aktif
+
+function petaSedang() {
+  const kini = Date.now(), hasil = {};
+  Object.keys(sedangMemori).forEach(kode => {
+    Object.keys(sedangMemori[kode]).forEach(pid => {
+      const x = sedangMemori[kode][pid];
+      if (kini - x.detak > SEDANG_BATAS_MS) { delete sedangMemori[kode][pid]; return; }
+      (hasil[kode] = hasil[kode] || []).push({ petugas: x.petugas, perangkat: x.perangkat, jenis: x.jenis, sejak: x.sejak });
+    });
+    if (!Object.keys(sedangMemori[kode]).length) delete sedangMemori[kode];
+  });
+  return hasil;
+}
+function lepasSedangMemori(kode, perangkat) {
+  if (!sedangMemori[kode]) return;
+  if (perangkat) delete sedangMemori[kode][perangkat]; else delete sedangMemori[kode];
+}
+function siarkanPindah(jenis, data) {
+  const pesan = `event: ${jenis}\ndata: ${JSON.stringify(data)}\n\n`;
+  pendengarPindah.forEach(res => { try { res.write(pesan); } catch (e) { pendengarPindah.delete(res); } });
+}
+function siarkanSedang() { siarkanPindah('sedang', petaSedang()); }
+
+// POST /api/pindah/tandai — { kodeRak, aksi: 'buka'|'detak'|'tutup', perangkat, jenis }
+app.post('/api/pindah/tandai', requireAuth, (req, res) => {
+  const kode = String(req.body.kodeRak || '').trim().slice(0, 40);
+  const perangkat = String(req.body.perangkat || '').slice(0, 60) || 'tanpa-id';
+  if (!kode) return res.status(400).json({ success: false, message: 'kodeRak wajib.' });
+  if (req.body.aksi === 'tutup') {
+    lepasSedangMemori(kode, perangkat);
+  } else {
+    const ada = sedangMemori[kode] && sedangMemori[kode][perangkat];
+    (sedangMemori[kode] = sedangMemori[kode] || {})[perangkat] = {
+      petugas: req.sessionUser.username, perangkat, jenis: String(req.body.jenis || '').slice(0, 30),
+      sejak: ada ? ada.sejak : Date.now(), detak: Date.now()
+    };
+    if (ada && req.body.aksi === 'detak') return res.json({ success: true });   // detak tidak perlu disiarkan
   }
+  siarkanSedang();
+  res.json({ success: true });
+});
+
+// GET /api/pindah/stream?token=... — siaran realtime (EventSource tidak bisa kirim header)
+app.get('/api/pindah/stream', (req, res) => {
+  const token = String(req.query.token || '');
+  if (!token || !activeSessions[token]) return res.status(401).end();
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+  res.write(`retry: 3000\n\n`);
+  res.write(`event: sedang\ndata: ${JSON.stringify(petaSedang())}\n\n`);
+  pendengarPindah.add(res);
+  const detak = setInterval(() => { try { res.write(': detak\n\n'); } catch (e) {} }, 20000);
+  req.on('close', () => { clearInterval(detak); pendengarPindah.delete(res); });
+});
+
+// Bersihkan tanda yang kedaluwarsa dan kabari layar lain
+setInterval(() => {
+  const sebelum = JSON.stringify(Object.keys(sedangMemori).map(k => [k, Object.keys(sedangMemori[k])]));
+  const sesudah = petaSedang();
+  if (JSON.stringify(Object.keys(sedangMemori).map(k => [k, Object.keys(sedangMemori[k])])) !== sebelum) siarkanPindah('sedang', sesudah);
+}, 30000);
+
+// GET /api/pindah/config — alamat Apps Script untuk baca data langsung dari browser
+// (simpan tetap lewat server). Link sheet hanya untuk superuser.
+let pindahSheetUrl = '';
+app.get('/api/pindah/config', requireAuth, async (req, res) => {
+  const superuser = req.sessionUser.role === 'superuser';
+  if (superuser && !pindahSheetUrl && PINDAH_SCRIPT_URL) {
+    try { const d = await pindahGet({ action: 'pgInfo' }, 20000); pindahSheetUrl = d.url || ''; } catch (e) {}
+  }
+  res.json({
+    success: true,
+    scriptUrl: PINDAH_SCRIPT_URL,
+    saya: req.sessionUser.username,
+    role: req.sessionUser.role,
+    sheetUrl: superuser ? pindahSheetUrl : ''
+  });
 });
 
 // =============================================
