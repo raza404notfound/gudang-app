@@ -47,6 +47,7 @@ const pgState = {
   modalVersi: '',
   modalDiubah: false,
   modalBaru: null,  // { petugas, waktu } bila rak ini disimpan orang lain saat modal terbuka
+  tersimpan: {},    // { idProduk: qtyReal } yang sudah tersimpan di sheet untuk rak yang dibuka
   // antrean & draf
   antrean: [],
   draf: {},
@@ -262,14 +263,13 @@ function pgMulaiRealtime() {
     pgCekModalTerbaru();
     pgRender();
   });
-  es.addEventListener('muatUlang', e => {
-    let d = {}; try { d = JSON.parse(e.data) || {}; } catch (er) {}
-    const h = d.hapus;
-    if (h) {
-      pgToast(h.jenis === 'rak' ? `Kode rak ${h.kodeRak} dihapus oleh ${d.oleh}.` : `SKU ${h.id} di ${h.kodeRak} dihapus oleh ${d.oleh}.`, 'info');
-      pgBersihkanSetelahHapus(h);
-    } else pgToast('Data CSV baru diupload. Memuat ulang...', 'info');
-    pgMuat();
+  es.addEventListener('muatUlang', () => { pgToast('Data CSV baru diupload. Memuat ulang...', 'info'); pgMuat(); });
+  es.addEventListener('hapusHitung', e => {
+    let d; try { d = JSON.parse(e.data); } catch (er) { return; }
+    if (d.oleh !== pgState.saya) {
+      pgToast(d.jenis === 'rak' ? `Hitungan rak ${d.kodeRak} dihapus oleh ${d.oleh}.` : `Hitungan SKU ${d.id} (${d.kodeRak}) dihapus oleh ${d.oleh}.`, 'info');
+    }
+    pgSetelahHapus(d);
   });
   es.addEventListener('open', () => { pgSetRealtime(true); if (pgState.sudahDimuat) pgSinkron(); });
   es.addEventListener('error', () => {
@@ -671,6 +671,12 @@ async function pgProsesAntrean() {
       if (h.ok) {
         pgState.status[h.kodeRak] = { status: h.status, nSelisih: h.nSelisih, nBelum: h.nBelum,
           petugas: h.petugas, waktu: h.waktu, versi: h.versi, perangkat: h.perangkat || PG_PERANGKAT, _t: Date.now() };
+        if (entri && pgState.aktif === h.kodeRak && Array.isArray(entri.items)) {
+          pgState.tersimpan = {};
+          entri.items.forEach(it => { if (!pgKosong(it.qtyKirim) && !String(it.id).startsWith('TAMBAHAN')) pgState.tersimpan[it.id] = it.qtyKirim; });
+          pgTampilTombolHapusRak();
+          if (!pgState.modalDiubah) pgRenderBaris();
+        }
         if (masihSama) {
           pgState.antrean = pgState.antrean.filter(e => e !== entri);
           delete pgState.draf[h.kodeRak];
@@ -773,8 +779,8 @@ async function pgBukaRak(kode) {
   if (d && Array.isArray(d.tambahan)) d.tambahan.forEach(t => pgState.baris.push(pgBarisTambahan(t.nama, t.qty, kode)));
 
   document.getElementById('pg-modal-kode').innerText = kode;
-  const btnHapusRak = document.getElementById('pg-btn-hapus-rak');
-  if (btnHapusRak) btnHapusRak.style.display = pgSuperuser() ? '' : 'none';
+  pgState.tersimpan = {};
+  pgTampilTombolHapusRak();
   document.getElementById('pg-tambah-nama').value = '';
   document.getElementById('pg-tambah-qty').value = '';
   pgRenderInfoModal();
@@ -789,17 +795,20 @@ async function pgBukaRak(kode) {
 
   // Ambil isi terbaru dari sheet bila rak ini sudah pernah dihitung (tanpa menimpa draf)
   const perluServer = s || pgState.konflik[kode];
-  if (perluServer && !(d && d.qty)) {
-    pgSetInfo('memuat', 'Memuat hitungan tersimpan...');
+  const pakaiDraf = !!(d && d.qty);
+  if (perluServer) {
+    if (!pakaiDraf) pgSetInfo('memuat', 'Memuat hitungan tersimpan...');
     try {
       const r = await pgBaca('pgRak', { kode });
-      if (pgState.aktif !== kode || pgState.modalDiubah) return;
+      if (pgState.aktif !== kode) return;
       const qty = {};
       const tambahan = [];
       (r.items || []).forEach(it => {
         if (String(it.id).startsWith('TAMBAHAN')) tambahan.push({ nama: it.nama, qty: it.qtyKirim });
         else qty[it.id] = pgKosong(it.qtyKirim) ? null : it.qtyKirim;
       });
+      Object.keys(qty).forEach(k => { if (!pgKosong(qty[k])) pgState.tersimpan[k] = qty[k]; });
+      if (pakaiDraf || pgState.modalDiubah) { pgRenderBaris(); pgRenderInfoModal(); return; }
       pgState.baris = pgBarisDariMaster(g, qty);
       tambahan.forEach(t => pgState.baris.push(pgBarisTambahan(t.nama, t.qty, kode)));
       pgState.modalVersi = r.versi || pgState.modalVersi;
@@ -900,8 +909,8 @@ function pgRenderBaris() {
         : `<div class="pg-thumb pg-thumb-kosong"><span class="material-symbols-outlined">${b.tambahan ? 'add_box' : 'image_not_supported'}</span></div>`;
       const timPilih = pgState.tim && b.tim === pgState.tim;
       const salah = b.salahRak;
-      const hapusSku = pgSuperuser() && !b.tambahan
-        ? `<button type="button" class="pg-hapus-sku" onclick="pgMintaHapus('sku', ${i})"><span class="material-symbols-outlined">delete</span>Hapus SKU</button>` : '';
+      const hapusSku = pgSuperuser() && !b.tambahan && !pgKosong(pgState.tersimpan[b.id])
+        ? `<button type="button" class="pg-hapus-sku" onclick="pgMintaHapus('sku', ${i})"><span class="material-symbols-outlined">restart_alt</span>Hapus hitungan (tersimpan: ${pgAngka(pgState.tersimpan[b.id])})</button>` : '';
       return `<div class="pg-baris${timPilih ? ' pg-baris-tim' : ''}${salah ? ' pg-baris-nyasar' : ''}" id="pg-baris-${i}">
           ${img}
           <div class="pg-baris-info">
@@ -1263,48 +1272,74 @@ if (pgState.antrean.length) setTimeout(() => { if (sessionStorage.getItem('sessi
 
 
 // ============================================================
-// HAPUS KODE RAK / SKU (khusus superuser, wajib password)
+// HAPUS HITUNGAN per rak / per SKU (khusus superuser, wajib password)
+// Daftar SKU dari CSV TIDAK ikut terhapus — hanya Qty Real yang sudah disimpan.
 // ============================================================
-function pgBersihkanSetelahHapus(h) {
-  const d = pgState.draf[h.kodeRak];
-  if (h.jenis === 'rak') {
-    delete pgState.draf[h.kodeRak];
-    delete pgState.status[h.kodeRak];
-    pgState.antrean = pgState.antrean.filter(e => e.kodeRak !== h.kodeRak);
-    pgSimpanAntrean();
-    if (pgState.aktif === h.kodeRak) pgTutupModal();
-  } else {
-    if (d && d.qty) delete d.qty[h.id];
-    if (pgState.aktif === h.kodeRak) {
-      pgState.baris = pgState.baris.filter(b => b.id !== h.id);
+function pgTampilTombolHapusRak() {
+  const btn = document.getElementById('pg-btn-hapus-rak');
+  if (btn) btn.style.display = pgSuperuser() && pgState.aktif && pgState.status[pgState.aktif] ? '' : 'none';
+}
+
+// Dipanggil setelah hapus berhasil (di perangkat sendiri maupun dari realtime)
+function pgSetelahHapus(h) {
+  const kode = h.kodeRak;
+  if (h.kembaliBelum || h.jenis === 'rak') delete pgState.status[kode];
+  else if (h.status) pgState.status[kode] = { ...h.status, _t: Date.now() };
+  delete pgState.konflik[kode];
+
+  if (pgState.aktif === kode) {
+    if (h.jenis === 'rak' || h.kembaliBelum) pgState.tersimpan = {};
+    else delete pgState.tersimpan[h.id];
+    pgState.modalVersi = (pgState.status[kode] && pgState.status[kode].versi) || '';
+    pgState.modalBaru = null;
+    if (h.oleh === pgState.saya || !pgState.modalDiubah) {
+      // Kosongkan angka di layar sesuai yang dihapus
+      if (h.jenis === 'rak') {
+        pgState.baris = pgState.baris.filter(b => !b.tambahan);
+        pgState.baris.forEach(b => { b.qtyKirim = null; });
+        delete pgState.draf[kode];
+      } else {
+        pgState.baris.forEach(b => { if (b.id === h.id) b.qtyKirim = null; });
+        const d = pgState.draf[kode];
+        if (d && d.qty) delete d.qty[h.id];
+      }
+      pgSimpanDraf();
       pgRenderBaris();
+    } else {
+      pgSetInfo('merah', `Hitungan ${h.jenis === 'rak' ? 'rak ini' : 'SKU ' + pgEsc(h.id)} baru saja dihapus oleh <b>${pgEsc(h.oleh)}</b>. Angka di layar Anda belum disimpan.`);
     }
+    pgTampilTombolHapusRak();
+    if (h.oleh === pgState.saya || !pgState.modalDiubah) pgRenderInfoModal();
+  } else if (h.oleh === pgState.saya) {
+    if (h.jenis === 'rak') delete pgState.draf[kode];
+    else if (pgState.draf[kode] && pgState.draf[kode].qty) delete pgState.draf[kode].qty[h.id];
+    pgSimpanDraf();
   }
-  pgSimpanDraf();
+  pgRender();
 }
 
 function pgMintaHapus(jenis, i) {
-  if (!pgSuperuser()) { pgToast('Hapus hanya untuk akun superuser.', 'error'); return; }
+  if (!pgSuperuser()) { pgToast('Hapus hitungan hanya untuk akun superuser.', 'error'); return; }
   const kode = pgState.aktif;
   if (!kode) return;
-  const g = pgState.rak[kode];
-  let target, judul, rincian, kunci;
+  const s = pgState.status[kode];
+  let target, judul, rincian;
   if (jenis === 'rak') {
-    const nProduk = g ? g.items.length : 0, pcs = g ? g.totalCsv : 0;
+    const nIsi = Object.keys(pgState.tersimpan).length;
     target = { jenis, kodeRak: kode, id: '' };
-    judul = 'Hapus kode rak ' + kode;
-    rincian = `<b>${pgAngka(nProduk)} produk · ${pgAngka(pcs)} pcs</b> di <b>${pgEsc(kode)}</b> akan dihapus dari Data CSV, beserta hasil hitungnya.`;
-    kunci = kode;
+    judul = 'Hapus hitungan rak ' + kode;
+    rincian = `Semua Qty Real yang sudah disimpan di <b>${pgEsc(kode)}</b>${nIsi ? ` (<b>${nIsi} SKU</b>)` : ''} akan dikosongkan.
+      Kartu kembali <b>"Belum"</b> dan baris rak ini di Barang Diterima ikut hilang.
+      ${s ? `<div class="pg-hp-oleh">Dihitung oleh <b>${pgEsc(s.petugas)}</b> pukul ${pgEsc(pgJam(s.waktu))}</div>` : ''}`;
   } else {
     const b = pgState.baris[i];
     if (!b) return;
     target = { jenis, kodeRak: kode, id: b.id };
-    judul = 'Hapus SKU dari ' + kode;
-    rincian = `<div class="pg-hp-sku"><b>${pgEsc(b.nama)}</b><code>${pgEsc(b.id)}</code><span>${pgEsc(b.lokasi)} · Qty Web ${pgAngka(b.qtyCsv)}${pgKosong(b.qtyKirim) ? '' : ' · Qty Real ' + pgAngka(b.qtyKirim)}</span></div>`;
-    kunci = 'HAPUS';
+    judul = 'Hapus hitungan SKU';
+    rincian = `<div class="pg-hp-sku"><b>${pgEsc(b.nama)}</b><code>${pgEsc(b.id)}</code>
+      <span>${pgEsc(b.lokasi)} · Qty Web ${pgAngka(b.qtyCsv)} · Qty Real tersimpan <b>${pgAngka(pgState.tersimpan[b.id])}</b></span></div>
+      <p style="margin:8px 0 0;">Qty Real SKU ini dikosongkan jadi <b>"Belum Dihitung"</b>. SKU lain di ${pgEsc(kode)} tidak berubah.</p>`;
   }
-  const sudah = pgState.status[kode];
-  const peringatan = sudah ? `<div class="pg-hp-warn"><span class="material-symbols-outlined">warning</span>Rak ini sudah dihitung oleh ${pgEsc(sudah.petugas)}. Hasil hitung ${jenis === 'rak' ? 'rak' : 'SKU'} ini ikut terhapus.</div>` : '';
 
   pgTutupHapus();
   const box = document.createElement('div');
@@ -1312,37 +1347,32 @@ function pgMintaHapus(jenis, i) {
   box.className = 'pg-hapus-latar';
   box.innerHTML = `
     <div class="pg-hapus-box" role="dialog" aria-modal="true">
-      <div class="pg-hp-ikon"><span class="material-symbols-outlined">delete_forever</span></div>
+      <div class="pg-hp-ikon"><span class="material-symbols-outlined">restart_alt</span></div>
       <h3>${pgEsc(judul)}</h3>
       <div class="pg-hp-rincian">${rincian}</div>
-      ${peringatan}
-      <p class="pg-hp-catatan">Data yang dihapus dipindah ke tab <b>Arsip CSV</b> dan dicatat di <b>Riwayat Hapus</b>.</p>
-      <label>Ketik <b>${pgEsc(kunci)}</b> untuk konfirmasi</label>
-      <input id="pg-hp-kunci" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="${pgEsc(kunci)}">
+      <p class="pg-hp-catatan">Daftar SKU dari CSV tetap ada. Yang dihapus dicatat di tab <b>Riwayat Hapus</b>.</p>
       <label>Password akun Anda</label>
       <div class="pg-hp-sandi">
         <input id="pg-hp-sandi" type="password" autocomplete="current-password" placeholder="password superuser">
         <button type="button" onclick="pgHpMata(this)" title="Lihat sandi"><span class="material-symbols-outlined">visibility</span></button>
       </div>
       <label>Alasan <span class="pg-muted">(opsional)</span></label>
-      <input id="pg-hp-alasan" maxlength="200" placeholder="contoh: SKU salah rak, sudah dipindah">
+      <input id="pg-hp-alasan" maxlength="200" placeholder="contoh: salah input, hitung ulang">
       <p class="pg-hp-msg" id="pg-hp-msg"></p>
       <div class="pg-hp-aksi">
         <button type="button" class="pg-btn" onclick="pgTutupHapus()">Batal</button>
-        <button type="button" class="pg-btn pg-btn-bahaya" id="pg-hp-ok" disabled>Hapus Permanen</button>
+        <button type="button" class="pg-btn pg-btn-bahaya" id="pg-hp-ok" disabled>Hapus Hitungan</button>
       </div>
     </div>`;
   box.addEventListener('click', e => { if (e.target === box) pgTutupHapus(); });
   document.body.appendChild(box);
 
-  const inKunci = document.getElementById('pg-hp-kunci'), inSandi = document.getElementById('pg-hp-sandi');
+  const inSandi = document.getElementById('pg-hp-sandi');
   const ok = document.getElementById('pg-hp-ok');
-  const cek = () => { ok.disabled = !(inKunci.value.trim().toUpperCase() === kunci.toUpperCase() && inSandi.value); };
-  inKunci.addEventListener('input', cek);
-  inSandi.addEventListener('input', cek);
+  inSandi.addEventListener('input', () => { ok.disabled = !inSandi.value; });
   box.addEventListener('keydown', e => { if (e.key === 'Escape') pgTutupHapus(); if (e.key === 'Enter' && !ok.disabled) ok.click(); });
   ok.addEventListener('click', () => pgJalankanHapus(target));
-  setTimeout(() => inKunci.focus(), 50);
+  setTimeout(() => inSandi.focus(), 50);
 }
 
 function pgHpMata(btn) {
@@ -1359,6 +1389,7 @@ function pgTutupHapus() {
 
 async function pgJalankanHapus(target) {
   const ok = document.getElementById('pg-hp-ok'), msg = document.getElementById('pg-hp-msg');
+  if (pgEntriAntrean(target.kodeRak)) { msg.textContent = 'Rak ini masih menunggu tersimpan. Tunggu selesai dulu.'; return; }
   ok.disabled = true; ok.textContent = 'Menghapus...';
   msg.textContent = '';
   try {
@@ -1368,12 +1399,11 @@ async function pgJalankanHapus(target) {
         alasan: document.getElementById('pg-hp-alasan').value.trim() })
     });
     pgTutupHapus();
-    pgToast(r.message || 'Berhasil dihapus.', 'success');
-    pgBersihkanSetelahHapus(target);
-    pgMuat();
+    pgToast(r.message || 'Hitungan dihapus.', 'success');
+    pgSetelahHapus({ ...target, oleh: pgState.saya, status: r.status, kembaliBelum: r.kembaliBelum });
   } catch (err) {
     msg.textContent = err.message;
-    ok.textContent = 'Hapus Permanen';
+    ok.textContent = 'Hapus Hitungan';
     const sandi = document.getElementById('pg-hp-sandi');
     if (sandi) { sandi.value = ''; sandi.focus(); }
   }
