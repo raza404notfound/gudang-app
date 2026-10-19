@@ -192,9 +192,10 @@ let allTrackedData = [];
           <tr>
             <td style="font-weight:600;color:#1e293b;">${u.username}</td>
             <td><span style="background:${u.role==='superuser'?'#fef3c7':u.role==='admin'?'#f1f5f9':'#f0fdf4'};color:${u.role==='superuser'?'#92400e':u.role==='admin'?'#475569':'#15803d'};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">${u.role === 'superuser' ? 'Superuser' : u.role === 'admin' ? 'Admin' : 'User'}</span></td>
-            <td style="color:#64748b;font-size:12px;">${u.createdAt ? new Date(u.createdAt).toLocaleDateString('id-ID') : '-'}</td>
-            <td>
-              ${u.role !== 'superuser' ? `<button onclick="deleteUser('${u.username}')" style="background:#fee2e2;color:#ef4444;border:none;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">Hapus</button>` : '<span style="color:#cbd5e1;font-size:11px;">—</span>'}
+            <td style="color:#64748b;font-size:12px;">${u.createdAt && !isNaN(new Date(u.createdAt)) ? new Date(u.createdAt).toLocaleDateString('id-ID') : '-'}</td>
+            <td style="white-space:nowrap;">
+              ${u.role !== 'superuser' ? `<button onclick="kaBukaGantiSandi('${u.username}')" class="ka-btn-sandi" title="Ganti sandi"><span class="material-symbols-outlined">key</span>Ganti Sandi</button>
+              <button onclick="deleteUser('${u.username}')" style="background:#fee2e2;color:#ef4444;border:none;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">Hapus</button>` : '<span style="color:#cbd5e1;font-size:11px;">—</span>'}
             </td>
           </tr>
         `).join('');
@@ -242,6 +243,95 @@ let allTrackedData = [];
         btn.disabled = false;
         btn.innerText = 'Buat Akun';
       }
+    }
+
+    // ---- Lihat sandi (ikon mata) ----
+    function kaToggleMata(idInput, btn) {
+      const el = document.getElementById(idInput);
+      if (!el) return;
+      const lihat = el.type === 'password';
+      el.type = lihat ? 'text' : 'password';
+      btn.querySelector('.material-symbols-outlined').textContent = lihat ? 'visibility_off' : 'visibility';
+      btn.title = lihat ? 'Sembunyikan sandi' : 'Lihat sandi';
+      el.focus();
+    }
+
+    // ---- Ganti / reset sandi akun (superuser) ----
+    function kaSandiAcak() {
+      const huruf = 'abcdefghjkmnpqrstuvwxyz', angka = '23456789';
+      const ambil = (set, n) => Array.from(crypto.getRandomValues(new Uint32Array(n))).map(x => set[x % set.length]).join('');
+      return ambil(huruf, 5) + ambil(angka, 3);
+    }
+
+    function kaBukaGantiSandi(username) {
+      kaTutupGantiSandi();
+      const box = document.createElement('div');
+      box.id = 'ka-modal-sandi';
+      box.className = 'ka-modal-latar';
+      box.innerHTML = `
+        <div class="ka-modal" role="dialog" aria-modal="true">
+          <h3>Ganti Sandi</h3>
+          <p class="ka-modal-sub">Akun <b>${username}</b>. Sandi lama tidak bisa dilihat (tersimpan terenkripsi), jadi buat sandi baru lalu berikan ke orangnya.</p>
+          <label>Sandi baru</label>
+          <div class="ka-sandi-wrap">
+            <input id="ka-sandi-baru" type="text" minlength="6" autocomplete="new-password" placeholder="minimal 6 karakter">
+            <button type="button" class="ka-mata" onclick="kaToggleMata('ka-sandi-baru', this)" title="Sembunyikan sandi"><span class="material-symbols-outlined">visibility_off</span></button>
+          </div>
+          <button type="button" class="ka-link" onclick="document.getElementById('ka-sandi-baru').value = kaSandiAcak()">
+            <span class="material-symbols-outlined">casino</span>Buat sandi acak</button>
+          <p id="ka-sandi-msg" class="ka-modal-msg"></p>
+          <div class="ka-modal-aksi">
+            <button type="button" class="ka-btn-batal" onclick="kaTutupGantiSandi()">Batal</button>
+            <button type="button" class="ka-btn-simpan" id="ka-btn-simpan-sandi" onclick="kaSimpanSandi('${username}')">Simpan Sandi</button>
+          </div>
+        </div>`;
+      box.addEventListener('click', e => { if (e.target === box) kaTutupGantiSandi(); });
+      document.body.appendChild(box);
+      const inp = document.getElementById('ka-sandi-baru');
+      inp.value = kaSandiAcak();
+      inp.focus(); inp.select();
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') kaSimpanSandi(username); if (e.key === 'Escape') kaTutupGantiSandi(); });
+    }
+
+    function kaTutupGantiSandi() {
+      const m = document.getElementById('ka-modal-sandi');
+      if (m) m.remove();
+    }
+
+    async function kaSimpanSandi(username) {
+      const inp = document.getElementById('ka-sandi-baru');
+      const msg = document.getElementById('ka-sandi-msg');
+      const btn = document.getElementById('ka-btn-simpan-sandi');
+      const sandi = inp.value.trim();
+      if (sandi.length < 6) { msg.style.color = '#ef4444'; msg.textContent = 'Sandi minimal 6 karakter.'; return; }
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+      try {
+        const res = await fetch(`/api/users/${encodeURIComponent(username)}/password`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'x-session-token': sessionStorage.getItem('sessionToken') },
+          body: JSON.stringify({ password: sandi })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+        const modal = document.querySelector('#ka-modal-sandi .ka-modal');
+        modal.innerHTML = `
+          <h3>Sandi berhasil diganti</h3>
+          <p class="ka-modal-sub">Berikan sandi ini ke <b>${username}</b>. Setelah jendela ini ditutup, sandi tidak bisa dilihat lagi. Perangkat yang sedang login dengan akun ini otomatis keluar.</p>
+          <div class="ka-sandi-hasil"><code id="ka-sandi-hasil">${sandi.replace(/</g,'&lt;')}</code>
+            <button type="button" class="ka-btn-salin" onclick="kaSalinSandi(this)"><span class="material-symbols-outlined">content_copy</span>Salin</button></div>
+          <div class="ka-modal-aksi"><button type="button" class="ka-btn-simpan" onclick="kaTutupGantiSandi()">Selesai</button></div>`;
+      } catch (err) {
+        msg.style.color = '#ef4444';
+        msg.textContent = err.message || 'Gagal mengganti sandi.';
+        btn.disabled = false; btn.textContent = 'Simpan Sandi';
+      }
+    }
+
+    async function kaSalinSandi(btn) {
+      const teks = document.getElementById('ka-sandi-hasil').textContent;
+      try { await navigator.clipboard.writeText(teks); }
+      catch (e) { const r = document.createRange(); r.selectNodeContents(document.getElementById('ka-sandi-hasil')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); document.execCommand('copy'); }
+      btn.innerHTML = '<span class="material-symbols-outlined">check</span>Tersalin';
     }
 
     async function deleteUser(username) {
