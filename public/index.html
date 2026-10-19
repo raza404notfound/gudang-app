@@ -843,32 +843,42 @@
       <section id="page-stok-opname" class="page-content">
         <div class="pg-sticky">
           <div class="pg-toolbar">
-            <input type="text" id="pg-cari" placeholder="Cari kode rak / nama produk..." oninput="pgCari(this.value)">
-            <div class="pg-chips">
-              <div class="pg-chip aktif" onclick="pgSetFilter('semua', this)">Semua</div>
-              <div class="pg-chip" onclick="pgSetFilter('belum', this)">Belum</div>
-              <div class="pg-chip" onclick="pgSetFilter('sesuai', this)">Sesuai</div>
-              <div class="pg-chip" onclick="pgSetFilter('selisih', this)">Selisih</div>
-              <div class="pg-chip" onclick="pgSetFilter('ulang', this)">Cek Ulang</div>
+            <div class="pg-toolbar-atas">
+              <div class="pg-cari-wrap">
+                <span class="material-symbols-outlined">search</span>
+                <input type="text" id="pg-cari" placeholder="Cari kode rak, nama produk, atau SKU..." oninput="pgCari(this.value)">
+              </div>
+              <div class="pg-aksi">
+                <span class="pg-live" id="pg-live" title="Menyambung realtime..."><i></i>Live</span>
+                <button class="pg-btn pg-btn-ikon" id="pg-btn-panduan" onclick="pgTogglePanduan(event)" title="Panduan">
+                  <span class="material-symbols-outlined">help</span>
+                </button>
+                <a class="pg-btn pg-btn-ikon-hp" id="pg-btn-sheet" href="#" target="_blank" rel="noopener" style="display:none;" title="Buka Sheet">
+                  <span class="material-symbols-outlined">table_view</span><span class="pg-btn-teks">Buka Sheet</span>
+                </a>
+                <button class="pg-btn pg-btn-ikon-hp" id="pg-btn-refresh" onclick="pgMuat()" title="Muat ulang">
+                  <span class="material-symbols-outlined">refresh</span><span class="pg-btn-teks">Muat Ulang</span>
+                </button>
+                <button class="pg-btn pg-btn-kuning pg-btn-ikon-hp" id="pg-btn-upload" onclick="pgPilihCsv()" style="display:none;" title="Upload CSV">
+                  <span class="material-symbols-outlined">upload_file</span><span class="pg-btn-teks">Upload CSV</span>
+                </button>
+                <input type="file" id="pg-file-csv" accept=".csv,.tsv,.txt,text/csv" style="display:none;" onchange="pgUploadCsv(this)">
+              </div>
             </div>
-            <div class="pg-aksi">
-              <button class="pg-btn pg-btn-ikon" id="pg-btn-panduan" onclick="pgTogglePanduan(event)" title="Panduan">
-                <span class="material-symbols-outlined">help</span>
-              </button>
-              <a class="pg-btn" id="pg-btn-sheet" href="#" target="_blank" rel="noopener" style="display:none;">
-                <span class="material-symbols-outlined">table_view</span> Buka Sheet
-              </a>
-              <button class="pg-btn" id="pg-btn-refresh" onclick="pgMuat()">
-                <span class="material-symbols-outlined">refresh</span> Muat Ulang
-              </button>
-              <button class="pg-btn pg-btn-kuning" id="pg-btn-upload" onclick="pgPilihCsv()" style="display:none;">
-                <span class="material-symbols-outlined">upload_file</span> Upload CSV
-              </button>
-              <input type="file" id="pg-file-csv" accept=".csv,.tsv,.txt,text/csv" style="display:none;" onchange="pgUploadCsv(this)">
+            <div class="pg-filter-baris pg-status-baris">
+              <span class="pg-chip-label">Status</span>
+              <div class="pg-chip-geser pg-chips">
+                <div class="pg-chip aktif" onclick="pgSetFilter('semua', this)">Semua</div>
+                <div class="pg-chip" onclick="pgSetFilter('belum', this)">Belum</div>
+                <div class="pg-chip" onclick="pgSetFilter('sesuai', this)">Sesuai</div>
+                <div class="pg-chip" onclick="pgSetFilter('selisih', this)">Selisih</div>
+                <div class="pg-chip" onclick="pgSetFilter('ulang', this)">Cek Ulang</div>
+              </div>
             </div>
+            <div class="pg-filter-baris" id="pg-chip-tim"></div>
+            <div class="pg-filter-baris" id="pg-chip-rak"></div>
+            <div class="pg-filter-baris" id="pg-chip-blok" style="display:none;"></div>
           </div>
-          <div class="pg-filter-baris" id="pg-chip-tim"></div>
-          <div class="pg-filter-baris" id="pg-chip-blok"></div>
           <div class="pg-label-export" id="pg-label-export" style="display:none;"></div>
           <div class="pg-stats">
             <div class="pg-stat"><div class="num" id="pg-n-total">0</div><div class="lbl">Kode rak</div></div>
@@ -890,12 +900,12 @@
               <button onclick="pgTogglePanduan(event)" aria-label="Tutup">&#10005;</button>
             </div>
             <ol>
-              <li><b>Rak cocok semua:</b> tekan <b>Semua sesuai</b> di kartu → tekan sekali lagi (<i>Tap lagi untuk simpan</i>).</li>
-              <li><b>Ada selisih:</b> buka kartu → <i>Isi semua sesuai Qty Web</i> → ubah Qty Real yang berbeda → <b>Simpan</b>.</li>
+              <li><b>Pilih rak:</b> Tim → Rak → Blok, lalu buka kartunya.</li>
+              <li><b>Hitung:</b> <i>Isi semua sesuai Qty Web</i> → ubah Qty Real yang berbeda → <b>Simpan</b>. Cocokkan dengan <b>SKU</b> di bawah nama barang.</li>
               <li><b>Qty Real kosong</b> = belum dihitung, tetap bisa disimpan. Barang tidak ada? Isi <b>0</b>.</li>
               <li><b>Barang tidak ada di daftar:</b> tambahkan di bagian bawah kartu.</li>
               <li><b>Menyimpan…</b> = sedang dikirim, boleh lanjut ke rak lain. <b>Gagal</b> = tekan <i>Ulangi</i>.</li>
-              <li><b>Sedang dihitung …</b> = rak dipegang petugas lain, pilih rak lain.</li>
+              <li><b>Sedang dihitung …</b> = rak dipegang petugas lain (muncul seketika), pilih rak lain.</li>
             </ol>
             <p>Angka yang diketik tersimpan otomatis di HP sampai berhasil masuk sheet. Jangan tutup halaman selagi ada rak <i>menunggu tersimpan</i>.</p>
           </div>
