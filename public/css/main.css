@@ -1289,3 +1289,30 @@
           /* State box */
           .ins-empty { padding:60px 20px; text-align:center; color:#94a3b8; }
           .ins-empty .material-symbols-outlined { font-size:48px; display:block; margin-bottom:10px; color:#e2e8f0; }
+
+/* ===== Kelola Akun: ikon mata & ganti sandi ===== */
+.ka-sandi-wrap { position: relative; }
+.ka-sandi-wrap input { width: 100%; padding-right: 38px !important; }
+.ka-mata { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: none; background: none; color: #64748b; cursor: pointer; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.ka-mata:hover { background: #f1f5f9; color: #1e293b; }
+.ka-mata .material-symbols-outlined { font-size: 19px; }
+.ka-btn-sandi { background: #eef2ff; color: #4338ca; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; margin-right: 4px; }
+.ka-btn-sandi .material-symbols-outlined { font-size: 14px; }
+.ka-modal-latar { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
+.ka-modal { background: #fff; border-radius: 10px; width: 100%; max-width: 380px; padding: 20px; box-shadow: 0 20px 40px rgba(0,0,0,.2); }
+.ka-modal h3 { font-size: 16px; font-weight: 700; color: #1e293b; margin: 0 0 6px; }
+.ka-modal-sub { font-size: 12px; color: #64748b; margin: 0 0 14px; line-height: 1.5; }
+.ka-modal label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; }
+.ka-modal input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 15px; font-family: ui-monospace, Menlo, monospace; outline: none; }
+.ka-modal input:focus { border-color: #e11d48; }
+.ka-link { background: none; border: none; color: #4338ca; font-size: 12px; font-weight: 600; cursor: pointer; padding: 6px 0; display: inline-flex; align-items: center; gap: 4px; }
+.ka-link .material-symbols-outlined { font-size: 15px; }
+.ka-modal-msg { font-size: 12px; min-height: 16px; margin: 4px 0 0; }
+.ka-modal-aksi { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.ka-btn-batal { background: #f1f5f9; color: #475569; border: none; padding: 9px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ka-btn-simpan { background: #e11d48; color: #fff; border: none; padding: 9px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ka-btn-simpan:disabled { opacity: .6; cursor: wait; }
+.ka-sandi-hasil { display: flex; align-items: center; gap: 8px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 10px 12px; }
+.ka-sandi-hasil code { flex: 1; font-size: 18px; font-weight: 700; color: #1e293b; letter-spacing: .5px; word-break: break-all; }
+.ka-btn-salin { background: #1e293b; color: #fff; border: none; padding: 7px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.ka-btn-salin .material-symbols-outlined { font-size: 15px; }
