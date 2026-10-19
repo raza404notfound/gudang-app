@@ -1074,7 +1074,10 @@
               </div>
               <div style="flex:1; min-width:150px;">
                 <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Password</label>
-                <input id="new-password" type="password" required placeholder="password baru" style="width:100%; padding:9px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; outline:none;">
+                <div class="ka-sandi-wrap">
+                  <input id="new-password" type="password" required minlength="6" autocomplete="new-password" placeholder="password baru" style="width:100%; padding:9px 38px 9px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; outline:none;">
+                  <button type="button" class="ka-mata" onclick="kaToggleMata('new-password', this)" title="Lihat sandi" aria-label="Lihat sandi"><span class="material-symbols-outlined">visibility</span></button>
+                </div>
               </div>
               <div style="min-width:120px;">
                 <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Role</label>
