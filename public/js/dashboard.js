@@ -29,7 +29,6 @@ const dbState = {
   dari: '', sampai: '',
   preset: 'hari',
   data: null,
-  memuat: false,
   semuaTahap: false,
   timer: null
 };
@@ -88,45 +87,75 @@ function dbPetakan(list, tipe) {
 }
 
 // ---------- Muat data ----------
+// Data disimpan per gudang + rentang di browser, jadi pindah chip yang sudah pernah
+// dibuka langsung tampil, lalu diperbarui diam-diam dari server.
+const dbSimpan = {};   // { 'pdc|2026-10-19|2026-10-19': dataGudang }
+let dbUrutMuat = 0;    // abaikan jawaban lama bila user sudah pindah chip / tanggal
+
 function loadDashboard() {
   if (!dbState.dari) dbPilihPreset('hari', null, true);
   dbRenderChip();
   dbMuat();
   clearInterval(dbState.timer);
-  // Segarkan otomatis tiap 60 detik bila rentangnya memuat hari ini dan halaman sedang dibuka
+  // Selagi halaman dibuka dan rentang memuat hari ini: ambil versi terbaru tiap 60 dtk.
+  // Server menjawab dari cache (cepat); panggilan ke PDC diatur server.
   dbState.timer = setInterval(() => {
     const aktif = document.getElementById('page-dashboard')?.classList.contains('active');
     if (aktif && !document.hidden && dbState.sampai === dbTglWIB(0)) dbMuat(true);
   }, 60000);
 }
 
-async function dbMuat(diam = false) {
-  if (dbState.memuat) return;
+function dbKunci(id) { return `${id}|${dbState.dari}|${dbState.sampai}`; }
+function dbIdTarget() { return dbState.gudang === 'semua' ? DB_GUDANG.map(g => g.id) : [dbState.gudang]; }
+function dbSudahAda() { return dbIdTarget().every(id => dbSimpan[dbKunci(id)]); }
+
+async function dbMuat(diam = false, paksa = false) {
   const dari = document.getElementById('db-dari').value;
   const sampai = document.getElementById('db-sampai').value;
   if (!dari || !sampai) return dbPesan('error', 'Isi tanggal Dari dan Sampai.');
   if (sampai < dari) return dbPesan('error', 'Tanggal "Sampai" tidak boleh lebih awal dari "Dari".');
   dbState.dari = dari; dbState.sampai = sampai;
-  dbState.memuat = true;
+
+  // Tampilkan dulu yang sudah ada di browser
+  const adaLokal = dbSudahAda();
+  if (adaLokal) dbRender();
+  const urut = ++dbUrutMuat;
   const btn = document.getElementById('db-btn-muat');
   btn.disabled = true;
-  if (!diam) dbPesan('memuat', 'Memuat data 5 gudang...');
+  if (!diam && !adaLokal) dbPesan('memuat', dbState.gudang === 'semua' ? 'Memuat data 5 gudang...' : 'Memuat data gudang...');
   try {
-    const res = await fetch(`/api/dashboard/gudang?dari=${dari}&sampai=${sampai}`, {
+    const res = await fetch(`/api/dashboard/gudang?gudang=${dbState.gudang}&dari=${dari}&sampai=${sampai}${paksa ? '&force=true' : ''}`, {
       headers: { 'x-session-token': sessionStorage.getItem('sessionToken') || '' }
     });
     const data = await res.json().catch(() => ({ success: false, message: 'Respons server tidak valid.' }));
     if (!data.success) throw new Error(data.message || 'Gagal memuat.');
-    dbState.data = data;
-    const gagal = data.gudang.filter(g => g.error && g.error.length);
-    if (gagal.length) dbPesan('peringatan', 'Sebagian data tidak termuat: ' + gagal.map(g => `${g.name} (${g.error.join('; ')})`).join(' · '));
-    else dbPesan('ok', `Berhasil dimuat (${dari === sampai ? dari : dari + ' s/d ' + sampai}) · diperbarui ${String(data.diambil).slice(-5)} WIB`);
+    (data.gudang || []).forEach(g => { dbSimpan[`${g.id}|${data.dari}|${data.sampai}`] = g; });
+    if (urut !== dbUrutMuat) return;   // sudah ada permintaan yang lebih baru
     dbRender();
+    dbTampilStatus(data);
+    // Sebagian masih data lama: server sedang memperbarui, ambil lagi sebentar lagi
+    if (!data.segar) setTimeout(() => { if (urut === dbUrutMuat) dbMuat(true); }, 5000);
   } catch (err) {
-    dbPesan('error', err.message);
+    if (urut === dbUrutMuat && (!diam || !adaLokal)) dbPesan('error', err.message);
   } finally {
-    dbState.memuat = false;
-    btn.disabled = false;
+    if (urut === dbUrutMuat) btn.disabled = false;
+  }
+}
+
+function dbTampilStatus(data) {
+  const rentang = data.dari === data.sampai ? data.dari : data.dari + ' s/d ' + data.sampai;
+  const nama = g => g.name.replace(' Warehouse', '');
+  const kosong = data.gudang.filter(g => g.error && g.error.length && g.lama.length < g.error.length);
+  const pakaiLama = data.gudang.filter(g => g.lama && g.lama.length);
+  const jamTerlama = data.gudang.map(g => String(g.diambil || '').slice(-5)).filter(Boolean).sort()[0] || '';
+  if (kosong.length) {
+    dbPesan('peringatan', 'Server PDC lambat, sebagian data belum termuat: ' + kosong.map(nama).join(', ') + '. Akan dicoba lagi otomatis.');
+  } else if (pakaiLama.length) {
+    dbPesan('info', `Dimuat (${rentang}). PDC lambat untuk ` + pakaiLama.map(g => `${nama(g)} (${g.lama.join(', ')})`).join(', ') + ', ditampilkan data terakhir yang berhasil.');
+  } else if (!data.segar) {
+    dbPesan('info', `Menampilkan data ${jamTerlama} WIB, sedang memperbarui...`);
+  } else {
+    dbPesan('ok', `Data ${rentang} · diperbarui ${jamTerlama} WIB`);
   }
 }
 
@@ -138,9 +167,11 @@ function dbPesan(jenis, teks) {
 
 // ---------- Filter ----------
 function dbPilihGudang(id) {
+  if (dbState.gudang === id) return;
   dbState.gudang = id;
   dbRenderChip();
-  dbRender();
+  if (dbSudahAda()) dbRender();
+  dbMuat();
 }
 function dbRenderChip() {
   const el = document.getElementById('db-chip-gudang');
@@ -166,13 +197,12 @@ function dbToggleTahap() { dbState.semuaTahap = !dbState.semuaTahap; dbRender();
 
 // ---------- Render ----------
 function dbGudangTerpilih() {
-  const g = dbState.data ? dbState.data.gudang : [];
-  return dbState.gudang === 'semua' ? g : g.filter(x => x.id === dbState.gudang);
+  return dbIdTarget().map(id => dbSimpan[dbKunci(id)]).filter(Boolean);
 }
 
 function dbRender() {
-  if (!dbState.data) return;
   const terpilih = dbGudangTerpilih();
+  if (!terpilih.length) return;
   const namaPilihan = dbState.gudang === 'semua' ? 'Semua Gudang' : (DB_GUDANG.find(g => g.id === dbState.gudang)?.nama || '');
   document.getElementById('db-info').innerHTML =
     `<b>${dbEsc(namaPilihan)}</b> · ${dbState.dari === dbState.sampai ? dbEsc(dbState.dari) : dbEsc(dbState.dari + ' s/d ' + dbState.sampai)}`;
@@ -223,7 +253,7 @@ function dbRenderRingkasGudang(perGudang) {
   el.style.display = 'grid';
   el.innerHTML = DB_GUDANG.map(g => {
     const d = perGudang[g.id];
-    const err = dbState.data.gudang.find(x => x.id === g.id)?.error || [];
+    const err = dbSimpan[dbKunci(g.id)]?.error || [];
     const ti = d ? dbTotal(d.pi) : { trx: 0 }, to = d ? dbTotal(d.po) : { trx: 0 };
     const kurir = d && d.po['Diserahkan ke Kurir'] ? d.po['Diserahkan ke Kurir'].trx : 0;
     const pctKurir = to.trx ? Math.round(kurir / to.trx * 100) : 0;
