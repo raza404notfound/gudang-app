@@ -230,14 +230,10 @@ async function backgroundRefresh(type) {
   }
 }
 
-// Jalankan pertama kali begitu server nyala (supaya cache langsung terisi,
-// tidak perlu menunggu user pertama buka Dashboard)
-backgroundRefresh('inbound');
-backgroundRefresh('outbound');
-
-// Ulangi otomatis tiap REFRESH_INTERVAL
-setInterval(() => backgroundRefresh('inbound'),  REFRESH_INTERVAL);
-setInterval(() => backgroundRefresh('outbound'), REFRESH_INTERVAL);
+// DIMATIKAN: dashboard lama sudah diganti /api/dashboard/gudang.
+// Refresh latar ini dulu memanggil API PDC 10x tiap 30 detik (5 gudang x 2),
+// menambah antrean di server PDC sehingga dashboard baru sering timeout.
+// /api/dashboard tetap bisa dipanggil manual bila dibutuhkan.
 
 // GET /api/dashboard
 app.get('/api/dashboard', async (req, res) => {
@@ -966,16 +962,47 @@ app.post('/api/pindah/tandai', requireAuth, async (req, res) => {
 });
 
 // =============================================
-// DASHBOARD GUDANG — semua gudang, rentang tanggal bebas
-// GET /api/dashboard/gudang?dari=YYYY-MM-DD&sampai=YYYY-MM-DD
-// Per gudang: overview inbound, overview outbound, dan waktu proses (process_time, API v2)
+// DASHBOARD GUDANG
+// GET /api/dashboard/gudang?gudang=pdc|...|semua&dari=YYYY-MM-DD&sampai=YYYY-MM-DD
+//
+// Skema cepat:
+//  1. Hanya gudang yang sedang dibuka yang diambil dari PDC (bukan selalu 5 gudang).
+//  2. Cache per gudang + rentang. Bila ada data di cache, langsung dikirim (< 0,1 dtk);
+//     bila sudah lewat 60 dtk, data lama tetap dikirim lalu diperbarui di latar belakang
+//     ("stale-while-revalidate"), dan layar mengambil versi baru beberapa detik kemudian.
+//  3. Penjaga latar belakang: tiap 60 dtk, data HARI INI untuk gudang yang dilihat
+//     dalam 5 menit terakhir diperbarui. Tidak ada yang melihat = tidak ada panggilan ke PDC.
+//  4. Maksimal 4 panggilan ke PDC berjalan bersamaan, timeout 60 dtk, dicoba ulang bila putus.
 // =============================================
-const dashGudangCache = {};   // { 'dari|sampai': { t, data } }
-const DASH_GUDANG_TTL = 60 * 1000;
+const DASH_SEGAR_MS    = 60 * 1000;        // data dianggap segar selama 60 dtk
+const DASH_SIMPAN_MS   = 30 * 60 * 1000;   // data lama disimpan maksimal 30 menit
+const DASH_PANTAU_MS   = 5 * 60 * 1000;    // gudang dipantau bila dilihat 5 menit terakhir
+const dashCache  = {};   // { 'pdc|2026-10-19|2026-10-19': { t, data } }
+const dashJalan  = {};   // pengambilan yang sedang berjalan per kunci (anti-dobel)
+const dashDilihat = {};  // { 'pdc': timestamp terakhir dilihat }
 
-// GET ke API PDC dengan token gudang; login ulang sekali bila token kedaluwarsa
+// Batasi jumlah panggilan ke API PDC yang berjalan bersamaan
+const PDC_MAKS_SERENTAK = 4;
+let pdcJalan = 0;
+const pdcAntre = [];
+function pdcAmbilSlot() {
+  if (pdcJalan < PDC_MAKS_SERENTAK) { pdcJalan++; return Promise.resolve(); }
+  return new Promise(r => pdcAntre.push(r));
+}
+function pdcLepasSlot() {
+  const next = pdcAntre.shift();
+  if (next) next(); else pdcJalan--;
+}
+
+// GET ke API PDC dengan token gudang; login ulang sekali bila token kedaluwarsa,
+// coba ulang bila timeout / gangguan jaringan.
 async function pdcGudangGet(wh, url) {
-  for (let coba = 0; coba < 2; coba++) {
+  await pdcAmbilSlot();
+  try { return await pdcGudangGetInti(wh, url); }
+  finally { pdcLepasSlot(); }
+}
+async function pdcGudangGetInti(wh, url) {
+  for (let coba = 0; coba < 3; coba++) {
     const token = await getWarehouseToken(wh);
     if (!token) throw new Error('Login gagal');
     try {
@@ -987,7 +1014,7 @@ async function pdcGudangGet(wh, url) {
           'referer': 'https://warehouse.onlypdc.com/',
           'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36'
         },
-        timeout: 30000
+        timeout: 60000
       });
       return r.data?.data ?? r.data;
     } catch (err) {
@@ -996,14 +1023,24 @@ async function pdcGudangGet(wh, url) {
         delete tokenCache[wh.id]; delete tokenCacheTime[wh.id];
         continue;
       }
+      const putus = err.code === 'ECONNABORTED' || err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT' || st === 502 || st === 503 || st === 504;
+      if (putus && coba < 2) {
+        console.warn(`⏳ [PDC] ${wh.name} lambat/putus (${err.code || st}), coba ulang...`);
+        await new Promise(r => setTimeout(r, 1500));
+        continue;
+      }
       throw new Error(err.response?.data?.message || err.message);
     }
   }
 }
 
-async function ambilDataGudang(wh, time_min, time_max) {
-  const hasil = { id: wh.id, name: wh.name, inbound: [], outbound: [], prosesWaktu: null, error: [] };
+// Ambil 3 data satu gudang. Bagian yang gagal diisi data lama dari cache (ditandai).
+async function ambilSatuGudang(wh, dari, sampai) {
+  const kunci = `${wh.id}|${dari}|${sampai}`;
+  const lalu = dashCache[kunci]?.data;
+  const hasil = { id: wh.id, name: wh.name, inbound: [], outbound: [], prosesWaktu: null, error: [], lama: [], diambil: waktuWIB() };
   if (!wh.warehouse_id) { hasil.error.push('ID gudang belum diisi'); return hasil; }
+  const time_min = dateToTimestamp(dari, false), time_max = dateToTimestamp(sampai, true);
   const q = `time_min=${time_min}&time_max=${time_max}&warehouse_id=${wh.warehouse_id}`;
   const BASE_V2 = BASE_URL.replace(/\/v1$/, '/v2');
   const [inb, out, waktu] = await Promise.allSettled([
@@ -1011,38 +1048,88 @@ async function ambilDataGudang(wh, time_min, time_max) {
     pdcGudangGet(wh, `${BASE_URL}/warehouses/insight/overview?type=outbound&${q}`),
     pdcGudangGet(wh, `${BASE_V2}/warehouses/insight/process_time?from=warehouse&warehouse_id=${wh.warehouse_id}&domain_id=${wh.warehouse_id}&time_min=${time_min}&time_max=${time_max}`)
   ]);
-  if (inb.status === 'fulfilled' && Array.isArray(inb.value)) hasil.inbound = inb.value; else if (inb.status === 'rejected') hasil.error.push('Inbound: ' + inb.reason.message);
-  if (out.status === 'fulfilled' && Array.isArray(out.value)) hasil.outbound = out.value; else if (out.status === 'rejected') hasil.error.push('Outbound: ' + out.reason.message);
-  if (waktu.status === 'fulfilled' && waktu.value && typeof waktu.value === 'object') hasil.prosesWaktu = waktu.value;
-  else if (waktu.status === 'rejected') hasil.error.push('Waktu proses: ' + waktu.reason.message);
+  const isi = (r, bagian, label, cek) => {
+    if (r.status === 'fulfilled' && cek(r.value)) { hasil[bagian] = r.value; return; }
+    hasil.error.push(label + ': ' + (r.status === 'rejected' ? r.reason.message : 'format data tidak dikenal'));
+    if (lalu && lalu[bagian] && (Array.isArray(lalu[bagian]) ? lalu[bagian].length : true)) {
+      hasil[bagian] = lalu[bagian];
+      hasil.lama.push(label + ' ' + String(lalu.diambil).slice(-5));
+    }
+  };
+  isi(inb, 'inbound', 'Inbound', Array.isArray);
+  isi(out, 'outbound', 'Outbound', Array.isArray);
+  isi(waktu, 'prosesWaktu', 'Waktu', v => v && typeof v === 'object' && !Array.isArray(v));
   return hasil;
+}
+
+// Perbarui cache satu gudang (tanpa dobel bila sudah ada yang mengambil)
+function segarkanGudang(wh, dari, sampai) {
+  const kunci = `${wh.id}|${dari}|${sampai}`;
+  if (dashJalan[kunci]) return dashJalan[kunci];
+  dashJalan[kunci] = ambilSatuGudang(wh, dari, sampai)
+    .then(data => {
+      // Jangan timpa data bagus dengan hasil yang semuanya gagal
+      const semuaGagal = data.error.length === 3 && !data.lama.length;
+      if (!semuaGagal || !dashCache[kunci]) dashCache[kunci] = { t: Date.now(), data };
+      return data;
+    })
+    .finally(() => { delete dashJalan[kunci]; });
+  return dashJalan[kunci];
+}
+
+function tanggalWIBHariIni() {
+  return new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
 app.get('/api/dashboard/gudang', requireAuth, async (req, res) => {
   const pola = /^\d{4}-\d{2}-\d{2}$/;
   const dari = String(req.query.dari || ''), sampai = String(req.query.sampai || '');
+  const pilih = String(req.query.gudang || 'semua');
   if (!pola.test(dari) || !pola.test(sampai)) return res.status(400).json({ success: false, message: 'Format tanggal harus YYYY-MM-DD.' });
-  const time_min = dateToTimestamp(dari, false), time_max = dateToTimestamp(sampai, true);
-  if (time_max < time_min) return res.status(400).json({ success: false, message: 'Tanggal "Sampai" lebih awal dari "Dari".' });
-  if (time_max - time_min > 370 * 24 * 3600 * 1000) return res.status(400).json({ success: false, message: 'Rentang maksimal 1 tahun.' });
-
-  const kunci = dari + '|' + sampai;
-  const c = dashGudangCache[kunci];
-  if (c && Date.now() - c.t < DASH_GUDANG_TTL && req.query.force !== 'true') {
-    return res.json({ ...c.data, cache: true });
+  if (sampai < dari) return res.status(400).json({ success: false, message: 'Tanggal "Sampai" lebih awal dari "Dari".' });
+  if (dateToTimestamp(sampai, true) - dateToTimestamp(dari, false) > 370 * 24 * 3600 * 1000) {
+    return res.status(400).json({ success: false, message: 'Rentang maksimal 1 tahun.' });
   }
+  const target = pilih === 'semua' ? WAREHOUSES : WAREHOUSES.filter(w => w.id === pilih);
+  if (!target.length) return res.status(400).json({ success: false, message: 'Gudang tidak dikenal.' });
+
+  const paksa = req.query.force === 'true';
+  const kini = Date.now();
+  target.forEach(wh => { dashDilihat[wh.id] = kini; });
+
   try {
-    const gudang = await Promise.all(WAREHOUSES.map(wh => ambilDataGudang(wh, time_min, time_max)));
-    const data = { success: true, dari, sampai, diambil: waktuWIB(), gudang };
-    dashGudangCache[kunci] = { t: Date.now(), data };
-    // Bersihkan cache lama supaya memori tidak membengkak
-    Object.keys(dashGudangCache).forEach(k => { if (Date.now() - dashGudangCache[k].t > 10 * DASH_GUDANG_TTL) delete dashGudangCache[k]; });
-    res.json(data);
+    let adaLama = false;
+    const gudang = await Promise.all(target.map(async wh => {
+      const c = dashCache[`${wh.id}|${dari}|${sampai}`];
+      if (c && !paksa) {
+        if (kini - c.t > DASH_SEGAR_MS) { adaLama = true; segarkanGudang(wh, dari, sampai).catch(() => {}); }
+        return c.data;                        // langsung kirim dari cache
+      }
+      return segarkanGudang(wh, dari, sampai); // belum ada di cache: tunggu
+    }));
+    res.json({
+      success: true, gudangDipilih: pilih, dari, sampai, gudang,
+      segar: !adaLama,           // false = sebagian data sedang diperbarui, minta ulang sebentar lagi
+      diambil: waktuWIB()
+    });
   } catch (err) {
     console.error('Dashboard gudang error:', err.message);
     res.status(500).json({ success: false, message: 'Gagal memuat data gudang: ' + err.message });
   }
 });
+
+// Penjaga latar belakang: data hari ini untuk gudang yang sedang dipantau
+setInterval(() => {
+  const kini = Date.now();
+  const hari = tanggalWIBHariIni();
+  WAREHOUSES.forEach(wh => {
+    if (kini - (dashDilihat[wh.id] || 0) > DASH_PANTAU_MS) return;
+    const c = dashCache[`${wh.id}|${hari}|${hari}`];
+    if (!c || kini - c.t > DASH_SEGAR_MS - 5000) segarkanGudang(wh, hari, hari).catch(() => {});
+  });
+  // Bersihkan cache yang sudah lama tidak dipakai
+  Object.keys(dashCache).forEach(k => { if (kini - dashCache[k].t > DASH_SIMPAN_MS) delete dashCache[k]; });
+}, 30 * 1000);
 
 // =============================================
 // GUDANG INSIGHT
