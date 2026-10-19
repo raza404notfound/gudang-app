@@ -892,7 +892,8 @@ app.post('/api/pindah/upload', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/pindah/hapus — hapus kode rak / satu SKU (khusus superuser + wajib password)
+// POST /api/pindah/hapus — hapus HITUNGAN satu kode rak / satu SKU (data CSV tidak disentuh)
+// khusus superuser + wajib password
 // body: { jenis: 'rak'|'sku', kodeRak, id, sandi, alasan }
 const gagalSandiHapus = {};   // { username: { n, sampai } } — cegah tebak password
 function cocokTeks(a, b) {
@@ -931,10 +932,11 @@ app.post('/api/pindah/hapus', requireSuperuser, async (req, res) => {
       alasan: String(req.body.alasan || '').slice(0, 300)
     }, 60000);
     if (data.success) {
-      console.log(`🗑️ [HAPUS] ${saya}: ${jenis} ${kodeRak} ${id}`);
-      siarkanPindah('muatUlang', { oleh: saya, hapus: { jenis, kodeRak, id } });
+      console.log(`🗑️ [HAPUS HITUNGAN] ${saya}: ${jenis} ${kodeRak} ${id}`);
+      siarkanPindah('hapusHitung', { oleh: saya, jenis, kodeRak, id, status: data.status || null, kembaliBelum: !!data.kembaliBelum });
     }
-    res.json(data.success ? { success: true, message: data.message } : { success: false, message: data.message || 'Gagal menghapus.' });
+    res.json(data.success ? { success: true, message: data.message, status: data.status || null, kembaliBelum: !!data.kembaliBelum }
+      : { success: false, message: data.message || 'Gagal menghapus hitungan.' });
   } catch (err) {
     console.error('Pindah hapus error:', err.message);
     res.status(500).json({ success: false, message: pesanErrorPindah(err) });
