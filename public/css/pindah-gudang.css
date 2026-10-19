@@ -311,3 +311,109 @@
 .pg-card-sebagian { border-left-color: #f59e0b; }
 .pg-badge-sebagian { background: #fef3c7; color: #92400e; }
 .pg-foot-catatan { font-size: 11.5px; color: var(--text-secondary, #94a3b8); }
+
+
+/* =====================================================================
+   v3: toolbar rapi, filter Tim → Rak → Blok, SKU, realtime, HP kecil
+   ===================================================================== */
+.pg-toolbar { display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 12px 14px; }
+.pg-toolbar-atas { display: flex; align-items: center; gap: 10px; }
+.pg-cari-wrap {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 0 10px;
+  border: 1px solid var(--input-border, #e2e8f0); border-radius: 9px; background: var(--input-bg, #f8fafc);
+}
+.pg-cari-wrap:focus-within { border-color: #fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,.18); }
+.pg-cari-wrap .material-symbols-outlined { font-size: 18px; color: var(--text-secondary, #94a3b8); }
+.pg-toolbar .pg-cari-wrap input[type=text] {
+  border: none; background: transparent; box-shadow: none; padding: 9px 0; min-width: 0; max-width: none; flex: 1; font-size: 13px;
+}
+.pg-aksi { margin-left: 0; flex-wrap: nowrap; align-items: center; }
+.pg-btn .pg-btn-teks { display: inline; }
+
+.pg-live { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--text-secondary, #94a3b8); padding: 0 4px; }
+.pg-live i { width: 7px; height: 7px; border-radius: 50%; background: #cbd5e1; }
+.pg-live.hidup { color: #16a34a; }
+.pg-live.hidup i { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.18); animation: pgDenyutLive 2s infinite; }
+@keyframes pgDenyutLive { 50% { box-shadow: 0 0 0 5px rgba(34,197,94,0); } }
+
+/* Baris filter: label tetap, chip bisa digeser */
+.pg-toolbar .pg-filter-baris { margin-top: 0; padding-top: 10px; border-top: 1px dashed var(--border-color, #eef2f7); overflow: visible; }
+.pg-filter-baris { display: flex; align-items: center; gap: 8px; }
+.pg-chip-label { flex-shrink: 0; width: 46px; }
+.pg-chip-geser { display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 0; padding-bottom: 2px; scrollbar-width: thin; }
+.pg-chip-geser::-webkit-scrollbar { height: 3px; }
+.pg-chip-geser::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
+.pg-chip-geser .pg-chip, .pg-chip-geser .pg-chip-kecil { flex-shrink: 0; }
+.pg-status-baris .pg-chips { flex-wrap: nowrap; }
+
+/* SKU di dalam kartu hitung */
+.pg-sku {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; font-weight: 600;
+  color: var(--text-primary, #334155); margin-top: 2px; word-break: break-all; letter-spacing: .1px;
+}
+.pg-baris-sub { margin-top: 1px; }
+.pg-tag-tim { font-size: 10px; padding: 0 5px; }
+.pg-input-wrap { display: flex; align-items: center; gap: 8px; }
+.pg-catatan span { text-transform: none; }
+
+/* ---------- HP ---------- */
+@media (max-width: 640px) {
+  .pg-sticky { top: -16px; }
+  .pg-toolbar { padding: 10px; gap: 8px; }
+  .pg-toolbar-atas { flex-wrap: wrap; }
+  .pg-cari-wrap { flex: 1 1 100%; order: 1; }
+  .pg-aksi { order: 2; width: 100%; justify-content: flex-end; gap: 6px; }
+  .pg-live { margin-right: auto; }
+  .pg-btn-ikon-hp { padding: 7px 9px; }
+  .pg-btn-ikon-hp .pg-btn-teks { display: none; }
+  .pg-toolbar .pg-filter-baris { padding-top: 8px; }
+  .pg-chip-label { width: 38px; font-size: 10px; }
+  .pg-chip, .pg-chip-kecil { padding: 5px 10px; font-size: 11.5px; }
+
+  /* Kartu hitung: rapi untuk layar kecil */
+  .pg-modal-head { padding: 12px 14px; }
+  .pg-modal-head .kode { font-size: 18px; }
+  .pg-modal-head .sub { font-size: 11px; }
+  .pg-modal-alat { padding: 8px 10px; gap: 6px; }
+  .pg-modal-alat .pg-btn { flex: 1; justify-content: center; padding: 8px 6px; font-size: 11.5px; }
+  .pg-modal-info, .pg-modal-ringkas { padding: 7px 12px; font-size: 11.5px; }
+  .pg-modal-body { padding: 0 8px; }
+
+  .pg-baris {
+    display: grid; grid-template-columns: 40px 1fr auto; column-gap: 10px; align-items: center;
+    padding: 10px 6px 10px 8px;
+  }
+  .pg-thumb { width: 40px; height: 40px; align-self: start; }
+  .pg-baris-nama {
+    font-size: 12.5px; line-height: 1.3;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .pg-sku { font-size: 11px; }
+  .pg-baris-sub { font-size: 10.5px; }
+  .pg-baris-angka { flex-direction: column; align-items: flex-end; gap: 3px; }
+  .pg-catatan { display: flex; align-items: baseline; gap: 4px; min-width: 0; text-align: right; }
+  .pg-catatan span { display: inline; font-size: 10px; }
+  .pg-catatan b { font-size: 13px; }
+  .pg-input-wrap { flex-direction: column; align-items: flex-end; gap: 2px; }
+  .pg-input { width: 64px; padding: 7px 4px; font-size: 16px; }   /* 16px: HP tidak auto-zoom */
+  .pg-selisih { width: auto; min-height: 14px; font-size: 11.5px; }
+  .pg-ok .pg-selisih .material-symbols-outlined { font-size: 16px; }
+
+  .pg-tambah { padding: 10px 2px; }
+  .pg-tambah input:first-child { flex: 1 1 100%; }
+  .pg-tambah input[type=number] { flex: 1; width: auto; }
+  .pg-modal-foot { padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+  .pg-foot-catatan { width: 100%; text-align: center; font-size: 10.5px; }
+}
+@media (max-width: 360px) {
+  .pg-baris { grid-template-columns: 34px 1fr auto; column-gap: 8px; }
+  .pg-thumb { width: 34px; height: 34px; }
+  .pg-input { width: 58px; }
+}
+/* cegah toolbar melebar melebihi layar */
+.pg-sticky, .pg-toolbar, .pg-toolbar > *, .pg-filter-baris { min-width: 0; max-width: 100%; }
+.pg-toolbar-atas { min-width: 0; }
+@media (max-width: 640px) {
+  .pg-modal-alat { flex-wrap: nowrap; }
+  .pg-modal-alat .pg-btn { min-width: 0; white-space: nowrap; overflow: hidden; }
+}
