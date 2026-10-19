@@ -868,11 +868,12 @@
             <div class="pg-filter-baris pg-status-baris">
               <span class="pg-chip-label">Status</span>
               <div class="pg-chip-geser pg-chips">
-                <div class="pg-chip aktif" onclick="pgSetFilter('semua', this)">Semua</div>
+                <div class="pg-chip aktif" data-f="semua" onclick="pgSetFilter('semua', this)">Semua</div>
                 <div class="pg-chip" onclick="pgSetFilter('belum', this)">Belum</div>
                 <div class="pg-chip" onclick="pgSetFilter('sesuai', this)">Sesuai</div>
                 <div class="pg-chip" onclick="pgSetFilter('selisih', this)">Selisih</div>
                 <div class="pg-chip" onclick="pgSetFilter('ulang', this)">Cek Ulang</div>
+                <div class="pg-chip pg-chip-nyasar" id="pg-chip-nyasar" style="display:none;" onclick="pgSetFilter('nyasar', this)"></div>
               </div>
             </div>
             <div class="pg-filter-baris" id="pg-chip-tim"></div>
@@ -906,6 +907,7 @@
               <li><b>Barang tidak ada di daftar:</b> tambahkan di bagian bawah kartu.</li>
               <li><b>Menyimpan…</b> = sedang dikirim, boleh lanjut ke rak lain. <b>Gagal</b> = tekan <i>Ulangi</i>.</li>
               <li><b>Sedang dihitung …</b> = rak dipegang petugas lain (muncul seketika), pilih rak lain.</li>
+              <li><b>Kartu berkedip merah (!)</b> = ada SKU tim lain di rak itu. Cek barangnya, lalu lapor ke superuser.</li>
             </ol>
             <p>Angka yang diketik tersimpan otomatis di HP sampai berhasil masuk sheet. Jangan tutup halaman selagi ada rak <i>menunggu tersimpan</i>.</p>
           </div>
@@ -931,6 +933,9 @@
               </button>
               <button class="pg-btn" onclick="pgKosongkan()">
                 <span class="material-symbols-outlined">backspace</span> Kosongkan
+              </button>
+              <button class="pg-btn pg-btn-hapus-rak" id="pg-btn-hapus-rak" style="display:none;" onclick="pgMintaHapus('rak')" title="Hapus kode rak ini (superuser)">
+                <span class="material-symbols-outlined">delete</span><span class="pg-btn-teks"> Hapus Rak</span>
               </button>
             </div>
             <div class="pg-modal-info" id="pg-modal-info" style="display:none;"></div>
