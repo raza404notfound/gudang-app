@@ -497,7 +497,7 @@ app.get('/api/users', requireSuperuser, async (req, res) => {
     }));
     // Tambahkan superuser ke list kalau belum ada di sheet
     if (!list.find(u => u.username === SUPERUSER)) {
-      list.unshift({ username: SUPERUSER, role: 'superuser', createdAt: '-' });
+      list.unshift({ username: SUPERUSER, role: 'superuser', createdAt: '' });
     }
     res.json({ success: true, data: list });
   } catch (err) {
@@ -562,8 +562,14 @@ app.put('/api/users/:username/password', requireSuperuser, async (req, res) => {
   try {
     const users = await getUsers(true);
     if (!users[target]) return res.status(404).json({ success: false, message: 'Akun tidak ditemukan.' });
-    users[target].password = hashPassword(password);
+    if (String(password).trim().length < 6) return res.status(400).json({ success: false, message: 'Password minimal 6 karakter.' });
+    users[target].password = hashPassword(String(password).trim());
+    users[target].passwordUpdatedAt = new Date().toISOString();
     await saveUsers(users);
+    // Keluarkan sesi lama akun tsb supaya wajib login pakai sandi baru
+    Object.keys(activeSessions).forEach(token => {
+      if (activeSessions[token].username === target) delete activeSessions[token];
+    });
     res.json({ success: true, message: `Password akun '${target}' berhasil diubah.` });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
