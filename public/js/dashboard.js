@@ -236,14 +236,15 @@ function dbPanelStatus(judul, tipe, map, urutan) {
     const pct = total.trx ? (v.trx / total.trx * 100) : 0;
     return `<div class="db-baris">
         <div class="db-baris-nama">${k === 'Batal' ? '<span class="db-batal">Batal</span>' : dbEsc(k)}</div>
-        <div class="db-baris-angka">${dbAngka(v.trx)} trx · ${dbAngka(v.pcs)} pcs</div>
+        <div class="db-trx"><b>${dbAngka(v.trx)}</b> trx</div>
+        <div class="db-pcs"><b>${dbAngka(v.pcs)}</b> pcs</div>
         <div class="db-bar"><div class="db-bar-isi ${tipe}" style="width:${Math.min(pct, 100).toFixed(1)}%"></div></div>
         <div class="db-baris-pct">${pct.toFixed(1)}%</div>
       </div>`;
   }).join('') : '<div class="db-kosong">Tidak ada data</div>';
   return `<div class="db-panel-judul"><span class="db-titik ${tipe}"></span>${judul}</div>
     ${baris}
-    <div class="db-panel-total"><span>Total</span><b>${dbAngka(total.trx)} trx · ${dbAngka(total.pcs)} pcs</b></div>`;
+    <div class="db-panel-total"><span>Total</span><b>${dbAngka(total.trx)} trx</b><b>${dbAngka(total.pcs)} pcs</b></div>`;
 }
 
 // Kartu kecil per gudang (hanya saat "Semua Gudang"), bisa diklik untuk pindah gudang
@@ -302,5 +303,11 @@ function dbRenderWaktu(terpilih, perGudang) {
           <td class="gab">${dbDurasi(gabungan(k))}</td>
         </tr>`).join('')}</tbody>
     </table></div>
+    <div class="db-waktu-hp">${tampil.map(k => `<div class="db-waktu-kartu ${k === DB_TAHAP_TOTAL ? 'total' : ''}">
+        <div class="db-waktu-judul">${dbLabelTahap(k)}</div>
+        <div class="db-waktu-gab"><span>Gabungan</span><b>${dbDurasi(gabungan(k))}</b></div>
+        <div class="db-waktu-grid">${DB_GUDANG.map(gd => { const g = terpilih.find(x => x.id === gd.id);
+          return `<div><span>${dbEsc(gd.nama.replace(' Warehouse', ''))}</span><b>${g ? dbDurasi(nilai(g, k)) : '—'}</b></div>`; }).join('')}</div>
+      </div>`).join('')}</div>
     <div class="db-catatan">Gabungan = rata-rata kelima gudang, ditimbang jumlah order yang sudah diserahkan ke kurir. "—" berarti tidak ada data pada tahap itu.</div>`;
 }
