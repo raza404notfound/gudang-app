@@ -465,3 +465,4 @@
   .pg-modal-alat .pg-btn-hapus-rak { flex: 0 0 auto; padding-left: 10px; padding-right: 10px; }
   .pg-modal-alat .pg-btn-hapus-rak .pg-btn-teks { display: none; }
 }
+.pg-hp-oleh { margin-top: 8px; font-size: 12px; color: #64748b; }
