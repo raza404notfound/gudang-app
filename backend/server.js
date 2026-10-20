@@ -892,40 +892,19 @@ app.post('/api/pindah/upload', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/pindah/hapus — hapus HITUNGAN satu kode rak / satu SKU (data CSV tidak disentuh)
-// khusus superuser + wajib password
-// body: { jenis: 'rak'|'sku', kodeRak, id, sandi, alasan }
-const gagalSandiHapus = {};   // { username: { n, sampai } } — cegah tebak password
-function cocokTeks(a, b) {
-  const x = Buffer.from(String(a)), y = Buffer.from(String(b));
-  return x.length === y.length && crypto.timingSafeEqual(x, y);
-}
-async function cekSandiSaya(username, sandi) {
-  if (!sandi) return false;
-  if (username === SUPERUSER && SUPERUSER_KEY) return cocokTeks(sandi, SUPERUSER_KEY);
-  const users = await getUsers(true);
-  return !!(users[username] && cocokTeks(users[username].password, hashPassword(sandi)));
-}
-app.post('/api/pindah/hapus', requireSuperuser, async (req, res) => {
+// POST /api/pindah/hapus — hapus HITUNGAN (data CSV tidak disentuh)
+// body: { jenis: 'rak'|'sku', kodeRak, id, alasan }
+//  - per SKU : semua akun (konfirmasi "Ya" di web)
+//  - satu rak: khusus superuser
+app.post('/api/pindah/hapus', requireAuth, async (req, res) => {
   const saya = req.sessionUser.username;
   const jenis = req.body.jenis === 'rak' ? 'rak' : 'sku';
   const kodeRak = String(req.body.kodeRak || '').trim().toUpperCase();
   const id = String(req.body.id || '').trim();
   if (!kodeRak || (jenis === 'sku' && !id)) return res.status(400).json({ success: false, message: 'Data hapus tidak lengkap.' });
-
-  const blok = gagalSandiHapus[saya];
-  if (blok && blok.sampai > Date.now()) {
-    const mnt = Math.ceil((blok.sampai - Date.now()) / 60000);
-    return res.status(429).json({ success: false, message: `Terlalu banyak password salah. Coba lagi ${mnt} menit lagi.` });
+  if (jenis === 'rak' && req.sessionUser.role !== 'superuser') {
+    return res.status(403).json({ success: false, message: 'Hapus hitungan satu rak hanya untuk superuser.' });
   }
-  if (!(await cekSandiSaya(saya, req.body.sandi))) {
-    const g = gagalSandiHapus[saya] = { n: ((blok && blok.sampai <= Date.now()) ? 0 : (blok ? blok.n : 0)) + 1, sampai: 0 };
-    if (g.n >= 5) { g.sampai = Date.now() + 10 * 60 * 1000; g.n = 0; }
-    console.warn(`⚠️ [HAPUS] Password salah oleh ${saya} (${jenis} ${kodeRak} ${id})`);
-    return res.status(403).json({ success: false, message: g.sampai ? 'Password salah 5x. Hapus dikunci 10 menit.' : 'Password salah. Data tidak dihapus.' });
-  }
-  delete gagalSandiHapus[saya];
-
   try {
     const data = await pindahPost({
       action: 'pgHapus', jenis, kodeRak, id, oleh: saya, waktu: waktuWIB(),
@@ -939,6 +918,16 @@ app.post('/api/pindah/hapus', requireSuperuser, async (req, res) => {
       : { success: false, message: data.message || 'Gagal menghapus hitungan.' });
   } catch (err) {
     console.error('Pindah hapus error:', err.message);
+    res.status(500).json({ success: false, message: pesanErrorPindah(err) });
+  }
+});
+
+// GET /api/pindah/hapus-riwayat — laporan siapa menghapus hitungan (khusus superuser)
+app.get('/api/pindah/hapus-riwayat', requireSuperuser, async (req, res) => {
+  try {
+    const data = await pindahGet({ action: 'pgHapusRiwayat' }, 30000);
+    res.json(data.success ? { success: true, rows: data.rows || [] } : { success: false, message: data.message || 'Gagal memuat riwayat hapus.' });
+  } catch (err) {
     res.status(500).json({ success: false, message: pesanErrorPindah(err) });
   }
 });
