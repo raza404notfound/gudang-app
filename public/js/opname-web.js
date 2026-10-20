@@ -98,7 +98,7 @@ function owPersonilHighlight(items) {
 function owPersonilPilih(nama) {
   owPersonilAktif = nama;
   const input = document.getElementById('ow-personil-input');
-  input.value = nama; input.style.borderColor = '#fbbf24';
+  input.value = nama; input.style.borderColor = '#475569';
   document.getElementById('ow-personil-dropdown').style.display = 'none';
   owFilter();
 }
@@ -293,13 +293,13 @@ function owOpenDetail(kunciEnc) {
   document.getElementById('ow-detail-sku').textContent  = row.sku;
 
   const norm = row.status;
-  const badgeColor = { 'Balance': '#dcfce7', 'Plus': '#dbeafe', 'Minus': '#fee2e2', 'Belum': '#fef9c3' };
-  const badgeText  = { 'Balance': '#15803d', 'Plus': '#1d4ed8', 'Minus': '#be123c', 'Belum': '#92400e' };
+  const badgeColor = { 'Balance': '#dcfce7', 'Plus': '#dbeafe', 'Minus': '#fee2e2', 'Belum': '#f1f5f9' };
+  const badgeText  = { 'Balance': '#15803d', 'Plus': '#1d4ed8', 'Minus': '#be123c', 'Belum': '#334155' };
   document.getElementById('ow-detail-meta').innerHTML = `
     <span style="background:${badgeColor[norm] || '#f1f5f9'};color:${badgeText[norm] || '#475569'};border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;">${norm}</span>
     <span style="font-size:11px;color:#94a3b8;">Rak: <b style="color:#f8fafc;">${owEsc(row.rak)}</b></span>
     <span style="font-size:11px;color:#94a3b8;">Tim: <b style="color:#f8fafc;">${owEsc(row.tim || '—')}</b></span>
-    <span style="font-size:11px;color:#94a3b8;">Web: <b style="color:#fbbf24;">${row.qtySistem}</b></span>
+    <span style="font-size:11px;color:#94a3b8;">Web: <b style="color:#475569;">${row.qtySistem}</b></span>
     <span style="font-size:11px;color:#94a3b8;">Real: <b style="color:#f8fafc;">${row.totalReal === '' ? 'Belum' : row.totalReal}</b></span>
     ${row.selisih !== '' && row.selisih !== 0 ? `<span style="font-size:11px;font-weight:700;color:${row.selisih < 0 ? '#fca5a5' : '#93c5fd'}">Selisih: ${row.selisih > 0 ? '+' : ''}${row.selisih}</span>` : ''}`;
 
@@ -335,7 +335,7 @@ function owOpenDetail(kunciEnc) {
           <td style="text-align:center;">
             <button onclick="owOpenActions('${owKunciEnc(row)}')"
               style="border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;padding:3px 10px;cursor:pointer;font-size:13px;color:#64748b;font-weight:700;"
-              onmouseover="this.style.background='#fef3c7'" onmouseout="this.style.background='#f8fafc'"
+              onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'"
               title="Barang rusak: lihat & laporkan">···</button>
           </td>
         </tr>
