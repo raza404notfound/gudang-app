@@ -123,6 +123,8 @@ let allTrackedData = [];
       const n = document.getElementById('user-name-display');
       const a = document.getElementById('user-avatar');
       if (n) n.innerText = nama;
+      const sub = document.getElementById('user-sub-display');
+      if (sub) sub.innerText = '@' + (sessionStorage.getItem('sessionUser') || '');
       if (a) {
         if (foto) { a.innerHTML = ''; const img = document.createElement('img'); img.src = foto; img.alt = ''; img.className = 'avatar-foto'; a.appendChild(img); }
         else a.innerText = inisial(nama);
@@ -241,7 +243,7 @@ let allTrackedData = [];
         tbody.innerHTML = data.data.map(u => `
           <tr>
             <td style="font-weight:600;color:#1e293b;">${u.nama ? `${u.nama}<div style="font-size:11px;font-weight:400;color:#94a3b8;">login: ${u.username}</div>` : u.username}</td>
-            <td><span style="background:${u.role==='superuser'?'#fef3c7':u.role==='admin'?'#f1f5f9':'#f0fdf4'};color:${u.role==='superuser'?'#92400e':u.role==='admin'?'#475569':'#15803d'};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">${u.role === 'superuser' ? 'Superuser' : u.role === 'admin' ? 'Admin' : 'User'}</span></td>
+            <td><span style="background:${u.role==='superuser'?'#f1f5f9':u.role==='admin'?'#f1f5f9':'#f0fdf4'};color:${u.role==='superuser'?'#334155':u.role==='admin'?'#475569':'#15803d'};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">${u.role === 'superuser' ? 'Superuser' : u.role === 'admin' ? 'Admin' : 'User'}</span></td>
             <td style="color:#64748b;font-size:12px;">${u.createdAt && !isNaN(new Date(u.createdAt)) ? new Date(u.createdAt).toLocaleDateString('id-ID') : '-'}</td>
             <td style="white-space:nowrap;">
               <button onclick="kaUbahNama('${u.username}', '${(u.nama || '').replace(/'/g, '')}')" class="ka-btn-sandi" title="Ubah nama tampilan"><span class="material-symbols-outlined">badge</span>Nama</button>
@@ -762,7 +764,7 @@ let allTrackedData = [];
           <td style="padding:10px 14px;font-family:monospace;font-size:12px;color:#1e293b;font-weight:600;">${resi}</td>
           <td style="padding:10px 14px;font-size:11px;color:#64748b;">${tgl}</td>
           <td style="padding:10px 14px;text-align:center;">
-            ${batch !== '-' ? `<span style="background:#fef3c7;color:#92400e;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;">${batch}</span>` : '<span style="color:#cbd5e1;font-size:11px;">—</span>'}
+            ${batch !== '-' ? `<span style="background:#f1f5f9;color:#334155;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;">${batch}</span>` : '<span style="color:#cbd5e1;font-size:11px;">—</span>'}
           </td>
           <td style="padding:10px 14px;text-align:center;" id="cancel-status-${resi}">
             ${scanned
@@ -808,7 +810,7 @@ let allTrackedData = [];
       // Double scan
       if (cancelScannedSet.has(resi)) {
         playScanVoice('double');
-        cancelShowResult(resultBox, '⚠️', 'Double Paket!', resi, '#fef3c7', '#fde68a', '#92400e');
+        cancelShowResult(resultBox, '⚠️', 'Double Paket!', resi, '#f1f5f9', '#cbd5e1', '#334155');
         return;
       }
 
@@ -1043,11 +1045,11 @@ let allTrackedData = [];
         const bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
         const gudangLabel = gudang || 'Semua Gudang';
 
-        banner.style.background = '#fef3c7';
-        banner.style.borderColor = '#fde68a';
+        banner.style.background = '#f1f5f9';
+        banner.style.borderColor = '#cbd5e1';
         document.getElementById('awb-banner-jumlah').innerHTML =
-          `<span style="font-size:26px;font-weight:800;color:#92400e;">${resiList.length}</span>` +
-          ` <span style="font-size:13px;font-weight:500;color:#b45309;">resi siap dilacak</span>`;
+          `<span style="font-size:26px;font-weight:800;color:#334155;">${resiList.length}</span>` +
+          ` <span style="font-size:13px;font-weight:500;color:#dc2626;">resi siap dilacak</span>`;
         document.getElementById('awb-banner-sub').textContent =
           `${d} ${bulan[parseInt(m)-1]} ${y} · ${gudangLabel} · dimuat ${new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}`;
         awbBannerReset();
@@ -1072,7 +1074,7 @@ let allTrackedData = [];
       if (!tanggal) {
         const msg = document.getElementById('awb-top-status');
         msg.innerText = '⚠️ Pilih tanggal terlebih dahulu.';
-        msg.style.color = '#d97706'; return;
+        msg.style.color = '#dc2626'; return;
       }
       await loadFromSheet();
     }
@@ -1139,11 +1141,11 @@ let allTrackedData = [];
         const [y, m, d] = tanggal.split('-');
         const bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
         const gudangLabel = gudang || 'Semua Gudang';
-        banner.style.background = '#fef3c7';
-        banner.style.borderColor = '#fde68a';
+        banner.style.background = '#f1f5f9';
+        banner.style.borderColor = '#cbd5e1';
         document.getElementById('awb-banner-jumlah').innerHTML =
-          `<span style="font-size:26px;font-weight:800;color:#92400e;">${data.rows.length}</span>` +
-          ` <span style="font-size:13px;font-weight:500;color:#b45309;">resi dari Tracking AWB</span>`;
+          `<span style="font-size:26px;font-weight:800;color:#334155;">${data.rows.length}</span>` +
+          ` <span style="font-size:13px;font-weight:500;color:#dc2626;">resi dari Tracking AWB</span>`;
         document.getElementById('awb-banner-sub').textContent =
           `${d} ${bulan[parseInt(m)-1]} ${y} · ${gudangLabel}`;
         awbBannerReset();
@@ -1168,7 +1170,7 @@ let allTrackedData = [];
       btn.disabled = true;
       btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Memuat...`;
       msg.innerText = 'Mengambil resi belum jalan...';
-      msg.style.color = '#d97706';
+      msg.style.color = '#dc2626';
       try {
         const params = { action: 'loadResi', tanggal, onlyPending: 'true' };
         if (gudang) params.gudang = gudang;
@@ -1182,7 +1184,7 @@ let allTrackedData = [];
         document.getElementById('input-awb-bulk').value = resiList.join('\n');
         updateResiCount();
         msg.innerText = `⏳ ${resiList.length} resi belum jalan siap di-track.`;
-        msg.style.color = '#d97706';
+        msg.style.color = '#dc2626';
       } catch (err) {
         msg.innerText = 'Gagal terhubung ke Apps Script.'; msg.style.color = '#ef4444';
       } finally {
@@ -1286,7 +1288,7 @@ let allTrackedData = [];
 
       if (skipped > 0) {
         msg.innerText = `⚡ ${skipped} resi sudah jalan — dilewati. Tracking ${resiList.length} resi.`;
-        msg.style.color = '#d97706';
+        msg.style.color = '#dc2626';
       }
 
       if (resiList.length === 0) {
@@ -1388,13 +1390,13 @@ let allTrackedData = [];
         } else {
           document.getElementById('progress-label').innerText = 'Tracking selesai — gagal simpan otomatis.';
           msg.innerText = '⚠️ Tracking selesai tapi gagal simpan — klik Simpan ke Sheet manual.';
-          msg.style.color = '#d97706';
+          msg.style.color = '#dc2626';
           document.getElementById('btn-sync-wrap').style.display = '';
         }
       } catch {
         document.getElementById('progress-label').innerText = 'Tracking selesai — gagal simpan otomatis.';
         msg.innerText = '⚠️ Tracking selesai tapi gagal simpan — klik Simpan ke Sheet manual.';
-        msg.style.color = '#d97706';
+        msg.style.color = '#dc2626';
         document.getElementById('btn-sync-wrap').style.display = '';
       }
     }
@@ -1684,7 +1686,7 @@ let allTrackedData = [];
       // Status breakdown dari overview.raw
       // Status config — mirip web PDC dengan warna header
       const stConfig = {
-        waiting          : { lbl:'Menunggu Diproses', bg:'#f59e0b', text:'#fff' },
+        waiting          : { lbl:'Menunggu Diproses', bg:'#64748b', text:'#fff' },
         picking          : { lbl:'Sedang Diambil',    bg:'#06b6d4', text:'#fff' },
         picked           : { lbl:'Siap Dikemas',      bg:'#3b82f6', text:'#fff' },
         packing          : { lbl:'Sedang Dikemas',    bg:'#8b5cf6', text:'#fff' },
@@ -1732,9 +1734,9 @@ let allTrackedData = [];
           const h_px = d.val > 0 ? Math.max(4, Math.round((d.val/mx)*115)) : 4;
           const isMax = d.val === mx && d.val > 0;
           h += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
-            <div style="font-size:10px;font-weight:700;color:${isMax?'#d97706':'#94a3b8'};">${d.val>0?d.val.toLocaleString('id-ID'):''}</div>
+            <div style="font-size:10px;font-weight:700;color:${isMax?'#dc2626':'#94a3b8'};">${d.val>0?d.val.toLocaleString('id-ID'):''}</div>
             <div style="height:${h_px}px;width:100%;border-radius:4px 4px 0 0;
-              background:${d.val===0?'#f1f5f9':isMax?'#f59e0b':'#fbbf24'};min-height:4px;"
+              background:${d.val===0?'#f1f5f9':isMax?'#64748b':'#475569'};min-height:4px;"
               title="${d.full}: ${d.val.toLocaleString('id-ID')} trx"></div>
             <div style="font-size:10px;font-weight:600;color:${d.val>0?'#475569':'#cbd5e1'};">${d.lbl}</div>
           </div>`;
@@ -1759,7 +1761,7 @@ let allTrackedData = [];
               </thead>
               <tbody>
                 ${bt.slice(0,10).map((t,i) => `
-                  <tr style="border-bottom:1px solid #f8fafc;transition:background .1s;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''">
+                  <tr style="border-bottom:1px solid #f8fafc;transition:background .1s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
                     <td style="padding:8px 12px;color:#94a3b8;font-size:11px;">${i+1}</td>
                     <td style="padding:8px 12px;font-weight:600;color:#1e293b;">${t.team_name || t.name || t.team || t.label || ('Tim ' + (t.team_id||t.id||''))}</td>
                     <td style="padding:8px 12px;text-align:right;font-weight:700;color:#0284c7;">${Number(t.transaction_count||0).toLocaleString('id-ID')}</td>
@@ -1937,18 +1939,18 @@ let allTrackedData = [];
                   const bar  = maxTrx > 0 ? Math.max(2, Math.round((trx / maxTrx) * 100)) : 2;
                   const isTop = i === 0;
                   return `<tr style="border-bottom:1px solid #f1f5f9;transition:background .1s;"
-                    onmouseover="this.style.background='#fffbeb'"
+                    onmouseover="this.style.background='#f8fafc'"
                     onmouseout="this.style.background=''">
                     <td style="padding:9px 12px;color:#94a3b8;font-size:11px;">${i + 1}</td>
                     <td style="padding:9px 12px;">
                       <span style="font-weight:700;color:#1e293b;">${t.team_name || ('Team ' + (t.team_id || ''))}</span>
-                      ${isTop ? '<span style="margin-left:6px;background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;">🏆 #1</span>' : ''}
+                      ${isTop ? '<span style="margin-left:6px;background:#f1f5f9;color:#334155;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;">🏆 #1</span>' : ''}
                     </td>
                     <td style="padding:9px 12px;text-align:right;font-weight:800;color:#0284c7;font-variant-numeric:tabular-nums;">${trx.toLocaleString('id-ID')}</td>
                     <td style="padding:9px 12px;text-align:right;color:#64748b;font-size:11px;white-space:nowrap;">${pct}%</td>
                     <td style="padding:9px 12px;">
                       <div style="background:#f1f5f9;border-radius:4px;height:8px;overflow:hidden;">
-                        <div style="height:100%;width:${bar}%;background:${isTop?'#f59e0b':'#fbbf24'};border-radius:4px;transition:width .4s;"></div>
+                        <div style="height:100%;width:${bar}%;background:${isTop?'#64748b':'#475569'};border-radius:4px;transition:width .4s;"></div>
                       </div>
                     </td>
                   </tr>`;
@@ -1977,7 +1979,7 @@ let allTrackedData = [];
               return `<div style="display:flex;align-items:center;gap:10px;">
                 <div style="width:110px;text-align:right;font-size:11px;font-weight:700;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;" title="${t.team_name || t.team_id}">${t.team_name || ('Team ' + t.team_id)}</div>
                 <div style="flex:1;background:#f1f5f9;border-radius:4px;height:18px;overflow:hidden;">
-                  <div style="height:100%;width:${bar}%;background:${i===0?'#f59e0b':i<3?'#fbbf24':'#93c5fd'};border-radius:4px;display:flex;align-items:center;padding-left:6px;transition:width .4s;">
+                  <div style="height:100%;width:${bar}%;background:${i===0?'#64748b':i<3?'#475569':'#93c5fd'};border-radius:4px;display:flex;align-items:center;padding-left:6px;transition:width .4s;">
                     <span style="font-size:10px;font-weight:700;color:#1e293b;white-space:nowrap;">${bar > 20 ? trx.toLocaleString('id-ID') : ''}</span>
                   </div>
                 </div>
@@ -2109,7 +2111,7 @@ let allTrackedData = [];
     function soPersonilPilih(nama) {
       soPersonilAktif = nama;
       const input = document.getElementById('so-personil-input');
-      input.value = nama; input.style.borderColor = '#fbbf24';
+      input.value = nama; input.style.borderColor = '#475569';
       document.getElementById('so-personil-dropdown').style.display = 'none';
       soFilter();
     }
@@ -2335,13 +2337,13 @@ let allTrackedData = [];
       // Cari data row
       const row = soSemuaData.find(r => r.sku === d.sku);
       const norm = row ? soNormStatus(row.status) : '—';
-      const badgeColor = {'Balance':'#dcfce7','Plus':'#dbeafe','Minus':'#fee2e2','Belum':'#fef9c3'};
-      const badgeText  = {'Balance':'#15803d','Plus':'#1d4ed8','Minus':'#be123c','Belum':'#92400e'};
+      const badgeColor = {'Balance':'#dcfce7','Plus':'#dbeafe','Minus':'#fee2e2','Belum':'#f1f5f9'};
+      const badgeText  = {'Balance':'#15803d','Plus':'#1d4ed8','Minus':'#be123c','Belum':'#334155'};
       document.getElementById('pi-detail-meta').innerHTML = row ? `
         <span style="background:${badgeColor[norm]||'#f1f5f9'};color:${badgeText[norm]||'#475569'};border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;">${norm}</span>
         <span style="font-size:11px;color:#94a3b8;">Rak: <b style="color:#f8fafc;">${row.rak}</b></span>
         <span style="font-size:11px;color:#94a3b8;">Tim: <b style="color:#f8fafc;">${row.tim||'—'}</b></span>
-        <span style="font-size:11px;color:#94a3b8;">Sistem: <b style="color:#fbbf24;">${row.qtySistem}</b></span>
+        <span style="font-size:11px;color:#94a3b8;">Sistem: <b style="color:#475569;">${row.qtySistem}</b></span>
         <span style="font-size:11px;color:#94a3b8;">Real: <b style="color:#f8fafc;">${row.totalReal===''?'Belum':row.totalReal}</b></span>
         ${row.selisih!==''&&row.selisih!==0?`<span style="font-size:11px;font-weight:700;color:${row.selisih<0?'#fca5a5':'#93c5fd'}">Selisih: ${row.selisih>0?'+':''}${row.selisih}</span>`:''}
       ` : '';
@@ -2396,11 +2398,11 @@ let allTrackedData = [];
               <td style="text-align:right;font-family:monospace;color:#475569;">${row.real3!==undefined&&row.real3!==''?row.real3:'—'}</td>
               <td style="text-align:right;font-weight:700;color:#1e293b;">${row.totalReal===''?'<span style="color:#94a3b8;font-style:italic;font-size:11px;">Belum</span>':row.totalReal}</td>
               <td style="text-align:right;">${row.selisih===''?'—':row.selisih<0?`<span style="color:#be123c;font-weight:700;">${row.selisih}</span>`:row.selisih>0?`<span style="color:#2563eb;font-weight:700;">+${row.selisih}</span>`:'<span style="color:#94a3b8;">0</span>'}</td>
-              <td><span style="background:${{'Balance':'#dcfce7','Plus':'#dbeafe','Minus':'#fee2e2','Belum':'#fef9c3'}[norm]||'#f1f5f9'};color:${{'Balance':'#15803d','Plus':'#1d4ed8','Minus':'#be123c','Belum':'#92400e'}[norm]||'#475569'};border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;">${norm}</span></td>
+              <td><span style="background:${{'Balance':'#dcfce7','Plus':'#dbeafe','Minus':'#fee2e2','Belum':'#f1f5f9'}[norm]||'#f1f5f9'};color:${{'Balance':'#15803d','Plus':'#1d4ed8','Minus':'#be123c','Belum':'#334155'}[norm]||'#475569'};border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;">${norm}</span></td>
               <td style="text-align:center;">
                 <button onclick="soOpenActions('${dEncFull}')"
                   style="border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;padding:3px 10px;cursor:pointer;font-size:13px;color:#64748b;font-weight:700;"
-                  onmouseover="this.style.background='#fef3c7'" onmouseout="this.style.background='#f8fafc'"
+                  onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'"
                   title="Barang rusak: lihat & laporkan">···</button>
               </td>
             </tr>
