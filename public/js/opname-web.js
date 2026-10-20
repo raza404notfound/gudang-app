@@ -110,6 +110,9 @@ function owPersonilTutupDd(e) {
 
 // ---------- Muat data ----------
 async function owInit() {
+  const role = (typeof currentUserRole !== 'undefined' && currentUserRole) || sessionStorage.getItem('sessionRole') || '';
+  const btnRh = document.getElementById('ow-btn-riwayat-hapus');
+  if (btnRh) btnRh.style.display = role === 'superuser' ? '' : 'none';
   if (owSudahInit) return;
   owSudahInit = true;
   await owMuat('');
@@ -535,4 +538,45 @@ async function owExportCSV() {
   a.download = `OpnameWEB_${(owSesiAktif || 'export').replace(/\s+/g, '_')}_${filterStatus}_${now.toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+
+// ============================================================
+// RIWAYAT HAPUS HITUNGAN (khusus superuser) — siapa menghapus hitungan siapa
+// ============================================================
+let owRhData = [];
+async function owBukaRiwayatHapus() {
+  owTutupRiwayatHapus();
+  const box = document.createElement('div');
+  box.id = 'ow-rh';
+  box.className = 'ow-rh-latar';
+  box.innerHTML = `<div class="ow-rh">
+      <div class="ow-rh-head"><b>Riwayat Hapus Hitungan</b>
+        <button type="button" onclick="owTutupRiwayatHapus()" aria-label="Tutup"><span class="material-symbols-outlined">close</span></button></div>
+      <input type="text" id="ow-rh-cari" placeholder="Cari penghapus, petugas, rak, SKU..." oninput="owRenderRiwayatHapus()">
+      <div id="ow-rh-isi" class="ow-rh-isi"><p class="ow-rh-kosong">Memuat...</p></div>
+    </div>`;
+  box.addEventListener('click', e => { if (e.target === box) owTutupRiwayatHapus(); });
+  document.body.appendChild(box);
+  try {
+    const d = await owApi('/api/pindah/hapus-riwayat');
+    owRhData = d.rows || [];
+    owRenderRiwayatHapus();
+  } catch (err) {
+    document.getElementById('ow-rh-isi').innerHTML = `<p class="ow-rh-kosong">${owEsc(err.message)}</p>`;
+  }
+}
+function owTutupRiwayatHapus() { const el = document.getElementById('ow-rh'); if (el) el.remove(); }
+function owRenderRiwayatHapus() {
+  const el = document.getElementById('ow-rh-isi');
+  if (!el) return;
+  const q = (document.getElementById('ow-rh-cari')?.value || '').trim().toUpperCase();
+  const rows = owRhData.filter(r => !q || [r.oleh, r.petugas, r.kodeRak, r.id, r.nama, r.lokasi].join(' ').toUpperCase().includes(q));
+  if (!rows.length) { el.innerHTML = '<p class="ow-rh-kosong">Belum ada hitungan yang dihapus.</p>'; return; }
+  el.innerHTML = rows.map(r => `<div class="ow-rh-item">
+      <div class="ow-rh-a"><span class="ow-rh-jenis ${r.jenis === 'Hitungan Rak' ? 'rak' : ''}">${owEsc(r.jenis)}</span><span>${owEsc(r.waktu)}</span></div>
+      <div class="ow-rh-b"><b>${owEsc(r.kodeRak)}</b> ${r.lokasi ? '· ' + owEsc(r.lokasi) : ''} · <code>${owEsc(r.id)}</code></div>
+      <div class="ow-rh-c">${owEsc(r.nama)}</div>
+      <div class="ow-rh-d">Dihapus oleh <b>${owEsc(r.oleh)}</b> · dihitung oleh <b>${owEsc(r.petugas || '-')}</b> · Web ${r.qtyWeb} · Real dihapus <b>${r.qtyReal === '' ? '-' : r.qtyReal}</b>${r.alasan ? ' · ' + owEsc(r.alasan) : ''}</div>
+    </div>`).join('');
 }
