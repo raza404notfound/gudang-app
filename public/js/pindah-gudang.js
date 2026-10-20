@@ -305,6 +305,7 @@ function pgSusunMaster(master) {
     it.qtyCsv += qty;
     const lok = String(r[1] || '').trim();
     if (lok && !it.lokasi.includes(lok)) it.lokasi.push(lok);
+    if (lok) { it.lokQty = it.lokQty || {}; it.lokQty[lok] = (it.lokQty[lok] || 0) + qty; }
     g.totalCsv += qty;
     g.tim[it.tim] = true;
     if (it.export) g.export[it.export] = true;
@@ -428,6 +429,7 @@ function pgRender() {
   document.getElementById('pg-progress-bar').style.width = persen + '%';
   document.getElementById('pg-progress-label').innerText = `${persen}% kode rak sudah dihitung` +
     (pgState.dariCache || pgState.sedangMuat ? ' · memperbarui dari sheet…' : '');
+  pgRenderRingkasAtas();
   pgUpdateBarAntrean();
   pgRenderChipNyasar();
 
@@ -609,6 +611,7 @@ function pgRenderChipFilter() {
     Object.keys(rakHit).sort(pgUrutAngka).map(r => chip('pgSetRak', r, r, rakHit[r], pgState.rakInduk === r)).join(''));
   baris('pg-chip-blok', 'Blok', blokList.length ? chip('pgSetBlok', '', 'Semua', null, !pgState.blok) +
     blokList.map(k => chip('pgSetBlok', k, k, null, pgState.blok === k)).join('') : '');
+  pgRenderRingkasAtas();
 }
 function pgSetTim(t)  { pgState.tim = t; pgState.rakInduk = ''; pgState.blok = ''; pgRenderChipFilter(); pgRender(); }
 function pgSetRak(r)  { pgState.rakInduk = r; pgState.blok = ''; pgRenderChipFilter(); pgRender(); }
@@ -775,8 +778,10 @@ async function pgBukaRak(kode) {
   pgState.modalVersi = s?.versi || '';
 
   // Isi awal: dari draf bila ada, kalau tidak dari daftar CSV (kosong)
-  pgState.baris = pgBarisDariMaster(g, d && d.qty ? d.qty : null);
-  if (d && Array.isArray(d.tambahan)) d.tambahan.forEach(t => pgState.baris.push(pgBarisTambahan(t.nama, t.qty, kode)));
+  pgState.baris = pgBarisDariMaster(g, d && d.qty ? d.qty : null, d && d.parts);
+  if (d && Array.isArray(d.tambahan)) d.tambahan.forEach(t => pgState.baris.push(pgBarisTambahan(t.nama, t.qty, kode, t.parts)));
+  const cariRak = document.getElementById('pg-cari-rak');
+  if (cariRak) cariRak.value = '';
 
   document.getElementById('pg-modal-kode').innerText = kode;
   pgState.tersimpan = {};
@@ -790,6 +795,7 @@ async function pgBukaRak(kode) {
 
   // Tanda "sedang dihitung" + perpanjang tiap menit
   pgTandai(kode, 'buka');
+  if (pgState.sorotId) { const sid = pgState.sorotId; pgState.sorotId = ''; setTimeout(() => pgSorotBaris(sid), 60); }
   clearInterval(pgState.timerDetak);
   pgState.timerDetak = setInterval(() => { if (pgState.aktif === kode) pgTandai(kode, 'detak'); }, PG_DETAK_MS);
 
@@ -801,16 +807,16 @@ async function pgBukaRak(kode) {
     try {
       const r = await pgBaca('pgRak', { kode });
       if (pgState.aktif !== kode) return;
-      const qty = {};
+      const qty = {}, parts = {};
       const tambahan = [];
       (r.items || []).forEach(it => {
-        if (String(it.id).startsWith('TAMBAHAN')) tambahan.push({ nama: it.nama, qty: it.qtyKirim });
-        else qty[it.id] = pgKosong(it.qtyKirim) ? null : it.qtyKirim;
+        if (String(it.id).startsWith('TAMBAHAN')) tambahan.push({ nama: it.nama, qty: it.qtyKirim, parts: it.rincian });
+        else { qty[it.id] = pgKosong(it.qtyKirim) ? null : it.qtyKirim; parts[it.id] = it.rincian; }
       });
       Object.keys(qty).forEach(k => { if (!pgKosong(qty[k])) pgState.tersimpan[k] = qty[k]; });
       if (pakaiDraf || pgState.modalDiubah) { pgRenderBaris(); pgRenderInfoModal(); return; }
-      pgState.baris = pgBarisDariMaster(g, qty);
-      tambahan.forEach(t => pgState.baris.push(pgBarisTambahan(t.nama, t.qty, kode)));
+      pgState.baris = pgBarisDariMaster(g, qty, parts);
+      tambahan.forEach(t => pgState.baris.push(pgBarisTambahan(t.nama, t.qty, kode, t.parts)));
       pgState.modalVersi = r.versi || pgState.modalVersi;
       pgRenderBaris();
     } catch (err) {
@@ -820,18 +826,31 @@ async function pgBukaRak(kode) {
   }
 }
 
-function pgBarisDariMaster(g, qty) {
-  return (g ? g.items : []).map(i => ({
-    id: i.id, nama: i.nama, varian: i.varian, img: i.img,
-    lokasi: i.lokasi.join(', '),
-    qtyCsv: i.qtyCsv,
-    qtyKirim: qty && !pgKosong(qty[i.id]) ? Number(qty[i.id]) : null,
-    tambahan: false, tim: i.tim, export: i.export, salahRak: !!i.salahRak
-  }));
+function pgBarisDariMaster(g, qty, parts) {
+  return (g ? g.items : []).map(i => {
+    const q = qty && !pgKosong(qty[i.id]) ? Number(qty[i.id]) : null;
+    return {
+      id: i.id, nama: i.nama, varian: i.varian, img: i.img,
+      lokasi: i.lokasi.join(', '), lokList: i.lokasi.slice(), lokQty: i.lokQty || {},
+      qtyCsv: i.qtyCsv, qtyKirim: q, parts: pgPartsAwal(parts && parts[i.id], q),
+      tambahan: false, tim: i.tim, export: i.export, salahRak: !!i.salahRak
+    };
+  });
 }
-function pgBarisTambahan(nama, qty, kode) {
-  return { id: 'TAMBAHAN-' + Math.random().toString(36).slice(2, 8), nama, varian: '', img: '', lokasi: kode,
-           qtyCsv: 0, qtyKirim: pgKosong(qty) ? null : Number(qty), tambahan: true, tim: '', export: '' };
+// Rincian 3 kotak: "1+0+" <-> [1, 0, null]. Data lama tanpa rincian -> [qty, null, null]
+function pgPartsAwal(p, q) {
+  let a = Array.isArray(p) ? p.slice(0, 3) : (typeof p === 'string' && p.includes('+') ? p.split('+') : null);
+  if (a) a = a.map(v => (v === '' || v === null || v === undefined) ? null : Math.max(0, Math.floor(Number(v)) || 0));
+  if (!a || a.every(v => v === null)) a = [pgKosong(q) ? null : q, null, null];
+  while (a.length < 3) a.push(null);
+  return a;
+}
+function pgRincian(parts) { return parts.some(v => v !== null) ? parts.map(v => v === null ? '' : v).join('+') : ''; }
+
+function pgBarisTambahan(nama, qty, kode, parts) {
+  const q = pgKosong(qty) ? null : Number(qty);
+  return { id: 'TAMBAHAN-' + Math.random().toString(36).slice(2, 8), nama, varian: '', img: '', lokasi: kode, lokList: [kode], lokQty: {},
+           qtyCsv: 0, qtyKirim: q, parts: pgPartsAwal(parts, q), tambahan: true, tim: '', export: '' };
 }
 
 function pgSetInfo(jenis, teks) {
@@ -907,65 +926,80 @@ function pgRenderBaris() {
       const img = b.img
         ? `<img class="pg-thumb" loading="lazy" src="${PG_ASSET_BASE}?id=${encodeURIComponent(b.img)}&thumbnail=true" onerror="this.outerHTML='<div class=&quot;pg-thumb pg-thumb-kosong&quot;><span class=&quot;material-symbols-outlined&quot;>image_not_supported</span></div>'">`
         : `<div class="pg-thumb pg-thumb-kosong"><span class="material-symbols-outlined">${b.tambahan ? 'add_box' : 'image_not_supported'}</span></div>`;
-      const timPilih = pgState.tim && b.tim === pgState.tim;
-      const salah = b.salahRak;
-      const hapusSku = pgSuperuser() && !b.tambahan && !pgKosong(pgState.tersimpan[b.id])
-        ? `<button type="button" class="pg-hapus-sku" onclick="pgMintaHapus('sku', ${i})"><span class="material-symbols-outlined">restart_alt</span>Hapus hitungan (tersimpan: ${pgAngka(pgState.tersimpan[b.id])})</button>` : '';
-      return `<div class="pg-baris${timPilih ? ' pg-baris-tim' : ''}${salah ? ' pg-baris-nyasar' : ''}" id="pg-baris-${i}">
-          ${img}
-          <div class="pg-baris-info">
-            <div class="pg-baris-nama">${pgEsc(b.nama)}${b.varian ? ` <span class="pg-muted">· ${pgEsc(b.varian)}</span>` : ''}</div>
-            ${b.tambahan ? '<div class="pg-baris-sub"><span class="pg-tag-tambahan">Tidak ada di web</span></div>'
-              : `<div class="pg-sku" title="SKU">${pgEsc(b.id)}</div>
-                 <div class="pg-baris-sub">${pgEsc(b.lokasi)}${b.tim ? ` · <span class="pg-tag-tim${timPilih ? ' pilih' : ''}">Tim ${pgEsc(b.tim)}</span>` : ''}</div>
-                 ${salah ? `<div class="pg-tag-nyasar"><span class="material-symbols-outlined">warning</span>Salah rak: SKU Tim ${pgEsc(b.tim)} ada di rak ${pgEsc(pgState.aktif || '')}</div>` : ''}
-                 ${hapusSku}`}
-          </div>
-          <div class="pg-baris-angka">
-            <div class="pg-catatan"><span>Web</span><b>${pgAngka(b.qtyCsv)}</b></div>
-            <div class="pg-input-wrap">
-              <input type="number" inputmode="numeric" min="0" class="pg-input" data-i="${i}"
-                value="${pgKosong(b.qtyKirim) ? '' : b.qtyKirim}"
-                placeholder="Real" oninput="pgUbahQty(${i}, this.value)" onkeydown="pgEnterBerikut(event, ${i})">
-              <div class="pg-selisih" id="pg-selisih-${i}"></div>
+      const multi = !b.tambahan && b.lokList.length > 1;
+      // SKU: kode tim di depan diberi warna (12-1202-... -> [12]-1202-...)
+      let sku = '';
+      if (!b.tambahan) {
+        const t = String(b.tim || ''), id = String(b.id);
+        sku = t && id.startsWith(t) ? `<b class="pg-sku-tim">${pgEsc(t)}</b>${pgEsc(id.slice(t.length))}` : pgEsc(id);
+      }
+      const lokHtml = multi
+        ? `<div class="pg-shaf">${b.lokList.map(l => `<span class="pg-sh"><b>${pgEsc(l)}</b><i>Web ${pgAngka(b.lokQty[l] || 0)}</i></span>`).join('')}</div>`
+        : `<div class="pg-lok">${pgEsc(b.lokasi)}</div>`;
+      const tersimpan = !b.tambahan && !pgKosong(pgState.tersimpan[b.id]);
+      const tombol = b.tambahan
+        ? `<button type="button" class="pg-del" title="Buang barang tambahan" onclick="pgHapusTambahan(${i})"><span class="material-symbols-outlined">close</span></button>`
+        : `<button type="button" class="pg-del" ${tersimpan ? `title="Hapus hitungan tersimpan" onclick="pgMintaHapus('sku', ${i})"` : 'disabled title="Belum ada hitungan tersimpan"'}><span class="material-symbols-outlined">delete</span></button>`;
+      const kotak = [0, 1, 2].map(k => `<input type="number" inputmode="numeric" min="0" class="pg-input pg-in3" data-i="${i}" data-k="${k}" value="${b.parts[k] === null ? '' : b.parts[k]}" oninput="pgUbahPart(${i}, ${k}, this.value)" onkeydown="pgEnterBerikut(event, ${i})">`).join('<span class="pg-plus">+</span>');
+      return `<div class="pg-baris pg-bx${b.salahRak ? ' pg-baris-nyasar' : ''}" id="pg-baris-${i}" data-cari="${pgEsc((b.id + ' ' + b.nama + ' ' + b.lokasi).toUpperCase())}">
+          <div class="pg-info">
+            ${img}
+            <div class="pg-info-teks">
+              ${b.tambahan ? '<div class="pg-sku2"><span class="pg-tag-tambahan">Tidak ada di web</span></div>'
+                : `<div class="pg-sku2"><span class="pg-sku-teks">${sku}</span>${multi ? `<span class="pg-multi">⚠ ${b.lokList.length} shaf</span>` : ''}</div>`}
+              ${lokHtml}
+              <div class="pg-nama2">${pgEsc(b.nama)}${b.varian ? ` · ${pgEsc(b.varian)}` : ''}</div>
+              ${b.salahRak ? `<div class="pg-tag-nyasar"><span class="material-symbols-outlined">warning</span>Salah rak: SKU Tim ${pgEsc(b.tim)} ada di rak ${pgEsc(pgState.aktif || '')}</div>` : ''}
             </div>
-            ${b.tambahan ? `<button class="pg-hapus" title="Hapus" onclick="pgHapusTambahan(${i})"><span class="material-symbols-outlined">close</span></button>` : ''}
+          </div>
+          <div class="pg-hitung">
+            <div class="pg-catatan"><span>Web</span><b>${pgAngka(b.qtyCsv)}</b></div>
+            <div class="pg-kotak3">${kotak}</div>
+            <div class="pg-tot"><span>Real</span><b id="pg-tot-${i}">–</b></div>
+            <div class="pg-selisih" id="pg-selisih-${i}"></div>
+            ${tombol}
           </div>
         </div>`;
     }).join('');
   }
   pgState.baris.forEach((_, i) => pgUpdateSelisih(i));
   pgUpdateRingkasModal();
+  const c = document.getElementById('pg-cari-rak');
+  if (c && c.value) pgCariDiRak(c.value);
 }
 
-// Simpan isi modal sebagai draf di HP (dipanggil setiap ada perubahan)
 function pgDrafModal() {
   const kode = pgState.aktif;
   if (!kode) return;
   pgState.modalDiubah = true;
   const qty = {};
   const tambahan = [];
+  const parts = {};
   pgState.baris.forEach(b => {
-    if (b.tambahan) tambahan.push({ nama: b.nama, qty: b.qtyKirim });
-    else qty[b.id] = b.qtyKirim;
+    if (b.tambahan) tambahan.push({ nama: b.nama, qty: b.qtyKirim, parts: b.parts });
+    else { qty[b.id] = b.qtyKirim; parts[b.id] = b.parts; }
   });
-  pgState.draf[kode] = { qty, tambahan, t: Date.now() };
+  pgState.draf[kode] = { qty, parts, tambahan, t: Date.now() };
   pgSimpanDraf();
 }
 
-function pgUbahQty(i, v) {
-  pgState.baris[i].qtyKirim = v === '' ? null : Math.max(0, Math.floor(Number(v)));
+function pgUbahPart(i, k, v) {
+  const b = pgState.baris[i];
+  if (!b) return;
+  b.parts[k] = v === '' ? null : Math.max(0, Math.floor(Number(v)) || 0);
+  b.qtyKirim = b.parts.every(x => x === null) ? null : b.parts.reduce((t, x) => t + (x || 0), 0);
   pgUpdateSelisih(i);
   pgUpdateRingkasModal();
   pgDrafModal();
 }
-
 
 function pgUpdateSelisih(i) {
   const b = pgState.baris[i];
   const el = document.getElementById('pg-selisih-' + i);
   const row = document.getElementById('pg-baris-' + i);
   if (!el || !row) return;
+  const tot = document.getElementById('pg-tot-' + i);
+  if (tot) tot.innerText = pgKosong(b.qtyKirim) ? '–' : pgAngka(b.qtyKirim);
   row.classList.remove('pg-ok', 'pg-kurang', 'pg-lebih');
   if (pgKosong(b.qtyKirim)) { el.innerHTML = ''; return; }
   const d = b.qtyKirim - b.qtyCsv;
@@ -989,22 +1023,21 @@ function pgUpdateRingkasModal() {
 function pgEnterBerikut(e, i) {
   if (e.key !== 'Enter') return;
   e.preventDefault();
-  const next = document.querySelector(`.pg-input[data-i="${i + 1}"]`);
+  let n = i + 1, next = null;
+  while (n < pgState.baris.length && !next) {   // lewati baris yang disembunyikan pencarian
+    const el = document.querySelector(`.pg-input[data-i="${n}"][data-k="0"]`);
+    if (el && el.offsetParent !== null) next = el;
+    n++;
+  }
   if (next) { next.focus(); next.select(); }
   else document.getElementById('pg-btn-simpan').focus();
-}
-
-function pgIsiSemuaSesuai() {
-  pgState.baris.forEach(b => { if (!b.tambahan) b.qtyKirim = b.qtyCsv; });
-  pgRenderBaris();
-  pgDrafModal();
 }
 
 async function pgKosongkan() {
   const ok = await pgKonfirmasi('Kosongkan', 'Semua angka Qty Real dan barang tambahan di rak ini akan dihapus dari draf.', 'Ya, Kosongkan');
   if (!ok) return;
   pgState.baris = pgState.baris.filter(b => !b.tambahan);
-  pgState.baris.forEach(b => { b.qtyKirim = null; });
+  pgState.baris.forEach(b => { b.qtyKirim = null; b.parts = [null, null, null]; });
   delete pgState.draf[pgState.aktif];
   pgSimpanDraf();
   pgState.modalDiubah = true;
@@ -1066,7 +1099,8 @@ async function pgSimpan() {
   const items = pgState.baris.map(b => ({
     id: b.tambahan ? 'TAMBAHAN' : b.id,
     lokasi: b.lokasi, nama: b.nama, varian: b.varian || '',
-    qtyCsv: Number(b.qtyCsv) || 0, qtyKirim: pgKosong(b.qtyKirim) ? '' : Number(b.qtyKirim), export: b.export || ''
+    qtyCsv: Number(b.qtyCsv) || 0, qtyKirim: pgKosong(b.qtyKirim) ? '' : Number(b.qtyKirim), export: b.export || '',
+    rincian: pgRincian(b.parts)
   }));
   const versiDasar = pgState.modalVersi;
   pgTutupModal();
@@ -1296,12 +1330,13 @@ function pgSetelahHapus(h) {
       // Kosongkan angka di layar sesuai yang dihapus
       if (h.jenis === 'rak') {
         pgState.baris = pgState.baris.filter(b => !b.tambahan);
-        pgState.baris.forEach(b => { b.qtyKirim = null; });
+        pgState.baris.forEach(b => { b.qtyKirim = null; b.parts = [null, null, null]; });
         delete pgState.draf[kode];
       } else {
-        pgState.baris.forEach(b => { if (b.id === h.id) b.qtyKirim = null; });
+        pgState.baris.forEach(b => { if (b.id === h.id) { b.qtyKirim = null; b.parts = [null, null, null]; } });
         const d = pgState.draf[kode];
         if (d && d.qty) delete d.qty[h.id];
+        if (d && d.parts) delete d.parts[h.id];
       }
       pgSimpanDraf();
       pgRenderBaris();
@@ -1318,93 +1353,219 @@ function pgSetelahHapus(h) {
   pgRender();
 }
 
-function pgMintaHapus(jenis, i) {
-  if (!pgSuperuser()) { pgToast('Hapus hitungan hanya untuk akun superuser.', 'error'); return; }
+// Hapus per SKU: semua akun. Hapus satu rak: superuser. Cukup konfirmasi "Ya".
+async function pgMintaHapus(jenis, i) {
   const kode = pgState.aktif;
   if (!kode) return;
+  if (jenis === 'rak' && !pgSuperuser()) { pgToast('Hapus hitungan satu rak hanya untuk superuser.', 'error'); return; }
+  if (pgEntriAntrean(kode)) { pgToast('Rak ini masih menunggu tersimpan. Tunggu selesai dulu.', 'warning'); return; }
   const s = pgState.status[kode];
-  let target, judul, rincian;
+  const oleh = s ? `\n\nDihitung oleh ${s.petugas === pgState.saya ? 'Anda (' + s.petugas + ')' : s.petugas} pukul ${pgJam(s.waktu)}.` : '';
+  let target, pesan;
   if (jenis === 'rak') {
-    const nIsi = Object.keys(pgState.tersimpan).length;
     target = { jenis, kodeRak: kode, id: '' };
-    judul = 'Hapus hitungan rak ' + kode;
-    rincian = `Semua Qty Real yang sudah disimpan di <b>${pgEsc(kode)}</b>${nIsi ? ` (<b>${nIsi} SKU</b>)` : ''} akan dikosongkan.
-      Kartu kembali <b>"Belum"</b> dan baris rak ini di Barang Diterima ikut hilang.
-      ${s ? `<div class="pg-hp-oleh">Dihitung oleh <b>${pgEsc(s.petugas)}</b> pukul ${pgEsc(pgJam(s.waktu))}</div>` : ''}`;
+    pesan = `Semua Qty Real yang tersimpan di ${kode} akan dikosongkan dan kartu kembali "Belum".${oleh}`;
   } else {
     const b = pgState.baris[i];
-    if (!b) return;
+    if (!b || pgKosong(pgState.tersimpan[b.id])) return;
     target = { jenis, kodeRak: kode, id: b.id };
-    judul = 'Hapus hitungan SKU';
-    rincian = `<div class="pg-hp-sku"><b>${pgEsc(b.nama)}</b><code>${pgEsc(b.id)}</code>
-      <span>${pgEsc(b.lokasi)} · Qty Web ${pgAngka(b.qtyCsv)} · Qty Real tersimpan <b>${pgAngka(pgState.tersimpan[b.id])}</b></span></div>
-      <p style="margin:8px 0 0;">Qty Real SKU ini dikosongkan jadi <b>"Belum Dihitung"</b>. SKU lain di ${pgEsc(kode)} tidak berubah.</p>`;
+    pesan = `${b.nama}\n${b.id}\nQty Real tersimpan: ${pgState.tersimpan[b.id]} → dikosongkan ("Belum Dihitung").${oleh}`;
   }
-
-  pgTutupHapus();
-  const box = document.createElement('div');
-  box.id = 'pg-hapus-latar';
-  box.className = 'pg-hapus-latar';
-  box.innerHTML = `
-    <div class="pg-hapus-box" role="dialog" aria-modal="true">
-      <div class="pg-hp-ikon"><span class="material-symbols-outlined">restart_alt</span></div>
-      <h3>${pgEsc(judul)}</h3>
-      <div class="pg-hp-rincian">${rincian}</div>
-      <p class="pg-hp-catatan">Daftar SKU dari CSV tetap ada. Yang dihapus dicatat di tab <b>Riwayat Hapus</b>.</p>
-      <label>Password akun Anda</label>
-      <div class="pg-hp-sandi">
-        <input id="pg-hp-sandi" type="password" autocomplete="current-password" placeholder="password superuser">
-        <button type="button" onclick="pgHpMata(this)" title="Lihat sandi"><span class="material-symbols-outlined">visibility</span></button>
-      </div>
-      <label>Alasan <span class="pg-muted">(opsional)</span></label>
-      <input id="pg-hp-alasan" maxlength="200" placeholder="contoh: salah input, hitung ulang">
-      <p class="pg-hp-msg" id="pg-hp-msg"></p>
-      <div class="pg-hp-aksi">
-        <button type="button" class="pg-btn" onclick="pgTutupHapus()">Batal</button>
-        <button type="button" class="pg-btn pg-btn-bahaya" id="pg-hp-ok" disabled>Hapus Hitungan</button>
-      </div>
-    </div>`;
-  box.addEventListener('click', e => { if (e.target === box) pgTutupHapus(); });
-  document.body.appendChild(box);
-
-  const inSandi = document.getElementById('pg-hp-sandi');
-  const ok = document.getElementById('pg-hp-ok');
-  inSandi.addEventListener('input', () => { ok.disabled = !inSandi.value; });
-  box.addEventListener('keydown', e => { if (e.key === 'Escape') pgTutupHapus(); if (e.key === 'Enter' && !ok.disabled) ok.click(); });
-  ok.addEventListener('click', () => pgJalankanHapus(target));
-  setTimeout(() => inSandi.focus(), 50);
-}
-
-function pgHpMata(btn) {
-  const el = document.getElementById('pg-hp-sandi');
-  const lihat = el.type === 'password';
-  el.type = lihat ? 'text' : 'password';
-  btn.querySelector('span').textContent = lihat ? 'visibility_off' : 'visibility';
-}
-
-function pgTutupHapus() {
-  const el = document.getElementById('pg-hapus-latar');
-  if (el) el.remove();
+  const ok = await pgKonfirmasi(jenis === 'rak' ? 'Yakin hapus hitungan rak ' + kode + '?' : 'Yakin hapus hitungan ini?', pesan, 'Ya, Hapus');
+  if (ok) pgJalankanHapus(target);
 }
 
 async function pgJalankanHapus(target) {
-  const ok = document.getElementById('pg-hp-ok'), msg = document.getElementById('pg-hp-msg');
-  if (pgEntriAntrean(target.kodeRak)) { msg.textContent = 'Rak ini masih menunggu tersimpan. Tunggu selesai dulu.'; return; }
-  ok.disabled = true; ok.textContent = 'Menghapus...';
-  msg.textContent = '';
   try {
-    const r = await pgApi('/api/pindah/hapus', {
-      method: 'POST',
-      body: JSON.stringify({ ...target, sandi: document.getElementById('pg-hp-sandi').value,
-        alasan: document.getElementById('pg-hp-alasan').value.trim() })
-    });
-    pgTutupHapus();
+    const r = await pgApi('/api/pindah/hapus', { method: 'POST', body: JSON.stringify(target) });
     pgToast(r.message || 'Hitungan dihapus.', 'success');
     pgSetelahHapus({ ...target, oleh: pgState.saya, status: r.status, kembaliBelum: r.kembaliBelum });
   } catch (err) {
-    msg.textContent = err.message;
-    ok.textContent = 'Hapus Hitungan';
-    const sandi = document.getElementById('pg-hp-sandi');
-    if (sandi) { sandi.value = ''; sandi.focus(); }
+    pgToast(err.message, 'error');
+  }
+}
+
+// ============================================================
+// AKHIR FILE
+
+// ============================================================
+// CARI DI DALAM RAK
+// ============================================================
+function pgCariDiRak(v) {
+  const q = String(v || '').trim().toUpperCase();
+  let n = 0;
+  document.querySelectorAll('#pg-baris .pg-bx').forEach(el => {
+    const cocok = !q || (el.dataset.cari || '').includes(q);
+    el.classList.toggle('pg-sembunyi', !cocok);
+    if (cocok) n++;
+  });
+  const info = document.getElementById('pg-cari-rak-info');
+  if (info) info.textContent = q ? (n ? n + ' cocok' : 'Tidak ada') : '';
+}
+
+function pgSorotBaris(id) {
+  const i = pgState.baris.findIndex(b => b.id === id);
+  if (i < 0) return false;
+  const c = document.getElementById('pg-cari-rak');
+  if (c && c.value) { c.value = ''; pgCariDiRak(''); }
+  const row = document.getElementById('pg-baris-' + i);
+  if (!row) return false;
+  row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  row.classList.remove('pg-sorot'); void row.offsetWidth; row.classList.add('pg-sorot');
+  const inp = row.querySelector('.pg-input[data-k="0"]');
+  if (inp) setTimeout(() => inp.focus({ preventScroll: true }), 350);
+  return true;
+}
+
+// ============================================================
+// SCAN QR LABEL (kamera HP)
+// ============================================================
+const PG_QR_LIB = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+let pgScanner = null, pgScanMode = 'cari', pgScanSelesai = false;
+
+function pgMuatLibQr() {
+  if (window.Html5Qrcode) return Promise.resolve();
+  return new Promise((ok, gagal) => {
+    const sc = document.createElement('script');
+    sc.src = PG_QR_LIB; sc.onload = ok; sc.onerror = () => gagal(new Error('Gagal memuat pemindai QR. Cek internet.'));
+    document.head.appendChild(sc);
+  });
+}
+
+async function pgBukaScan(mode) {
+  pgScanMode = mode; pgScanSelesai = false;
+  pgTutupScan();
+  const box = document.createElement('div');
+  box.id = 'pg-scan';
+  box.className = 'pg-scan';
+  box.innerHTML = `
+    <div class="pg-scan-atas"><span>Arahkan ke QR label barang</span>
+      <button type="button" onclick="pgTutupScan()" aria-label="Tutup"><span class="material-symbols-outlined">close</span></button></div>
+    <div id="pg-scan-video" class="pg-scan-video"></div>
+    <p class="pg-scan-msg" id="pg-scan-msg">Menyalakan kamera…</p>
+    <div class="pg-scan-manual">
+      <input id="pg-scan-ketik" placeholder="atau ketik SKU / kode shaf" autocapitalize="characters">
+      <button type="button" onclick="pgHasilScan(document.getElementById('pg-scan-ketik').value)">Cari</button>
+    </div>`;
+  document.body.appendChild(box);
+  document.getElementById('pg-scan-ketik').addEventListener('keydown', e => { if (e.key === 'Enter') pgHasilScan(e.target.value); });
+  try {
+    await pgMuatLibQr();
+    if (!document.getElementById('pg-scan')) return;
+    pgScanner = new Html5Qrcode('pg-scan-video', { verbose: false });
+    const lebar = Math.min(260, Math.floor(window.innerWidth * 0.7));
+    await pgScanner.start({ facingMode: 'environment' }, { fps: 12, qrbox: { width: lebar, height: lebar } },
+      teks => { if (!pgScanSelesai) { pgScanSelesai = true; pgBip(); pgHasilScan(teks); } }, () => {});
+    const m = document.getElementById('pg-scan-msg'); if (m) m.textContent = 'Kamera aktif. QR terbaca otomatis.';
+  } catch (err) {
+    const m = document.getElementById('pg-scan-msg');
+    if (m) m.textContent = /Permission|NotAllowed/i.test(String(err)) ? 'Izin kamera ditolak. Izinkan kamera di pengaturan browser, atau ketik SKU di bawah.'
+      : (err.message || 'Kamera tidak bisa dibuka.') + ' Ketik SKU di bawah.';
+  }
+}
+
+function pgTutupScan() {
+  const el = document.getElementById('pg-scan');
+  const s = pgScanner; pgScanner = null;
+  if (s) { try { s.stop().catch(() => {}).finally(() => { try { s.clear(); } catch (e) {} }); } catch (e) {} }
+  if (el) el.remove();
+}
+
+function pgBip() {
+  try {
+    const a = new (window.AudioContext || window.webkitAudioContext)();
+    const o = a.createOscillator(), g = a.createGain();
+    o.frequency.value = 1100; g.gain.value = 0.15; o.connect(g); g.connect(a.destination);
+    o.start(); o.stop(a.currentTime + 0.12);
+  } catch (e) {}
+  if (navigator.vibrate) navigator.vibrate(60);
+}
+
+// Isi QR bisa berupa SKU, link, atau teks lain: cari SKU yang dikenal di dalamnya
+function pgCocokkanKode(teks) {
+  const t = String(teks || '').trim().toUpperCase();
+  if (!t) return null;
+  const petaId = {};
+  Object.values(pgState.rak).forEach(g => g.items.forEach(it => { (petaId[it.id.toUpperCase()] = petaId[it.id.toUpperCase()] || []).push({ kode: g.kode, id: it.id }); }));
+  if (petaId[t]) return { jenis: 'sku', hasil: petaId[t] };
+  const potong = t.split(/[^A-Z0-9-]+/).filter(Boolean).sort((a, b) => b.length - a.length);
+  for (const p of potong) if (petaId[p]) return { jenis: 'sku', hasil: petaId[p] };
+  for (const p of potong) {   // mungkin kode shaf (0004C1) atau kode rak (0004C)
+    const k = pgKodeRak(p);
+    if (pgState.rak[p]) return { jenis: 'rak', kode: p };
+    if (pgState.rak[k]) return { jenis: 'rak', kode: k };
+  }
+  return null;
+}
+
+function pgHasilScan(teks) {
+  const c = pgCocokkanKode(teks);
+  const msg = document.getElementById('pg-scan-msg');
+  if (!c) {
+    pgScanSelesai = false;
+    if (msg) msg.textContent = `"${String(teks).slice(0, 40)}" tidak ada di data CSV. Coba lagi.`;
+    return;
+  }
+  pgTutupScan();
+  if (c.jenis === 'rak') {
+    if (pgState.aktif !== c.kode) { if (pgState.aktif) pgTutupModal(); pgBukaRak(c.kode); }
+    return;
+  }
+  const daftar = c.hasil;
+  if (pgScanMode === 'rak' && pgState.aktif) {
+    const di = daftar.find(h => h.kode === pgState.aktif);
+    if (di) { pgSorotBaris(di.id); return; }
+    pgSetInfo('merah', `<b>Barang nyasar:</b> ${pgEsc(daftar[0].id)} terdaftar di <b>${pgEsc(daftar.map(h => h.kode).join(', '))}</b>, bukan di ${pgEsc(pgState.aktif)}.`);
+    pgToast(`SKU ini terdaftar di ${daftar.map(h => h.kode).join(', ')}, bukan ${pgState.aktif}.`, 'error');
+    return;
+  }
+  const tuju = daftar[0];
+  if (daftar.length > 1) pgToast(`SKU ini ada di ${daftar.length} rak: ${daftar.map(h => h.kode).join(', ')}. Membuka ${tuju.kode}.`, 'info');
+  if (pgState.aktif === tuju.kode) { pgSorotBaris(tuju.id); return; }
+  if (pgState.aktif) pgTutupModal();
+  pgState.sorotId = tuju.id;
+  pgBukaRak(tuju.kode);
+}
+
+// ============================================================
+// BAGIAN ATAS RINGKAS (HP): terbuka saat diketuk, ringkas lagi saat layar digulir
+// ============================================================
+function pgToggleLipat(bagian) {
+  const st = document.querySelector('#page-stok-opname .pg-sticky');
+  if (!st) return;
+  const kelas = 'buka-' + bagian;
+  st.classList.toggle(kelas);
+  pgState.lipatY = pgPosisiGulir();
+}
+function pgPosisiGulir() {
+  const el = document.scrollingElement || document.documentElement;
+  const main = document.querySelector('.main-content');
+  return (el ? el.scrollTop : 0) + (main ? main.scrollTop : 0);
+}
+document.addEventListener('scroll', e => {
+  const st = document.querySelector('#page-stok-opname .pg-sticky');
+  if (!st || !(st.classList.contains('buka-filter') || st.classList.contains('buka-detail'))) return;
+  const t = e.target;
+  if (t && t.nodeType === 1 && (t.closest('.pg-chip-geser') || t.closest('#pg-modal-overlay') || t.closest('.pg-sticky'))) return;
+  if (Math.abs(pgPosisiGulir() - (pgState.lipatY || 0)) > 40) st.classList.remove('buka-filter', 'buka-detail');
+}, true);
+
+function pgRenderRingkasAtas() {
+  const f = document.getElementById('pg-filter-ringkas-teks');
+  if (f) {
+    const bag = [];
+    if (pgState.tim) bag.push('Tim ' + pgState.tim);
+    if (pgState.rakInduk) bag.push(pgState.rakInduk);
+    if (pgState.blok) bag.push(pgState.blok);
+    f.innerHTML = bag.length ? 'Filter: <b>' + bag.map(pgEsc).join(' › ') + '</b>' : 'Filter: <b>Semua Tim & Rak</b>';
+  }
+  const m = document.getElementById('pg-mini-teks');
+  if (m) {
+    const total = document.getElementById('pg-n-total')?.innerText || '0';
+    const sel = document.getElementById('pg-n-selesai')?.innerText || '0';
+    const sls = document.getElementById('pg-n-selisih')?.innerText || '0';
+    const lebar = document.getElementById('pg-progress-bar')?.style.width || '0%';
+    m.innerHTML = `<b>${sel}/${total}</b> rak dihitung${sls !== '0' ? ` · <span class="pg-teks-merah"><b>${sls}</b> selisih</span>` : ''}
+      <div class="pg-mini-prog"><i style="width:${lebar}"></i></div>`;
   }
 }
