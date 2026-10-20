@@ -495,9 +495,11 @@ app.get('/api/users', requireSuperuser, async (req, res) => {
     const list = Object.entries(users).map(([username, data]) => ({
       username, role: data.role || 'user', createdAt: data.createdAt || ''
     }));
+    const peta = await petaNama();
+    list.forEach(u => { u.nama = peta[u.username] || ''; });
     // Tambahkan superuser ke list kalau belum ada di sheet
     if (!list.find(u => u.username === SUPERUSER)) {
-      list.unshift({ username: SUPERUSER, role: 'superuser', createdAt: '' });
+      list.unshift({ username: SUPERUSER, role: 'superuser', createdAt: '', nama: peta[SUPERUSER] || '' });
     }
     res.json({ success: true, data: list });
   } catch (err) {
@@ -880,7 +882,8 @@ app.post('/api/pindah/upload', requireAuth, async (req, res) => {
     const data = await pindahPost({
       action: 'pgUpload', rows, mode: mode === 'semua' ? 'semua' : 'tim',
       label: String(label).slice(0, 120), waktuExport: String(waktuExport || '').slice(0, 20),
-      namaFile: String(namaFile || '').slice(0, 200), oleh: req.sessionUser.username, waktu: waktuWIB()
+      namaFile: String(namaFile || '').slice(0, 200), oleh: req.sessionUser.username,
+      namaOleh: await namaTampil(req.sessionUser.username), waktu: waktuWIB()
     });
     if (data.success) siarkanPindah('muatUlang', { oleh: req.sessionUser.username });
     res.json(data.success
@@ -907,7 +910,7 @@ app.post('/api/pindah/hapus', requireAuth, async (req, res) => {
   }
   try {
     const data = await pindahPost({
-      action: 'pgHapus', jenis, kodeRak, id, oleh: saya, waktu: waktuWIB(),
+      action: 'pgHapus', jenis, kodeRak, id, oleh: saya, namaOleh: await namaTampil(saya), waktu: waktuWIB(),
       alasan: String(req.body.alasan || '').slice(0, 300)
     }, 60000);
     if (data.success) {
@@ -943,7 +946,7 @@ app.post('/api/pindah/simpan', requireAuth, async (req, res) => {
   const waktu = waktuWIB();
   try {
     const perangkat = String(req.body.perangkat || '').slice(0, 60);
-    const data = await pindahPost({ action: 'pgSimpan', raks, oleh, waktu, perangkat });
+    const data = await pindahPost({ action: 'pgSimpan', raks, oleh, namaOleh: await namaTampil(oleh), waktu, perangkat });
     if (data.success) {
       const ok = (data.hasil || []).filter(h => h.ok);
       if (ok.length) {
@@ -993,7 +996,7 @@ app.post('/api/pindah/rusak', requireAuth, async (req, res) => {
   const oleh = req.sessionUser.username;
   const waktu = waktuWIB();
   try {
-    const data = await pindahPost({ action: 'pgRusak', id, nama: nama || '', kodeRak: kodeRak || '', bulan: bulan || '',
+    const data = await pindahPost({ action: 'pgRusak', namaOleh: await namaTampil(req.sessionUser.username), id, nama: nama || '', kodeRak: kodeRak || '', bulan: bulan || '',
       jumlah: Number(jumlah), keterangan: keterangan || '', oleh, waktu });
     res.json(data.success ? { success: true, message: data.message, oleh, dicatatPada: waktu }
                           : { success: false, message: data.message || 'Gagal simpan.' });
@@ -1090,8 +1093,77 @@ app.get('/api/pindah/config', requireAuth, async (req, res) => {
     scriptUrl: PINDAH_SCRIPT_URL,
     saya: req.sessionUser.username,
     role: req.sessionUser.role,
-    sheetUrl: superuser ? pindahSheetUrl : ''
+    sheetUrl: superuser ? pindahSheetUrl : '',
+    namaPeta: await petaNama()
   });
+});
+
+// =============================================
+// PROFIL AKUN (nama tampilan, No HP, foto) — disimpan di tab "Profil Akun"
+// Username login tetap jadi kunci; nama tampilan hanya label.
+// =============================================
+let profilCache = null, profilWaktu = 0;
+async function ambilProfil(paksa = false) {
+  if (!paksa && profilCache && Date.now() - profilWaktu < 2 * 60 * 1000) return profilCache;
+  try {
+    const d = await pindahGet({ action: 'pgProfil' }, 20000);
+    if (d.success) { profilCache = d.profil || {}; profilWaktu = Date.now(); }
+  } catch (e) { console.error('Profil gagal dimuat:', e.message); }
+  return profilCache || {};
+}
+async function namaTampil(username) {
+  const p = (await ambilProfil())[String(username || '').toLowerCase()];
+  return (p && p.nama) || username;
+}
+async function petaNama() {
+  const p = await ambilProfil(), peta = {};
+  Object.keys(p).forEach(u => { if (p[u].nama) peta[u] = p[u].nama; });
+  return peta;
+}
+async function simpanProfil(username, data, res) {
+  const nama = String(data.nama || '').trim().replace(/\s+/g, ' ');
+  if (nama.length < 3 || nama.length > 40) return res.status(400).json({ success: false, message: 'Nama tampilan 3–40 huruf.' });
+  // Tidak boleh sama dengan username login akun lain (supaya tidak tertukar)
+  const users = await getUsers();
+  const semua = Object.keys(users).concat([SUPERUSER]);
+  if (semua.some(u => u !== username && u.toLowerCase() === nama.toLowerCase())) {
+    return res.status(409).json({ success: false, message: 'Nama tidak boleh sama dengan username akun lain.' });
+  }
+  try {
+    const d = await pindahPost({ action: 'pgSimpanProfil', username, nama, hp: data.hp,
+      foto: data.foto, waktu: waktuWIB() }, 90000);
+    if (d.success) { await ambilProfil(true); siarkanPindah('profil', { username }); }
+    res.json(d.success ? { success: true, message: d.message, nama: d.nama } : { success: false, message: d.message || 'Gagal menyimpan profil.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: pesanErrorPindah(err) });
+  }
+}
+
+// GET /api/profil/peta — { username: nama tampilan } untuk semua akun
+app.get('/api/profil/peta', requireAuth, async (req, res) => {
+  res.json({ success: true, peta: await petaNama() });
+});
+// GET /api/profil/saya — profil akun yang sedang login (termasuk foto)
+app.get('/api/profil/saya', requireAuth, async (req, res) => {
+  const u = req.sessionUser.username;
+  const p = (await ambilProfil())[u] || {};
+  let foto = '';
+  if (p.adaFoto) { try { foto = (await pindahGet({ action: 'pgFoto', username: u }, 20000)).foto || ''; } catch (e) {} }
+  res.json({ success: true, username: u, role: req.sessionUser.role, nama: p.nama || '', hp: p.hp || '', foto });
+});
+// POST /api/profil — ubah profil sendiri { nama, hp, foto }
+app.post('/api/profil', requireAuth, async (req, res) => {
+  const foto = String(req.body.foto || '');
+  if (foto && foto !== 'HAPUS' && (!foto.startsWith('data:image/') || foto.length > 45000)) {
+    return res.status(400).json({ success: false, message: 'Foto tidak valid atau terlalu besar.' });
+  }
+  await simpanProfil(req.sessionUser.username, { nama: req.body.nama, hp: String(req.body.hp || '').replace(/[^\d+\- ]/g, ''), foto }, res);
+});
+// POST /api/profil/:username — superuser mengubah nama tampilan akun lain
+app.post('/api/profil/:username', requireSuperuser, async (req, res) => {
+  const target = String(req.params.username || '').toLowerCase();
+  const p = (await ambilProfil(true))[target] || {};
+  await simpanProfil(target, { nama: req.body.nama, hp: p.hp || '', foto: '' }, res);
 });
 
 // =============================================
