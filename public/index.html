@@ -486,6 +486,9 @@
               <button class="pi-view-btn" id="ow-btn-list" onclick="owSetView('list')" title="List view">
                 <span class="material-symbols-outlined">view_list</span>
               </button>
+              <button class="pi-view-btn" id="ow-btn-riwayat-hapus" style="display:none;" onclick="owBukaRiwayatHapus()" title="Riwayat Hapus Hitungan (superuser)">
+                <span class="material-symbols-outlined">history</span>
+              </button>
             </div>
           </div>
 
@@ -847,6 +850,7 @@
               <div class="pg-cari-wrap">
                 <span class="material-symbols-outlined">search</span>
                 <input type="text" id="pg-cari" placeholder="Cari kode rak, nama produk, atau SKU..." oninput="pgCari(this.value)">
+                <button type="button" class="pg-btn-scan" onclick="pgBukaScan('cari')" title="Scan QR label"><span class="material-symbols-outlined">qr_code_scanner</span><span class="pg-scan-teks">Scan</span></button>
               </div>
               <div class="pg-aksi">
                 <span class="pg-live" id="pg-live" title="Menyambung realtime..."><i></i>Live</span>
@@ -876,19 +880,27 @@
                 <div class="pg-chip pg-chip-nyasar" id="pg-chip-nyasar" style="display:none;" onclick="pgSetFilter('nyasar', this)"></div>
               </div>
             </div>
-            <div class="pg-filter-baris" id="pg-chip-tim"></div>
-            <div class="pg-filter-baris" id="pg-chip-rak"></div>
-            <div class="pg-filter-baris" id="pg-chip-blok" style="display:none;"></div>
+            <div class="pg-filter-baris pg-ringkas-hp" id="pg-filter-ringkas">
+              <span id="pg-filter-ringkas-teks">Filter: <b>Semua Tim & Rak</b></span>
+              <button type="button" class="pg-btn-lipat" onclick="pgToggleLipat('filter')"><span class="pg-t-buka">Ubah ▾</span><span class="pg-t-tutup">Tutup ▴</span></button>
+            </div>
+            <div class="pg-filter-baris pg-lipat-filter" id="pg-chip-tim"></div>
+            <div class="pg-filter-baris pg-lipat-filter" id="pg-chip-rak"></div>
+            <div class="pg-filter-baris pg-lipat-filter" id="pg-chip-blok" style="display:none;"></div>
           </div>
-          <div class="pg-label-export" id="pg-label-export" style="display:none;"></div>
-          <div class="pg-stats">
+          <div class="pg-mini pg-ringkas-hp" id="pg-mini">
+            <div id="pg-mini-teks"></div>
+            <button type="button" class="pg-btn-lipat" onclick="pgToggleLipat('detail')"><span class="pg-t-buka">Detail ▾</span><span class="pg-t-tutup">Tutup ▴</span></button>
+          </div>
+          <div class="pg-label-export pg-lipat-detail" id="pg-label-export" style="display:none;"></div>
+          <div class="pg-stats pg-lipat-detail">
             <div class="pg-stat"><div class="num" id="pg-n-total">0</div><div class="lbl">Kode rak</div></div>
             <div class="pg-stat amber"><div class="num" id="pg-n-selesai">0</div><div class="lbl">Sudah dihitung</div></div>
             <div class="pg-stat hijau"><div class="num" id="pg-n-sesuai">0</div><div class="lbl">Sesuai</div></div>
             <div class="pg-stat merah"><div class="num" id="pg-n-selisih">0</div><div class="lbl">Ada selisih</div></div>
             <div class="pg-stat amber"><div class="num" id="pg-n-sebagian">0</div><div class="lbl">Sebagian</div></div>
           </div>
-          <div class="pg-progress">
+          <div class="pg-progress pg-lipat-detail">
             <div class="pg-progress-track"><div class="pg-progress-bar" id="pg-progress-bar"></div></div>
             <div class="pg-progress-label" id="pg-progress-label">0% kode rak sudah dihitung</div>
           </div>
@@ -902,7 +914,7 @@
             </div>
             <ol>
               <li><b>Pilih rak:</b> Tim → Rak → Blok, lalu buka kartunya.</li>
-              <li><b>Hitung:</b> <i>Isi semua sesuai Qty Web</i> → ubah Qty Real yang berbeda → <b>Simpan</b>. Cocokkan dengan <b>SKU</b> di bawah nama barang.</li>
+              <li><b>Hitung:</b> cocokkan <b>SKU</b> & <b>shaf</b> dengan label barang (atau tekan <b>Scan</b>), isi jumlah di kotak pertama. Hitungan bertahap? Pakai kotak 2 & 3, Real dijumlah otomatis. Lalu <b>Simpan</b>.</li>
               <li><b>Qty Real kosong</b> = belum dihitung, tetap bisa disimpan. Barang tidak ada? Isi <b>0</b>.</li>
               <li><b>Barang tidak ada di daftar:</b> tambahkan di bagian bawah kartu.</li>
               <li><b>Menyimpan…</b> = sedang dikirim, boleh lanjut ke rak lain. <b>Gagal</b> = tekan <i>Ulangi</i>.</li>
@@ -928,11 +940,14 @@
               <button class="tutup" onclick="pgTutupModal()" aria-label="Tutup">&#10005;</button>
             </div>
             <div class="pg-modal-alat">
-              <button class="pg-btn" onclick="pgIsiSemuaSesuai()">
-                <span class="material-symbols-outlined">done_all</span> Isi semua sesuai Qty Web
-              </button>
+              <div class="pg-modal-cari">
+                <span class="material-symbols-outlined">search</span>
+                <input type="text" id="pg-cari-rak" placeholder="Cari di rak ini (SKU / nama)..." oninput="pgCariDiRak(this.value)">
+                <small id="pg-cari-rak-info"></small>
+              </div>
+              <button type="button" class="pg-btn pg-btn-scan-rak" onclick="pgBukaScan('rak')" title="Scan QR label"><span class="material-symbols-outlined">qr_code_scanner</span><span class="pg-btn-teks"> Scan</span></button>
               <button class="pg-btn" onclick="pgKosongkan()">
-                <span class="material-symbols-outlined">backspace</span> Kosongkan
+                <span class="material-symbols-outlined">backspace</span><span class="pg-btn-teks"> Kosongkan</span>
               </button>
               <button class="pg-btn pg-btn-hapus-rak" id="pg-btn-hapus-rak" style="display:none;" onclick="pgMintaHapus('rak')" title="Hapus semua hitungan rak ini (superuser)">
                 <span class="material-symbols-outlined">restart_alt</span><span class="pg-btn-teks"> Hapus Hitungan</span>
