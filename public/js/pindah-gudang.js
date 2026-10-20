@@ -92,6 +92,21 @@ function pgSalahRak(tim, kode) {
   if (!t || k.length < t.length) return false;
   return !k.startsWith(t);
 }
+// SKU label: 12-1202-V-38-5DD3-6163, SKU web: 12-1202-V-X-5DD3-6163.
+// Segmen ke-4 = kode gudang (X, 38, 67, 94, 96, ...) → diabaikan saat mencocokkan.
+function pgNormSku(id) {
+  const p = String(id || '').trim().toUpperCase().split('-');
+  if (p.length >= 5) p[3] = '*';
+  return p.join('-');
+}
+// Teks pencarian yang memuat potongan SKU lengkap: ganti segmen ke-4 dengan *
+function pgNormCari(q) {
+  return String(q || '').toUpperCase().replace(/\b([A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-)[A-Z0-9]+(?=-)/g, '$1*');
+}
+function pgCocokSku(id, q) {
+  const u = String(id || '').toUpperCase();
+  return u.includes(q) || pgNormSku(u).includes(pgNormCari(q));
+}
 function pgSuperuser() { return !!(pgState.config && pgState.config.role === 'superuser'); }
 function pgKosong(v) { return v === null || v === undefined || v === '' || Number.isNaN(v); }
 
@@ -458,7 +473,7 @@ function pgRender() {
     if (!cari) return true;
     if (k.includes(cari)) return true;
     const g = pgState.rak[k];
-    return g ? g.items.some(i => i.nama.toUpperCase().includes(cari) || i.id.toUpperCase().includes(cari)) : false;
+    return g ? g.items.some(i => i.nama.toUpperCase().includes(cari) || pgCocokSku(i.id, cari)) : false;
   });
 
   if (!tampil.length) {
@@ -941,7 +956,7 @@ function pgRenderBaris() {
         ? `<button type="button" class="pg-del" title="Buang barang tambahan" onclick="pgHapusTambahan(${i})"><span class="material-symbols-outlined">close</span></button>`
         : `<button type="button" class="pg-del" ${tersimpan ? `title="Hapus hitungan tersimpan" onclick="pgMintaHapus('sku', ${i})"` : 'disabled title="Belum ada hitungan tersimpan"'}><span class="material-symbols-outlined">delete</span></button>`;
       const kotak = [0, 1, 2].map(k => `<input type="number" inputmode="numeric" min="0" class="pg-input pg-in3" data-i="${i}" data-k="${k}" value="${b.parts[k] === null ? '' : b.parts[k]}" oninput="pgUbahPart(${i}, ${k}, this.value)" onkeydown="pgEnterBerikut(event, ${i})">`).join('<span class="pg-plus">+</span>');
-      return `<div class="pg-baris pg-bx${b.salahRak ? ' pg-baris-nyasar' : ''}" id="pg-baris-${i}" data-cari="${pgEsc((b.id + ' ' + b.nama + ' ' + b.lokasi).toUpperCase())}">
+      return `<div class="pg-baris pg-bx${b.salahRak ? ' pg-baris-nyasar' : ''}" id="pg-baris-${i}" data-cari="${pgEsc((b.id + ' ' + pgNormSku(b.id) + ' ' + b.nama + ' ' + b.lokasi).toUpperCase())}">
           <div class="pg-info">
             ${img}
             <div class="pg-info-teks">
@@ -1395,7 +1410,8 @@ function pgCariDiRak(v) {
   const q = String(v || '').trim().toUpperCase();
   let n = 0;
   document.querySelectorAll('#pg-baris .pg-bx').forEach(el => {
-    const cocok = !q || (el.dataset.cari || '').includes(q);
+    const isi = el.dataset.cari || '';
+    const cocok = !q || isi.includes(q) || isi.includes(pgNormCari(q));
     el.classList.toggle('pg-sembunyi', !cocok);
     if (cocok) n++;
   });
@@ -1432,6 +1448,27 @@ function pgMuatLibQr() {
   });
 }
 
+// Flash: default nyala. Bila dimatikan, tetap mati selama sesi login ini (token sama).
+const PG_KUNCI_FLASH = 'pg_flash_off_v1';
+function pgFlashMati() { try { return localStorage.getItem(PG_KUNCI_FLASH) === (sessionStorage.getItem('sessionToken') || '-'); } catch (e) { return false; } }
+function pgSetFlashMati(mati) {
+  try { if (mati) localStorage.setItem(PG_KUNCI_FLASH, sessionStorage.getItem('sessionToken') || '-'); else localStorage.removeItem(PG_KUNCI_FLASH); } catch (e) {}
+}
+
+// Pilih lensa belakang UTAMA (hindari ultra-wide / tele / macro)
+async function pgPilihKamera() {
+  let cams = [];
+  try { cams = await Html5Qrcode.getCameras(); } catch (e) { return null; }
+  const belakang = cams.filter(c => /back|rear|belakang|environment|facing back/i.test(c.label || ''));
+  const daftar = (belakang.length ? belakang : cams).filter(c => !/ultra|uw|tele|macro|depth|0\.5|wide angle/i.test(c.label || '') || /dual wide/i.test(c.label || ''));
+  const kandidat = daftar.length ? daftar : (belakang.length ? belakang : cams);
+  // Android: "camera2 0, facing back" = lensa utama → ambil nomor kamera terkecil
+  const nomor = c => { const m = String(c.label || '').match(/camera\s*2?\s*(\d+)/i); return m ? Number(m[1]) : 99; };
+  kandidat.sort((a, b) => nomor(a) - nomor(b));
+  const ios = kandidat.find(c => /^back camera$/i.test(c.label || ''));
+  return (ios || kandidat[0] || {}).id || null;
+}
+
 async function pgBukaScan(mode) {
   pgScanMode = mode; pgScanSelesai = false;
   pgTutupScan();
@@ -1442,26 +1479,63 @@ async function pgBukaScan(mode) {
     <div class="pg-scan-atas"><span>Arahkan ke QR label barang</span>
       <button type="button" onclick="pgTutupScan()" aria-label="Tutup"><span class="material-symbols-outlined">close</span></button></div>
     <div id="pg-scan-video" class="pg-scan-video"></div>
-    <p class="pg-scan-msg" id="pg-scan-msg">Menyalakan kamera…</p>
-    <div class="pg-scan-manual">
-      <input id="pg-scan-ketik" placeholder="atau ketik SKU / kode shaf" autocapitalize="characters">
-      <button type="button" onclick="pgHasilScan(document.getElementById('pg-scan-ketik').value)">Cari</button>
-    </div>`;
+    <div class="pg-scan-kontrol">
+      <button type="button" id="pg-scan-flash" class="pg-scan-flash" style="display:none;" onclick="pgToggleFlash()">
+        <span class="material-symbols-outlined">flashlight_on</span><small>Flash ON</small></button>
+    </div>
+    <p class="pg-scan-msg" id="pg-scan-msg">Menyalakan kamera…</p>`;
   document.body.appendChild(box);
-  document.getElementById('pg-scan-ketik').addEventListener('keydown', e => { if (e.key === 'Enter') pgHasilScan(e.target.value); });
+  const pesan = t => { const m = document.getElementById('pg-scan-msg'); if (m) m.textContent = t; };
   try {
     await pgMuatLibQr();
     if (!document.getElementById('pg-scan')) return;
-    pgScanner = new Html5Qrcode('pg-scan-video', { verbose: false });
-    const lebar = Math.min(260, Math.floor(window.innerWidth * 0.7));
-    await pgScanner.start({ facingMode: 'environment' }, { fps: 12, qrbox: { width: lebar, height: lebar } },
+    pgScanner = new Html5Qrcode('pg-scan-video', {
+      verbose: false,
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+    });
+    const camId = await pgPilihKamera();
+    if (!document.getElementById('pg-scan')) { pgTutupScan(); return; }
+    const lebar = Math.min(280, Math.floor(window.innerWidth * 0.72));
+    const video = { width: { ideal: 1920 }, height: { ideal: 1080 }, advanced: [{ focusMode: 'continuous' }] };
+    if (camId) video.deviceId = { exact: camId }; else video.facingMode = 'environment';
+    await pgScanner.start(camId || { facingMode: 'environment' },
+      { fps: 15, qrbox: { width: lebar, height: lebar }, videoConstraints: video },
       teks => { if (!pgScanSelesai) { pgScanSelesai = true; pgBip(); pgHasilScan(teks); } }, () => {});
-    const m = document.getElementById('pg-scan-msg'); if (m) m.textContent = 'Kamera aktif. QR terbaca otomatis.';
+    pesan('Lensa utama · QR terbaca otomatis.');
+    pgSiapkanFlash();
   } catch (err) {
-    const m = document.getElementById('pg-scan-msg');
-    if (m) m.textContent = /Permission|NotAllowed/i.test(String(err)) ? 'Izin kamera ditolak. Izinkan kamera di pengaturan browser, atau ketik SKU di bawah.'
-      : (err.message || 'Kamera tidak bisa dibuka.') + ' Ketik SKU di bawah.';
+    pesan(/Permission|NotAllowed/i.test(String(err)) ? 'Izin kamera ditolak. Izinkan kamera di pengaturan browser lalu buka lagi.'
+      : (err.message || String(err) || 'Kamera tidak bisa dibuka.'));
   }
+}
+
+function pgTorch() {
+  try { const f = pgScanner && pgScanner.getRunningTrackCameraCapabilities().torchFeature(); return f && f.isSupported() ? f : null; }
+  catch (e) { return null; }
+}
+async function pgSiapkanFlash() {
+  const f = pgTorch();
+  const btn = document.getElementById('pg-scan-flash');
+  if (!f || !btn) return;            // iPhone / kamera tanpa flash: tombol disembunyikan
+  btn.style.display = '';
+  const nyala = !pgFlashMati();
+  try { await f.apply(nyala); } catch (e) {}
+  pgTampilFlash(nyala);
+}
+async function pgToggleFlash() {
+  const f = pgTorch();
+  if (!f) return;
+  const nyala = !(f.value() === true);
+  try { await f.apply(nyala); } catch (e) { return; }
+  pgSetFlashMati(!nyala);
+  pgTampilFlash(nyala);
+}
+function pgTampilFlash(nyala) {
+  const btn = document.getElementById('pg-scan-flash');
+  if (!btn) return;
+  btn.classList.toggle('nyala', nyala);
+  btn.innerHTML = `<span class="material-symbols-outlined">${nyala ? 'flashlight_on' : 'flashlight_off'}</span><small>Flash ${nyala ? 'ON' : 'OFF'}</small>`;
 }
 
 function pgTutupScan() {
@@ -1486,10 +1560,10 @@ function pgCocokkanKode(teks) {
   const t = String(teks || '').trim().toUpperCase();
   if (!t) return null;
   const petaId = {};
-  Object.values(pgState.rak).forEach(g => g.items.forEach(it => { (petaId[it.id.toUpperCase()] = petaId[it.id.toUpperCase()] || []).push({ kode: g.kode, id: it.id }); }));
-  if (petaId[t]) return { jenis: 'sku', hasil: petaId[t] };
+  Object.values(pgState.rak).forEach(g => g.items.forEach(it => { const k = pgNormSku(it.id); (petaId[k] = petaId[k] || []).push({ kode: g.kode, id: it.id }); }));
+  if (petaId[pgNormSku(t)]) return { jenis: 'sku', hasil: petaId[pgNormSku(t)] };
   const potong = t.split(/[^A-Z0-9-]+/).filter(Boolean).sort((a, b) => b.length - a.length);
-  for (const p of potong) if (petaId[p]) return { jenis: 'sku', hasil: petaId[p] };
+  for (const p of potong) if (petaId[pgNormSku(p)]) return { jenis: 'sku', hasil: petaId[pgNormSku(p)] };
   for (const p of potong) {   // mungkin kode shaf (0004C1) atau kode rak (0004C)
     const k = pgKodeRak(p);
     if (pgState.rak[p]) return { jenis: 'rak', kode: p };
@@ -1502,8 +1576,8 @@ function pgHasilScan(teks) {
   const c = pgCocokkanKode(teks);
   const msg = document.getElementById('pg-scan-msg');
   if (!c) {
-    pgScanSelesai = false;
-    if (msg) msg.textContent = `"${String(teks).slice(0, 40)}" tidak ada di data CSV. Coba lagi.`;
+    if (msg) msg.textContent = `"${String(teks).slice(0, 40)}" tidak ada di data CSV. Arahkan ke label lain.`;
+    setTimeout(() => { pgScanSelesai = false; }, 1500);   // jeda supaya label yang sama tidak terbaca berulang
     return;
   }
   pgTutupScan();
