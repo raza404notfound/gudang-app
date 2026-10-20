@@ -566,6 +566,7 @@ async function owBukaRiwayatHapus() {
     document.getElementById('ow-rh-isi').innerHTML = `<p class="ow-rh-kosong">${owEsc(err.message)}</p>`;
   }
 }
+function owNama(u) { return typeof namaTampil === 'function' ? namaTampil(u) : u; }
 function owTutupRiwayatHapus() { const el = document.getElementById('ow-rh'); if (el) el.remove(); }
 function owRenderRiwayatHapus() {
   const el = document.getElementById('ow-rh-isi');
@@ -577,6 +578,6 @@ function owRenderRiwayatHapus() {
       <div class="ow-rh-a"><span class="ow-rh-jenis ${r.jenis === 'Hitungan Rak' ? 'rak' : ''}">${owEsc(r.jenis)}</span><span>${owEsc(r.waktu)}</span></div>
       <div class="ow-rh-b"><b>${owEsc(r.kodeRak)}</b> ${r.lokasi ? '· ' + owEsc(r.lokasi) : ''} · <code>${owEsc(r.id)}</code></div>
       <div class="ow-rh-c">${owEsc(r.nama)}</div>
-      <div class="ow-rh-d">Dihapus oleh <b>${owEsc(r.oleh)}</b> · dihitung oleh <b>${owEsc(r.petugas || '-')}</b> · Web ${r.qtyWeb} · Real dihapus <b>${r.qtyReal === '' ? '-' : r.qtyReal}</b>${r.alasan ? ' · ' + owEsc(r.alasan) : ''}</div>
+      <div class="ow-rh-d">Dihapus oleh <b>${owEsc(owNama(r.oleh))}</b> · dihitung oleh <b>${owEsc(r.petugas ? owNama(r.petugas) : '-')}</b> · Web ${r.qtyWeb} · Real dihapus <b>${r.qtyReal === '' ? '-' : r.qtyReal}</b>${r.alasan ? ' · ' + owEsc(r.alasan) : ''}</div>
     </div>`).join('');
 }
