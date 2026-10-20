@@ -558,3 +558,27 @@
   .pg-del { width: 32px; height: 32px; }
 }
 .pg-baris.pg-bx.pg-sembunyi { display: none !important; }
+
+/* ===== v6: bagian atas SELALU ringkas (HP, tablet, laptop) ===== */
+.pg-ringkas-hp { display: flex !important; }
+#pg-filter-ringkas { justify-content: space-between; align-items: center; font-size: 12px; color: #475569; }
+.pg-sticky:not(.buka-filter) .pg-lipat-filter { display: none !important; }
+.pg-sticky:not(.buka-detail) .pg-lipat-detail { display: none !important; }
+.pg-sticky.buka-filter #pg-filter-ringkas .pg-t-buka, .pg-sticky.buka-detail #pg-mini .pg-t-buka { display: none; }
+.pg-sticky.buka-filter #pg-filter-ringkas .pg-t-tutup, .pg-sticky.buka-detail #pg-mini .pg-t-tutup { display: inline; }
+/* tombol toolbar cukup ikon */
+.pg-btn-ikon-hp { padding: 7px 9px; }
+.pg-btn-ikon-hp .pg-btn-teks { display: none !important; }
+/* HP/tablet layar sentuh (termasuk yang terbaca lebar): tombol di jendela rak cukup ikon */
+@media (pointer: coarse) {
+  .pg-modal-alat { flex-wrap: nowrap; }
+  .pg-modal-alat .pg-btn { flex: 0 0 auto !important; padding: 8px 9px; }
+  .pg-modal-alat .pg-btn .pg-btn-teks { display: none; }
+}
+/* kontrol scanner */
+.pg-scan-kontrol { display: flex; justify-content: center; gap: 14px; margin-top: 16px; min-height: 8px; }
+.pg-scan-flash { width: 64px; height: 64px; border-radius: 50%; border: none; background: #334155; color: #fff; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1px; cursor: pointer; }
+.pg-scan-flash .material-symbols-outlined { font-size: 24px; }
+.pg-scan-flash small { font-size: 9px; font-weight: 700; }
+.pg-scan-flash.nyala { background: #fbbf24; color: #0f172a; }
