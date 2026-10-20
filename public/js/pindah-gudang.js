@@ -160,6 +160,8 @@ async function pgSiapkan() {
   } else pgSinkron();
   pgMulaiSinkron();
   pgProsesAntrean();
+  // Siapkan pemindai QR di belakang layar supaya tombol Scan langsung cepat
+  setTimeout(() => { pgMuatLibQr().catch(() => {}); }, 1500);
 }
 
 function pgTampilkanTombolUpload() {
@@ -1450,6 +1452,7 @@ function pgMuatLibQr() {
 
 // Flash: default nyala. Bila dimatikan, tetap mati selama sesi login ini (token sama).
 const PG_KUNCI_FLASH = 'pg_flash_off_v1';
+const PG_KUNCI_KAMERA = 'pg_kamera_v1';   // ID lensa utama yang sudah dipilih di HP ini
 function pgFlashMati() { try { return localStorage.getItem(PG_KUNCI_FLASH) === (sessionStorage.getItem('sessionToken') || '-'); } catch (e) { return false; } }
 function pgSetFlashMati(mati) {
   try { if (mati) localStorage.setItem(PG_KUNCI_FLASH, sessionStorage.getItem('sessionToken') || '-'); else localStorage.removeItem(PG_KUNCI_FLASH); } catch (e) {}
@@ -1494,14 +1497,32 @@ async function pgBukaScan(mode) {
       formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
       experimentalFeatures: { useBarCodeDetectorIfSupported: true }
     });
-    const camId = await pgPilihKamera();
-    if (!document.getElementById('pg-scan')) { pgTutupScan(); return; }
     const lebar = Math.min(280, Math.floor(window.innerWidth * 0.72));
-    const video = { width: { ideal: 1920 }, height: { ideal: 1080 }, advanced: [{ focusMode: 'continuous' }] };
-    if (camId) video.deviceId = { exact: camId }; else video.facingMode = 'environment';
-    await pgScanner.start(camId || { facingMode: 'environment' },
-      { fps: 15, qrbox: { width: lebar, height: lebar }, videoConstraints: video },
-      teks => { if (!pgScanSelesai) { pgScanSelesai = true; pgBip(); pgHasilScan(teks); } }, () => {});
+    const mulai = async camId => {
+      // 1280x720 + fokus otomatis: cukup tajam untuk label, kamera menyala lebih cepat dari 1920x1080
+      const video = { width: { ideal: 1280 }, height: { ideal: 720 }, advanced: [{ focusMode: 'continuous' }] };
+      if (camId) video.deviceId = { exact: camId }; else video.facingMode = 'environment';
+      await pgScanner.start(camId || { facingMode: 'environment' },
+        { fps: 15, qrbox: { width: lebar, height: lebar }, videoConstraints: video },
+        teks => { if (!pgScanSelesai) { pgScanSelesai = true; pgBip(); pgHasilScan(teks); } }, () => {});
+    };
+    let camId = null;
+    try { camId = localStorage.getItem(PG_KUNCI_KAMERA); } catch (e) {}
+    try {
+      if (!camId) {
+        camId = await pgPilihKamera();
+        if (camId) try { localStorage.setItem(PG_KUNCI_KAMERA, camId); } catch (e) {}
+      }
+      if (!document.getElementById('pg-scan')) { pgTutupScan(); return; }
+      await mulai(camId);
+    } catch (e1) {
+      // ID lensa tersimpan sudah tidak berlaku (ganti HP / izin direset): pilih ulang sekali
+      try { localStorage.removeItem(PG_KUNCI_KAMERA); } catch (e) {}
+      if (!document.getElementById('pg-scan') || /Permission|NotAllowed/i.test(String(e1))) throw e1;
+      camId = await pgPilihKamera();
+      if (camId) try { localStorage.setItem(PG_KUNCI_KAMERA, camId); } catch (e) {}
+      await mulai(camId);
+    }
     pesan('Lensa utama · QR terbaca otomatis.');
     pgSiapkanFlash();
   } catch (err) {
