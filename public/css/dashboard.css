@@ -177,3 +177,32 @@
   .db-waktu-baris { padding: 10px 14px; font-size: 12.5px; }
   .db-catatan { padding: 9px 14px; }
 }
+
+/* ===== Inbound | Outbound | Waktu dalam satu baris (desktop) ===== */
+/* Layar sedang (tablet / laptop kecil): inbound & outbound berdampingan, waktu penuh di bawah */
+.db-tiga #db-panel-waktu { grid-column: 1 / -1; }
+@media (min-width: 1280px) {
+  .db-dua.db-tiga { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(300px, .9fr); align-items: start; }
+  .db-tiga #db-panel-waktu { grid-column: auto; }
+  /* baris status lebih ringkas: angka sebaris dengan nama, bar di bawah */
+  .db-tiga .db-baris {
+    grid-template-columns: minmax(0, 1fr) auto auto 46px;
+    grid-template-areas: "nama trx pcs pct" "bar bar bar bar";
+    column-gap: 10px; row-gap: 5px; padding: 9px 14px;
+  }
+  .db-tiga .db-panel-judul { padding: 11px 14px; }
+  .db-tiga .db-panel-total { padding: 11px 14px; }
+  /* panel waktu: versi kartu (tabel lebar disembunyikan supaya tidak terpotong) */
+  .db-tiga #db-panel-waktu .db-tabel-wrap { display: none; }
+  .db-tiga #db-panel-waktu .db-waktu-hp { display: flex; flex-direction: column; }
+  .db-tiga #db-panel-waktu .db-waktu-kartu { padding: 10px 14px; border-bottom: 1px solid var(--border-color, #f1f5f9); }
+  .db-tiga #db-panel-waktu .db-waktu-kartu.total { background: #f1f5f9; }
+  .db-tiga #db-panel-waktu .db-waktu-judul { font-size: 12.5px; font-weight: 700; color: var(--text-primary, #1e293b); }
+  .db-tiga #db-panel-waktu .db-waktu-gab { display: flex; justify-content: space-between; margin: 6px 0; padding: 6px 10px; border-radius: 8px; background: #f8fafc; font-size: 12px; }
+  .db-tiga #db-panel-waktu .db-waktu-gab b { color: #dc2626; }
+  .db-tiga #db-panel-waktu .db-waktu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+  .db-tiga #db-panel-waktu .db-waktu-grid div { display: flex; justify-content: space-between; gap: 6px; font-size: 11.5px; color: var(--text-secondary, #64748b); }
+  .db-tiga #db-panel-waktu .db-waktu-grid b { color: var(--text-primary, #334155); font-weight: 600; white-space: nowrap; }
+  .db-tiga #db-panel-waktu .db-waktu-baris { padding: 10px 14px; font-size: 12.5px; }
+  .db-tiga #db-panel-waktu .db-panel-judul { flex-wrap: wrap; row-gap: 4px; }
+}
