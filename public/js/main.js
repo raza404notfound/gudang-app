@@ -95,6 +95,54 @@ let allTrackedData = [];
       else el.classList.add('hidden');
     }
 
+    // =============================================
+    // NAMA TAMPILAN & PROFIL (username login → nama yang diatur di Pengaturan)
+    // =============================================
+    let NAMA_PETA = {};
+    try { NAMA_PETA = JSON.parse(localStorage.getItem('nama_peta_v1') || '{}') || {}; } catch (e) {}
+    function setNamaPeta(peta) {
+      NAMA_PETA = peta || {};
+      try { localStorage.setItem('nama_peta_v1', JSON.stringify(NAMA_PETA)); } catch (e) {}
+    }
+    function namaTampil(u) {
+      const k = String(u || '').trim().toLowerCase();
+      return NAMA_PETA[k] || u || '';
+    }
+    async function muatNamaPeta() {
+      try {
+        const r = await fetch('/api/profil/peta', { headers: { 'x-session-token': sessionStorage.getItem('sessionToken') || '' } });
+        const d = await r.json();
+        if (d.success) setNamaPeta(d.peta);
+      } catch (e) {}
+    }
+    function inisial(nama) {
+      const p = String(nama || 'U').trim().split(/\s+/);
+      return ((p[0] || 'U')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
+    }
+    function tampilProfilSidebar(nama, foto) {
+      const n = document.getElementById('user-name-display');
+      const a = document.getElementById('user-avatar');
+      if (n) n.innerText = nama;
+      if (a) {
+        if (foto) { a.innerHTML = ''; const img = document.createElement('img'); img.src = foto; img.alt = ''; img.className = 'avatar-foto'; a.appendChild(img); }
+        else a.innerText = inisial(nama);
+      }
+    }
+    async function muatProfilSaya() {
+      try {
+        const c = JSON.parse(localStorage.getItem('profil_saya_v1') || 'null');
+        if (c && c.username === sessionStorage.getItem('sessionUser')) tampilProfilSidebar(c.nama || c.username, c.foto);
+      } catch (e) {}
+      try {
+        const r = await fetch('/api/profil/saya', { headers: { 'x-session-token': sessionStorage.getItem('sessionToken') || '' } });
+        const d = await r.json();
+        if (!d.success) return null;
+        tampilProfilSidebar(d.nama || d.username, d.foto);
+        try { localStorage.setItem('profil_saya_v1', JSON.stringify({ username: d.username, nama: d.nama, foto: d.foto })); } catch (e) {}
+        return d;
+      } catch (e) { return null; }
+    }
+
     async function checkAuthStatus() {
       const token     = sessionStorage.getItem('sessionToken');
       const savedUser = sessionStorage.getItem('sessionUser');
@@ -142,6 +190,8 @@ let allTrackedData = [];
           document.getElementById('auth-modal').style.display = 'none';
           initRouterFromHash();
           startRealtimeTimer();
+          muatNamaPeta();
+          muatProfilSaya();
         } else {
           // Token tidak valid → tampil login
           sessionStorage.clear();
@@ -190,10 +240,11 @@ let allTrackedData = [];
 
         tbody.innerHTML = data.data.map(u => `
           <tr>
-            <td style="font-weight:600;color:#1e293b;">${u.username}</td>
+            <td style="font-weight:600;color:#1e293b;">${u.nama ? `${u.nama}<div style="font-size:11px;font-weight:400;color:#94a3b8;">login: ${u.username}</div>` : u.username}</td>
             <td><span style="background:${u.role==='superuser'?'#fef3c7':u.role==='admin'?'#f1f5f9':'#f0fdf4'};color:${u.role==='superuser'?'#92400e':u.role==='admin'?'#475569':'#15803d'};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">${u.role === 'superuser' ? 'Superuser' : u.role === 'admin' ? 'Admin' : 'User'}</span></td>
             <td style="color:#64748b;font-size:12px;">${u.createdAt && !isNaN(new Date(u.createdAt)) ? new Date(u.createdAt).toLocaleDateString('id-ID') : '-'}</td>
             <td style="white-space:nowrap;">
+              <button onclick="kaUbahNama('${u.username}', '${(u.nama || '').replace(/'/g, '')}')" class="ka-btn-sandi" title="Ubah nama tampilan"><span class="material-symbols-outlined">badge</span>Nama</button>
               ${u.role !== 'superuser' ? `<button onclick="kaBukaGantiSandi('${u.username}')" class="ka-btn-sandi" title="Ganti sandi"><span class="material-symbols-outlined">key</span>Ganti Sandi</button>
               <button onclick="deleteUser('${u.username}')" style="background:#fee2e2;color:#ef4444;border:none;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">Hapus</button>` : '<span style="color:#cbd5e1;font-size:11px;">—</span>'}
             </td>
@@ -293,6 +344,47 @@ let allTrackedData = [];
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') kaSimpanSandi(username); if (e.key === 'Escape') kaTutupGantiSandi(); });
     }
 
+    // Superuser mengubah nama tampilan akun lain (antisipasi nama asal-asalan)
+    function kaUbahNama(username, namaLama) {
+      kaTutupGantiSandi();
+      const box = document.createElement('div');
+      box.id = 'ka-modal-sandi';
+      box.className = 'ka-modal-latar';
+      box.innerHTML = `<div class="ka-modal" role="dialog" aria-modal="true">
+          <h3>Ubah Nama Tampilan</h3>
+          <p class="ka-modal-sub">Akun login <b>${username}</b>. Nama ini tampil di semua riwayat & laporan (data lama ikut diperbarui).</p>
+          <label>Nama tampilan</label>
+          <input id="ka-nama-baru" type="text" maxlength="40" placeholder="contoh: Budi Santoso" style="width:100%;font-family:inherit;">
+          <p id="ka-sandi-msg" class="ka-modal-msg"></p>
+          <div class="ka-modal-aksi">
+            <button type="button" class="ka-btn-batal" onclick="kaTutupGantiSandi()">Batal</button>
+            <button type="button" class="ka-btn-simpan" id="ka-btn-simpan-nama">Simpan</button>
+          </div></div>`;
+      box.addEventListener('click', e => { if (e.target === box) kaTutupGantiSandi(); });
+      document.body.appendChild(box);
+      const inp = document.getElementById('ka-nama-baru');
+      inp.value = namaLama || '';
+      inp.focus();
+      document.getElementById('ka-btn-simpan-nama').onclick = async () => {
+        const btn = document.getElementById('ka-btn-simpan-nama'), msg = document.getElementById('ka-sandi-msg');
+        btn.disabled = true; btn.textContent = 'Menyimpan...';
+        try {
+          const r = await fetch(`/api/profil/${encodeURIComponent(username)}`, { method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-session-token': sessionStorage.getItem('sessionToken') },
+            body: JSON.stringify({ nama: inp.value.trim() }) });
+          const d = await r.json();
+          if (!d.success) throw new Error(d.message);
+          kaTutupGantiSandi();
+          showToast(d.message || 'Nama tersimpan.', 'success');
+          await muatNamaPeta();
+          loadUserList();
+        } catch (err) {
+          msg.style.color = '#ef4444'; msg.textContent = err.message || 'Gagal menyimpan.';
+          btn.disabled = false; btn.textContent = 'Simpan';
+        }
+      };
+    }
+
     function kaTutupGantiSandi() {
       const m = document.getElementById('ka-modal-sandi');
       if (m) m.remove();
@@ -382,6 +474,7 @@ let allTrackedData = [];
       'pusat-inventory'   : () => initSoPage(),
       'lacak-awb'         : () => null,
       'kelola-akun'       : () => loadUserList(),
+      'pengaturan'        : () => (typeof setInit === 'function' ? setInit() : null),
       'gudang-insight'    : () => initInsightPage(),
       'statistik-team'    : () => initTeamStatPage()
     };
