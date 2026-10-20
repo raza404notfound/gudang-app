@@ -237,6 +237,9 @@
       </div>
       <div class="nav-section">
         <div class="section-title">PENGATURAN</div>
+        <a class="nav-item" href="#pengaturan" onclick="switchTab('pengaturan', this); return false;">
+          <span class="material-symbols-outlined">settings</span><span>Pengaturan</span>
+        </a>
         <a class="nav-item" href="#kelola-akun" id="nav-kelola-akun" style="display:none;" onclick="switchTab('kelola-akun', this); return false;">
           <span class="material-symbols-outlined">manage_accounts</span><span>Kelola Akun</span>
         </a>
@@ -1080,6 +1083,34 @@
         </div>
       </section>
 
+<section id="page-pengaturan" class="page-content">
+        <div class="set-wrap">
+          <div class="set-kartu">
+            <label class="set-avatar-wrap" title="Ganti foto">
+              <div class="set-avatar" id="set-avatar"><span>U</span></div>
+              <span class="set-kamera"><span class="material-symbols-outlined">photo_camera</span></span>
+              <input type="file" accept="image/*" hidden onchange="setPilihFoto(this)">
+            </label>
+            <p class="set-ket">Ketuk foto untuk mengganti (otomatis dikecilkan)</p>
+            <button type="button" class="set-link" id="set-btn-hapus-foto" style="display:none;" onclick="setHapusFoto()">Hapus foto</button>
+
+            <label class="set-label" for="set-nama">Nama tampilan</label>
+            <input id="set-nama" class="set-input" type="text" maxlength="40" placeholder="contoh: Budi Santoso">
+            <p class="set-ket kiri">Nama ini yang muncul di riwayat, "sedang dihitung", laporan & sheet. Data lama ikut diperbarui.</p>
+
+            <label class="set-label" for="set-username">Username login</label>
+            <input id="set-username" class="set-input" type="text" disabled>
+            <p class="set-ket kiri">Hanya untuk login, tidak bisa diubah sendiri.</p>
+
+            <label class="set-label" for="set-hp">No. HP <span class="set-opsi">(opsional)</span></label>
+            <input id="set-hp" class="set-input" type="tel" inputmode="tel" maxlength="20" placeholder="08xx-xxxx-xxxx">
+
+            <button type="button" class="set-simpan" id="set-btn-simpan" onclick="setSimpan()">Simpan Perubahan</button>
+            <p class="set-msg" id="set-msg"></p>
+          </div>
+        </div>
+      </section>
+
 <section id="page-kelola-akun" class="page-content">
         <div style="max-width: 720px;">
 
@@ -1145,5 +1176,6 @@
   <script src="/js/pindah-gudang.js"></script>
   <script src="/js/opname-web.js"></script>
   <script src="/js/dashboard.js"></script>
+  <script src="/js/pengaturan.js"></script>
 </body>
 </html>
