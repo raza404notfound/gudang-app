@@ -176,6 +176,7 @@ async function pgAmbilConfig() {
   try {
     pgState.config = await pgApi('/api/pindah/config');
     if (pgState.config.saya) pgState.saya = pgState.config.saya;
+    if (pgState.config.namaPeta && typeof setNamaPeta === 'function') setNamaPeta(pgState.config.namaPeta);
   } catch (e) { pgState.config = { scriptUrl: '', sheetUrl: '' }; }
   const link = document.getElementById('pg-btn-sheet');
   if (link) {
@@ -284,9 +285,12 @@ function pgMulaiRealtime() {
   es.addEventListener('hapusHitung', e => {
     let d; try { d = JSON.parse(e.data); } catch (er) { return; }
     if (d.oleh !== pgState.saya) {
-      pgToast(d.jenis === 'rak' ? `Hitungan rak ${d.kodeRak} dihapus oleh ${d.oleh}.` : `Hitungan SKU ${d.id} (${d.kodeRak}) dihapus oleh ${d.oleh}.`, 'info');
+      pgToast(d.jenis === 'rak' ? `Hitungan rak ${d.kodeRak} dihapus oleh ${pgNama(d.oleh)}.` : `Hitungan SKU ${d.id} (${d.kodeRak}) dihapus oleh ${pgNama(d.oleh)}.`, 'info');
     }
     pgSetelahHapus(d);
+  });
+  es.addEventListener('profil', async () => {
+    if (typeof muatNamaPeta === 'function') { await muatNamaPeta(); pgState.kartuHtml = {}; const g = document.getElementById('pg-grid'); if (g) g.dataset.daftar = ''; pgRender(); if (pgState.aktif) pgRenderInfoModal(); }
   });
   es.addEventListener('open', () => { pgSetRealtime(true); if (pgState.sudahDimuat) pgSinkron(); });
   es.addEventListener('error', () => {
@@ -395,11 +399,13 @@ function pgSedangLain(kode) {
   const daftar = [].concat(pgState.sedang[kode] || []);
   return daftar.find(s => s && s.petugas && (s.perangkat ? s.perangkat !== PG_PERANGKAT : s.petugas !== pgState.saya)) || null;
 }
-function pgSiapa(petugas) { return petugas === pgState.saya ? 'akun Anda di perangkat lain' : petugas; }
+// Nama tampilan (username login → nama yang diatur di Pengaturan)
+function pgNama(u) { return typeof namaTampil === 'function' ? namaTampil(u) : (u || ''); }
+function pgSiapa(petugas) { return petugas === pgState.saya ? 'akun Anda di perangkat lain' : pgNama(petugas); }
 function pgLabelSedang(s) {
   if (!s) return '';
   if (s.petugas === pgState.saya) return 'Sedang dihitung di perangkat lain' + (s.jenis ? ' (' + s.jenis + ')' : '');
-  return 'Sedang dihitung ' + s.petugas;
+  return 'Sedang dihitung ' + pgNama(s.petugas);
 }
 // Apakah simpanan terakhir rak ini berasal dari perangkat ini
 function pgDariSaya(s) {
@@ -895,7 +901,7 @@ function pgRenderInfoModal() {
   else if (e) { jenis = jenis === 'merah' ? jenis : 'amber'; pesan.push('Hitungan rak ini sedang dikirim ke sheet.'); }
   if (lain) { jenis = jenis === 'merah' ? jenis : 'amber'; pesan.push(`<b>${pgEsc(pgLabelSedang(lain))}</b>. Pastikan rak ini tidak dihitung dua kali.`); }
   if (pgState.draf[kode] && pgState.draf[kode].qty) pesan.push('Angka di bawah dari draf di HP ini (belum tersimpan ke sheet).');
-  else if (s && !k) pesan.push(`Sudah dihitung oleh ${pgEsc(s.petugas)} pukul ${pgEsc(pgJam(s.waktu))}. Simpan lagi akan memperbarui data.`);
+  else if (s && !k) pesan.push(`Sudah dihitung oleh ${pgEsc(pgNama(s.petugas))} pukul ${pgEsc(pgJam(s.waktu))}. Simpan lagi akan memperbarui data.`);
 
   const g = pgState.rak[kode];
   const labels = g ? Object.keys(g.export) : [];
@@ -941,7 +947,7 @@ function pgRenderBaris() {
   } else {
     wrap.innerHTML = pgState.baris.map((b, i) => {
       const img = b.img
-        ? `<img class="pg-thumb" loading="lazy" src="${PG_ASSET_BASE}?id=${encodeURIComponent(b.img)}&thumbnail=true" onerror="this.outerHTML='<div class=&quot;pg-thumb pg-thumb-kosong&quot;><span class=&quot;material-symbols-outlined&quot;>image_not_supported</span></div>'">`
+        ? `<img class="pg-thumb pg-thumb-klik" loading="lazy" onclick="pgLihatFoto(${i})" src="${PG_ASSET_BASE}?id=${encodeURIComponent(b.img)}&thumbnail=true" onerror="this.outerHTML='<div class=&quot;pg-thumb pg-thumb-kosong&quot;><span class=&quot;material-symbols-outlined&quot;>image_not_supported</span></div>'">`
         : `<div class="pg-thumb pg-thumb-kosong"><span class="material-symbols-outlined">${b.tambahan ? 'add_box' : 'image_not_supported'}</span></div>`;
       const multi = !b.tambahan && b.lokList.length > 1;
       // SKU: kode tim di depan diberi warna (12-1202-... -> [12]-1202-...)
@@ -1358,7 +1364,7 @@ function pgSetelahHapus(h) {
       pgSimpanDraf();
       pgRenderBaris();
     } else {
-      pgSetInfo('merah', `Hitungan ${h.jenis === 'rak' ? 'rak ini' : 'SKU ' + pgEsc(h.id)} baru saja dihapus oleh <b>${pgEsc(h.oleh)}</b>. Angka di layar Anda belum disimpan.`);
+      pgSetInfo('merah', `Hitungan ${h.jenis === 'rak' ? 'rak ini' : 'SKU ' + pgEsc(h.id)} baru saja dihapus oleh <b>${pgEsc(pgNama(h.oleh))}</b>. Angka di layar Anda belum disimpan.`);
     }
     pgTampilTombolHapusRak();
     if (h.oleh === pgState.saya || !pgState.modalDiubah) pgRenderInfoModal();
@@ -1377,7 +1383,7 @@ async function pgMintaHapus(jenis, i) {
   if (jenis === 'rak' && !pgSuperuser()) { pgToast('Hapus hitungan satu rak hanya untuk superuser.', 'error'); return; }
   if (pgEntriAntrean(kode)) { pgToast('Rak ini masih menunggu tersimpan. Tunggu selesai dulu.', 'warning'); return; }
   const s = pgState.status[kode];
-  const oleh = s ? `\n\nDihitung oleh ${s.petugas === pgState.saya ? 'Anda (' + s.petugas + ')' : s.petugas} pukul ${pgJam(s.waktu)}.` : '';
+  const oleh = s ? `\n\nDihitung oleh ${s.petugas === pgState.saya ? 'Anda' : pgNama(s.petugas)} pukul ${pgJam(s.waktu)}.` : '';
   let target, pesan;
   if (jenis === 'rak') {
     target = { jenis, kodeRak: kode, id: '' };
@@ -1400,6 +1406,25 @@ async function pgJalankanHapus(target) {
   } catch (err) {
     pgToast(err.message, 'error');
   }
+}
+
+// ============================================================
+// PRATINJAU FOTO PRODUK: thumbnail langsung tampil besar, lalu diganti versi tajam
+// ============================================================
+function pgLihatFoto(i) {
+  const b = pgState.baris[i];
+  if (!b || !b.img) return;
+  const id = encodeURIComponent(b.img);
+  const kecil = `${PG_ASSET_BASE}?id=${id}&thumbnail=true`, besar = `${PG_ASSET_BASE}?id=${id}`;
+  const el = document.createElement('div');
+  el.className = 'pg-foto-besar';
+  el.innerHTML = `<img src="${kecil}" alt=""><div class="pg-foto-ket"><b>${pgEsc(b.nama)}</b><span>${pgEsc(b.id)}</span></div>
+    <button type="button" aria-label="Tutup"><span class="material-symbols-outlined">close</span></button>`;
+  el.addEventListener('click', () => el.remove());
+  document.body.appendChild(el);
+  const full = new Image();
+  full.onload = () => { const im = el.querySelector('img'); if (im) im.src = besar; };
+  full.src = besar;
 }
 
 // ============================================================
