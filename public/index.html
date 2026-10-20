@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PDC Warehouse Admin</title>
+  <title>PDC Tools</title>
   <!-- Ikon -->
-  <meta name="theme-color" content="#fbbf24">
+  <meta name="theme-color" content="#475569">
   <link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
@@ -46,9 +46,9 @@
     <svg class="login-bg-art" viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
       <defs>
         <radialGradient id="glow-pdc" cx="50%" cy="80%" r="55%">
-          <stop offset="0%"   stop-color="#fbbf24" stop-opacity=".55"/>
-          <stop offset="40%"  stop-color="#fbbf24" stop-opacity=".15"/>
-          <stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/>
+          <stop offset="0%"   stop-color="#475569" stop-opacity=".55"/>
+          <stop offset="40%"  stop-color="#475569" stop-opacity=".15"/>
+          <stop offset="100%" stop-color="#475569" stop-opacity="0"/>
         </radialGradient>
         <filter id="filter-glow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="18" result="blur"/>
@@ -69,29 +69,28 @@
       <g fill="#2a3d54" opacity=".8"><rect x="1278" y="135" width="30" height="40"/><rect x="1323" y="135" width="30" height="40"/><rect x="1368" y="135" width="30" height="40"/><rect x="1413" y="135" width="30" height="40"/><rect x="1278" y="200" width="30" height="40"/><rect x="1323" y="200" width="30" height="40"/><rect x="1368" y="200" width="30" height="40"/><rect x="1413" y="200" width="30" height="40"/><rect x="1278" y="265" width="30" height="40"/><rect x="1323" y="265" width="30" height="40"/><rect x="1368" y="265" width="30" height="40"/><rect x="1413" y="265" width="30" height="40"/></g>
       <!-- Cahaya bersinar -->
       <ellipse cx="720" cy="760" rx="420" ry="260" fill="url(#glow-pdc)"/>
-      <g opacity=".1" fill="#fbbf24"><polygon points="720,700 660,200 780,200"/><polygon points="720,700 580,100 700,150"/><polygon points="720,700 840,100 760,150"/></g>
+      <g opacity=".1" fill="#475569"><polygon points="720,700 660,200 780,200"/><polygon points="720,700 580,100 700,150"/><polygon points="720,700 840,100 760,150"/></g>
       <!-- Gudang PDC kecil kuning -->
       <g filter="url(#filter-glow)">
-        <rect x="600" y="680" width="240" height="220" fill="#fbbf24"/>
-        <polygon points="585,680 855,680 840,635 720,590 600,635" fill="#d97706"/>
+        <rect x="600" y="680" width="240" height="220" fill="#475569"/>
+        <polygon points="585,680 855,680 840,635 720,590 600,635" fill="#dc2626"/>
         <rect x="682" y="775" width="76" height="125" fill="#7c2d12"/>
-        <rect x="613" y="700" width="55" height="44" rx="3" fill="#fef9c3" opacity=".9"/>
-        <rect x="772" y="700" width="55" height="44" rx="3" fill="#fef9c3" opacity=".9"/>
+        <rect x="613" y="700" width="55" height="44" rx="3" fill="#f1f5f9" opacity=".9"/>
+        <rect x="772" y="700" width="55" height="44" rx="3" fill="#f1f5f9" opacity=".9"/>
         <text x="720" y="760" text-anchor="middle" font-size="22" font-weight="900" fill="#7c2d12" font-family="Arial,sans-serif" opacity=".6">PDC</text>
-        <polygon points="720,570 727,592 751,592 732,606 739,628 720,614 701,628 708,606 689,592 713,592" fill="#fbbf24"/>
+        <polygon points="720,570 727,592 751,592 732,606 739,628 720,614 701,628 708,606 689,592 713,592" fill="#475569"/>
       </g>
       <!-- Partikel -->
-      <g fill="#fbbf24"><circle cx="560" cy="650" r="3" opacity=".6"/><circle cx="880" cy="640" r="2.5" opacity=".5"/><circle cx="500" cy="550" r="2" opacity=".4"/><circle cx="940" cy="530" r="2" opacity=".4"/><circle cx="720" cy="320" r="2" opacity=".2"/></g>
+      <g fill="#475569"><circle cx="560" cy="650" r="3" opacity=".6"/><circle cx="880" cy="640" r="2.5" opacity=".5"/><circle cx="500" cy="550" r="2" opacity=".4"/><circle cx="940" cy="530" r="2" opacity=".4"/><circle cx="720" cy="320" r="2" opacity=".2"/></g>
     </svg>
 
     <div class="login-card">
       <div class="login-logo">
         <div class="login-logo-icon">
-          <span class="material-symbols-outlined">local_shipping</span>
+          <span class="material-symbols-outlined">warehouse</span>
         </div>
         <div class="login-logo-text">
-          <span class="login-logo-name">PDC</span>
-          <span class="login-logo-sub">Warehouse Admin</span>
+          <span class="login-logo-name">PDC TOOLS</span>
         </div>
       </div>
       <h3 id="auth-title">Masuk Administrator</h3>
@@ -127,7 +126,7 @@
     <!-- Header -->
     <div style="background:#1e293b;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
       <div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:34px;height:34px;background:#fbbf24;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;">🚨</div>
+        <div style="width:34px;height:34px;background:#475569;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;">🚨</div>
         <div>
           <div style="font-size:14px;font-weight:800;color:#f8fafc;">Lacak Resi Cancel</div>
           <div style="font-size:11px;color:#94a3b8;margin-top:1px;" id="cancel-scan-status">Siapkan scanner — arahkan ke resi</div>
@@ -174,12 +173,9 @@
 <aside class="sidebar">
     <!-- BRAND -->
     <div class="brand-header">
-      <div class="brand-logo">
-        <span class="material-symbols-outlined" style="font-size:22px;">local_shipping</span>
-      </div>
+      <span class="material-symbols-outlined brand-ikon">warehouse</span>
       <div class="brand-text">
-        <span class="brand-name">PDC</span>
-        <span class="brand-sub">Warehouse Admin</span>
+        <span class="brand-name">PDC <b>TOOLS</b></span>
       </div>
     </div>
 
@@ -188,6 +184,7 @@
       <div class="avatar" id="user-avatar">U</div>
       <div class="user-info">
         <span class="user-name" id="user-name-display">Guest</span>
+        <span class="user-sub" id="user-sub-display"></span>
         <span class="user-badge" id="user-role-badge">Warehouse Crew</span>
       </div>
     </div>
@@ -228,7 +225,7 @@
         <a class="nav-item" href="#gudang-insight" onclick="switchTab('gudang-insight', this); return false;">
           <span class="material-symbols-outlined">insights</span>
           <span>Gudang Insight</span>
-          <span style="margin-left:auto;background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;letter-spacing:.3px;flex-shrink:0;">BETA</span>
+          <span style="margin-left:auto;background:#f1f5f9;color:#334155;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;letter-spacing:.3px;flex-shrink:0;">BETA</span>
         </a>
         <a class="nav-item" href="#statistik-team" onclick="switchTab('statistik-team', this); return false;">
           <span class="material-symbols-outlined">groups</span>
@@ -649,33 +646,33 @@
         </div>
         <!-- Banner status resi — kuning solid, muncul saat resi dimuat -->
         <div id="awb-top-status" style="display:none;
-          background:#fef3c7; border:1.5px solid #fde68a; border-radius:10px;
+          background:#f1f5f9; border:1.5px solid #cbd5e1; border-radius:10px;
           padding:13px 18px; margin-bottom:12px;
           display:none; align-items:center; gap:14px;
           animation:awbBannerIn .25s ease;">
-          <div style="width:40px;height:40px;background:#fbbf24;border-radius:10px;
+          <div style="width:40px;height:40px;background:#475569;border-radius:10px;
             display:flex;align-items:center;justify-content:center;flex-shrink:0;
-            box-shadow:0 2px 8px rgba(251,191,36,.35);">
+            box-shadow:0 2px 8px rgba(71,85,105,.35);">
             <span class="material-symbols-outlined" style="font-size:20px;color:#1e293b;">local_shipping</span>
           </div>
           <div style="flex:1;min-width:0;">
-            <div id="awb-banner-jumlah" style="font-size:22px;font-weight:800;color:#92400e;line-height:1.1;">
-              0 <span style="font-size:13px;font-weight:500;color:#b45309;">resi siap dilacak</span>
+            <div id="awb-banner-jumlah" style="font-size:22px;font-weight:800;color:#334155;line-height:1.1;">
+              0 <span style="font-size:13px;font-weight:500;color:#dc2626;">resi siap dilacak</span>
             </div>
-            <div id="awb-banner-sub" style="font-size:12px;color:#b45309;margin-top:3px;"></div>
+            <div id="awb-banner-sub" style="font-size:12px;color:#dc2626;margin-top:3px;"></div>
           </div>
           <button onclick="handleTrackAwbBulk()"
-            style="background:#fbbf24;color:#1e293b;border:none;border-radius:8px;
+            style="background:#475569;color:#1e293b;border:none;border-radius:8px;
               padding:9px 18px;font-size:13px;font-weight:800;cursor:pointer;
               display:flex;align-items:center;gap:6px;white-space:nowrap;
-              box-shadow:0 2px 8px rgba(251,191,36,.4);transition:.15s;flex-shrink:0;"
-            onmouseover="this.style.background='#d97706'"
-            onmouseout="this.style.background='#fbbf24'">
+              box-shadow:0 2px 8px rgba(71,85,105,.4);transition:.15s;flex-shrink:0;"
+            onmouseover="this.style.background='#dc2626'"
+            onmouseout="this.style.background='#475569'">
             <span class="material-symbols-outlined" style="font-size:16px;">search</span>
             Lacak Sekarang
           </button>
           <button onclick="awbBannerTutup()"
-            style="background:none;border:none;color:#b45309;cursor:pointer;
+            style="background:none;border:none;color:#dc2626;cursor:pointer;
               font-size:18px;line-height:1;opacity:.5;padding:4px;flex-shrink:0;"
             title="Tutup">✕</button>
         </div>
@@ -693,7 +690,7 @@
                 <span style="font-size:11px;color:#94a3b8;" id="chunk-progress-text"></span>
               </div>
               <div style="background:#f1f5f9;border-radius:4px;height:5px;overflow:hidden;">
-                <div id="awb-progress-bar" style="height:100%;background:#fbbf24;border-radius:4px;width:0%;transition:width 0.3s;"></div>
+                <div id="awb-progress-bar" style="height:100%;background:#475569;border-radius:4px;width:0%;transition:width 0.3s;"></div>
               </div>
             </div>
 
@@ -780,8 +777,8 @@
                 <span class="val" id="cnt-sudah-jalan" style="color:#16a34a;">0</span>
               </div>
               <div class="awb-status-row" onclick="setTableFilter('belum_jalan')">
-                <span class="lbl"><span class="material-symbols-outlined" style="font-size:15px;color:#d97706;">schedule</span>Belum Jalan</span>
-                <span class="val" id="cnt-belum-jalan" style="color:#d97706;">0</span>
+                <span class="lbl"><span class="material-symbols-outlined" style="font-size:15px;color:#dc2626;">schedule</span>Belum Jalan</span>
+                <span class="val" id="cnt-belum-jalan" style="color:#dc2626;">0</span>
               </div>
               <div class="awb-status-row" onclick="setTableFilter('cancel')">
                 <span class="lbl"><span class="material-symbols-outlined" style="font-size:15px;color:#dc2626;">cancel</span>Cancel</span>
