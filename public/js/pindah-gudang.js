@@ -548,13 +548,19 @@ function pgRender() {
   const fokusKode = null;
   const daftar = tampil.join(',');
 
+  const perInduk = {};
+  tampil.forEach(k => { (perInduk[pgRakInduk(k)] = perInduk[pgRakInduk(k)] || []).push(k); });
   if (grid.dataset.daftar !== daftar) {
-    // Susunan kartu berubah (filter / cari / data baru): bangun ulang
+    // Susunan kartu berubah (filter / cari / data baru): bangun ulang, dikelompokkan per rak induk
     pgState.kartuHtml = {};
+    let indukLalu = null;
     grid.innerHTML = tampil.map(k => {
       const html = pgKartuHtml(k);
       pgState.kartuHtml[k] = html;
-      return html;
+      const ind = pgRakInduk(k);
+      const judul = ind !== indukLalu ? `<div class="pg-grup" data-grup="${pgEsc(ind)}">${pgGrupIsi(ind, perInduk[ind])}</div>` : '';
+      indukLalu = ind;
+      return judul + html;
     }).join('');
     grid.dataset.daftar = daftar;
 
@@ -566,6 +572,10 @@ function pgRender() {
       if (pgState.kartuHtml[k] === html) return;
       const el = grid.querySelector(`.pg-card[data-kode="${CSS.escape(k)}"]`);
       if (el) { el.outerHTML = html; pgState.kartuHtml[k] = html; }
+    });
+    grid.querySelectorAll('.pg-grup').forEach(el => {
+      const ind = el.dataset.grup;
+      if (perInduk[ind]) { const isi = pgGrupIsi(ind, perInduk[ind]); if (el.innerHTML !== isi) el.innerHTML = isi; }
     });
   }
 }
@@ -580,6 +590,12 @@ function pgRenderChipNyasar() {
   el.innerHTML = `<span class="material-symbols-outlined">priority_high</span>Salah Rak <small>${nSku}</small>`;
   el.title = `${nSku} SKU berada di rak tim lain (${nRak} kode rak)`;
   if (!nRak && pgState.filter === 'nyasar') pgSetFilter('semua', document.querySelector('.pg-chip[data-f="semua"]'));
+}
+
+// Judul kelompok: "Rak 1201 · 4 blok · 2 selesai"
+function pgGrupIsi(induk, kodes) {
+  const selesai = kodes.filter(k => { const s = pgStatusEfektif(k); return (s.status === 'sesuai' || s.status === 'selisih') && !s.nBelum; }).length;
+  return `<span>Rak ${pgEsc(induk)}</span><small>${kodes.length} blok · ${selesai} selesai</small>`;
 }
 
 function pgRenderKartu(kode) {
@@ -619,27 +635,35 @@ function pgKartuHtml(k) {
   } else if (s.status === 'konflik') {
     foot = `<div class="pg-card-info merah">Sudah disimpan ${pgEsc(pgSiapa(s.petugas))} pukul ${pgEsc(pgJam(s.waktu))}. Buka untuk cek.</div>`;
   }
-  // Label mini: kurang (merah) · lebih (hijau) · belum (oranye) · sesuai (biru)
-  const mini = [];
-  if (s.status === 'ulang') mini.push(`<span class="pg-mc oranye">↻ Qty Web berubah, cek ulang</span>`);
-  if (['sesuai', 'selisih', 'sebagian', 'ulang'].includes(s.status) || s.antre === 'menyimpan') {
-    if (s.nKurang) mini.push(`<span class="pg-mc kurang">${s.nKurang} kurang ${s.pcsKurang}</span>`);
-    if (s.nLebih)  mini.push(`<span class="pg-mc lebih">${s.nLebih} lebih +${s.pcsLebih}</span>`);
-    if (s.nKurang === undefined && s.nSelisih) mini.push(`<span class="pg-mc kurang">${s.nSelisih} selisih</span>`);
-    if (s.nBelum)  mini.push(`<span class="pg-mc belum">${s.nBelum} belum</span>`);
-    if (s.status === 'sesuai') mini.push(`<span class="pg-mc sesuai">✓ semua sesuai</span>`);
+  // Keterangan ringkas: ▼ kurang (merah) · ▲ lebih (hijau) · ⏳ belum (oranye) · ✓ pas (biru) · 👤 sedang dihitung (ungu)
+  const ket = [];
+  if (s.status === 'ulang') ket.push(`<span class="pg-k-ulang">↻ cek ulang</span>`);
+  const sudahHitung = ['sesuai', 'selisih', 'sebagian', 'ulang'].includes(s.status) || s.antre === 'menyimpan';
+  if (sudahHitung) {
+    if (s.nKurang) ket.push(`<span class="pg-k-kurang">▼${s.nKurang} (${s.pcsKurang})</span>`);
+    if (s.nLebih)  ket.push(`<span class="pg-k-lebih">▲${s.nLebih} (+${s.pcsLebih})</span>`);
+    if (s.nKurang === undefined && s.nSelisih) ket.push(`<span class="pg-k-kurang">▼▲${s.nSelisih}</span>`);
+    if (s.nBelum)  ket.push(`<span class="pg-k-belum">⏳${s.nBelum}</span>`);
+    if (s.status === 'sesuai') ket.push(`<span class="pg-k-pas">✓ pas semua</span>`);
   }
-  if (lain) mini.push(`<span class="pg-mc sedang">👤 ${pgEsc(pgLabelSedang(lain).replace(/^Sedang dihitung\s*/, 'dihitung '))}</span>`);
+  if (lain) ket.push(`<span class="pg-k-sedang">👤 ${pgEsc(pgLabelSedang(lain).replace(/^Sedang dihitung\s*/, 'dihitung '))}</span>`);
+  if (ket.length) foot += `<div class="pg-ket">${ket.join('')}</div>`;
+  // Garis progres: biru pas · hijau lebih · merah kurang · oranye belum
+  if (nProduk) {
+    const nPas = s.nSesuai !== undefined ? s.nSesuai : (s.status === 'sesuai' ? nProduk : 0);
+    const nL = s.nLebih || 0, nK = s.nKurang || 0;
+    const nB = s.nKurang !== undefined ? s.nBelum || 0 : Math.max(0, nProduk - nPas - nL - nK);
+    const tot = Math.max(1, nPas + nL + nK + nB);
+    const w = n => (n / tot * 100).toFixed(1) + '%';
+    foot += `<div class="pg-bar-kartu"><i class="pas" style="width:${w(nPas)}"></i><i class="lebih" style="width:${w(nL)}"></i><i class="kurang" style="width:${w(nK)}"></i><i class="belum" style="width:${w(nB)}"></i></div>`;
+  }
   const nyasar = g && g.nyasar ? g.nyasar.filter(i => !filterTim || i.tim === filterTim) : [];
-  if (nyasar.length) {
-    const timLain = [...new Set(nyasar.map(i => i.tim))].map(t => 'Tim ' + t).join(', ');
-    mini.push(`<span class="pg-mc kurang" title="${pgEsc(timLain)}">⚠ ${nyasar.length} salah rak</span>`);
-  }
-  if (mini.length) foot += `<div class="pg-mini-baris">${mini.join('')}</div>`;
+  const timNyasar = [...new Set(nyasar.map(i => i.tim))].map(t => 'Tim ' + t).join(', ');
 
-  return `<div class="pg-card pg-card-${kelas}${lain ? ' pg-card-dipegang' : ''}${nyasar.length ? ' pg-card-nyasar' : ''}" data-kode="${kEsc}" onclick="pgBukaRak('${kEsc}')">
+  const pudar = s.status === 'sesuai' && !s.antre && !lain;
+  return `<div class="pg-card pg-card-${kelas}${lain ? ' pg-card-dipegang' : ''}${nyasar.length ? ' pg-card-nyasar' : ''}${pudar ? ' pg-card-pudar' : ''}" data-kode="${kEsc}" onclick="pgBukaRak('${kEsc}')">
       <div class="pg-card-top">
-        <span class="pg-card-kode">${kEsc}${nyasar.length ? '<span class="pg-tanda-seru" title="Ada SKU tim lain di rak ini">!</span>' : ''}</span>
+        <span class="pg-card-kode">${kEsc}${nyasar.length ? `<span class="pg-nyasar-n" title="${nyasar.length} SKU salah rak (${pgEsc(timNyasar)})">!${nyasar.length}</span>` : ''}</span>
         <span class="pg-badge pg-badge-${kelas}">${badge}</span>
       </div>
       ${foto}
