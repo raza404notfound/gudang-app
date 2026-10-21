@@ -605,3 +605,59 @@
 .pg-sku-tim { background: #334155; color: #fff; }
 .pg-scan-flash.nyala { background: #fff; color: #0f172a; }
 @keyframes pgSorot { 0%, 60% { box-shadow: 0 0 0 3px #475569, 0 0 0 7px #e2e8f0; } 100% { box-shadow: none; } }
+
+/* ===== v7: warna hasil (kurang merah · lebih hijau · sesuai biru · belum oranye · sedang ungu) ===== */
+.pg-card-sesuai  { border-left-color: #2563eb !important; }
+.pg-badge-sesuai { background: #dbeafe; color: #1d4ed8; }
+.pg-card-sebagian { border-left-color: #f97316 !important; }
+.pg-badge-sebagian { background: #ffedd5; color: #c2410c; }
+.pg-teks-biru { color: #1d4ed8; font-weight: 700; }
+/* label mini di kartu */
+.pg-mini-baris { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+.pg-mc { font-size: 9.5px; font-weight: 700; line-height: 1.45; border-radius: 4px; padding: 1px 5px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.pg-mc.kurang { color: #b91c1c; background: #fee2e2; }
+.pg-mc.lebih  { color: #15803d; background: #dcfce7; }
+.pg-mc.belum  { color: #b45309; background: #ffedd5; }
+.pg-mc.oranye { color: #c2410c; background: #ffedd5; }
+.pg-mc.sesuai { color: #1d4ed8; background: #dbeafe; }
+.pg-mc.sedang { color: #6d28d9; background: #ede9fe; }
+.pg-card .pg-card-foot { display: none; }   /* versi lama diganti label mini */
+/* baris dalam rak: kotak WEB gelap, label hasil kecil, seluruh baris berwarna */
+.pg-web-box { flex: none; background: #1e293b; color: #fff; border-radius: 8px; padding: 3px 9px; text-align: center; line-height: 1; min-width: 42px; }
+.pg-web-box small { display: block; font-size: 8.5px; font-weight: 700; color: #cbd5e1; letter-spacing: .5px; }
+.pg-web-box b { display: block; font: 800 18px Arial, sans-serif; color: #fff; margin-top: 2px; }
+.pg-hasil { margin-left: auto; flex: none; font: 800 9.5px Arial, sans-serif; letter-spacing: .2px; border-radius: 5px; padding: 3px 6px; background: #e2e8f0; color: #94a3b8; white-space: nowrap; }
+.pg-hasil.pas { background: #2563eb; color: #fff; }
+.pg-hasil.kurang { background: #dc2626; color: #fff; }
+.pg-hasil.lebih { background: #16a34a; color: #fff; }
+.pg-hasil + .pg-del { margin-left: 4px; }
+.pg-bx .pg-del { margin-left: 4px; }
+.pg-baris.pg-bx { border-left: 5px solid transparent; }
+.pg-baris.pg-bx.pg-ok { background: #eff6ff; border-left-color: #2563eb; }
+.pg-baris.pg-bx.pg-ok .pg-info { background: #dbeafe; border-color: #bfdbfe; }
+.pg-baris.pg-bx.pg-kurang { background: #fef2f2; border-left-color: #dc2626; }
+.pg-baris.pg-bx.pg-kurang .pg-info { background: #fee2e2; border-color: #fecaca; }
+.pg-baris.pg-bx.pg-lebih { background: #f0fdf4; border-left-color: #16a34a; }
+.pg-baris.pg-bx.pg-lebih .pg-info { background: #dcfce7; border-color: #bbf7d0; }
+/* filter tim di dalam rak */
+.pg-baris.pg-bx.pg-sembunyi-tim { display: none !important; }
+.pg-tim-info { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 8px 4px; padding: 7px 10px; border-radius: 8px;
+  background: #fef2f2; color: #991b1b; font-size: 12px; }
+.pg-tim-info b { background: #dc2626; color: #fff; border-radius: 10px; padding: 1px 7px; }
+.pg-tim-info button { flex: none; border: 1px solid #fca5a5; background: #fff; color: #dc2626; border-radius: 12px; padding: 3px 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
+/* saat menunggu data: kotak terkunci & berkedip abu, bukan kosong */
+#pg-baris.pg-memuat .pg-in3 { pointer-events: none; color: transparent; background: linear-gradient(90deg, #f1f5f9, #e2e8f0, #f1f5f9); background-size: 200% 100%; animation: pgMuat 1s linear infinite; }
+#pg-baris.pg-memuat .pg-in3::placeholder { color: transparent; }
+@keyframes pgMuat { from { background-position: 200% 0; } to { background-position: 0 0; } }
+@media (max-width: 640px) {
+  .pg-web-box { min-width: 36px; padding: 3px 6px; }
+  .pg-web-box b { font-size: 16px; }
+  .pg-hasil { font-size: 8.5px; padding: 3px 4px; }
+  .pg-input.pg-in3 { width: 44px; }
+  .pg-tot { min-width: 30px; }
+}
+@media (max-width: 360px) {
+  .pg-input.pg-in3 { width: 38px; }
+  .pg-hasil { max-width: 58px; overflow: hidden; text-overflow: ellipsis; }
+}
+.pg-teks-ungu { color: #6d28d9; }
