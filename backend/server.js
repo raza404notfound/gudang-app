@@ -831,26 +831,91 @@ function pesanErrorPindah(err) {
   return err.config ? err.message : 'Gagal terhubung ke Apps Script Pindah Gudang.';
 }
 
-// GET /api/pindah/data — data CSV + status per rak + tanda sedang dihitung
+// =============================================
+// MEMORI BERSAMA STOK OPNAME (satu perangkat memuat dari sheet, semua kebagian)
+// - Data CSV + status + isi hitungan disimpan di memori server.
+// - Simpan / hapus lewat server → memori langsung diperbarui (tanpa baca sheet lagi).
+// - Setiap perubahan menaikkan nomor versi; HP cukup bertanya "ada yang lebih baru dari versi X?".
+// - Dicek ulang ke sheet tiap 5 menit (antisipasi edit manual di sheet) selama ada yang membuka.
+// =============================================
+const PG_SEGAR_MS = 5 * 60 * 1000;
+const pgMem = { master: null, exportInfo: [], exportTim: {}, status: {}, versi: 1, versiPenuh: 1, ubah: {}, waktu: 0, akses: 0, memuat: null };
+
+function pgNaikVersi(kode) { pgMem.versi++; if (kode) pgMem.ubah[kode] = pgMem.versi; }
+
+// Ambil ulang dari sheet (dedup: permintaan bersamaan menunggu proses yang sama)
+function pgMuatMem() {
+  if (pgMem.memuat) return pgMem.memuat;
+  pgMem.memuat = (async () => {
+    try {
+      const d = await pindahGet({ action: 'pgLoad' });
+      if (!d.success) throw Object.assign(new Error(d.message || 'Gagal memuat data.'), { dariSheet: true });
+      const masterBaru = JSON.stringify(d.master || []);
+      const masterBerubah = pgMem.master !== null && JSON.stringify(pgMem.master) !== masterBaru;
+      const lama = pgMem.status, baru = d.status || {};
+      if (pgMem.master === null || masterBerubah) {
+        pgMem.versi++; pgMem.versiPenuh = pgMem.versi; pgMem.ubah = {};
+      } else {
+        // hanya rak yang berubah yang dapat versi baru
+        new Set([...Object.keys(lama), ...Object.keys(baru)]).forEach(k => {
+          if (JSON.stringify(lama[k] || null) !== JSON.stringify(baru[k] || null)) pgNaikVersi(k);
+        });
+      }
+      pgMem.master = d.master || [];
+      pgMem.exportInfo = d.exportInfo || [];
+      pgMem.exportTim = d.exportTim || {};
+      pgMem.status = baru;
+      pgMem.waktu = Date.now();
+      if (masterBerubah) siarkanPindah('muatUlang', { oleh: 'sheet' });
+      return pgMem;
+    } finally {
+      pgMem.memuat = null;
+    }
+  })();
+  return pgMem.memuat;
+}
+async function pgPastikanMem() {
+  pgMem.akses = Date.now();
+  if (!pgMem.master) await pgMuatMem();
+  else if (Date.now() - pgMem.waktu > PG_SEGAR_MS) pgMuatMem().catch(() => {});   // pakai yang ada, segarkan di belakang
+}
+// Perbarui satu rak di memori (dipakai setelah simpan / hapus)
+function pgSetStatusMem(kode, st) {
+  if (!pgMem.master) return;
+  if (st) pgMem.status[kode] = st; else delete pgMem.status[kode];
+  pgNaikVersi(kode);
+}
+// Cek ulang ke sheet tiap 5 menit selama halaman Stok Opname dibuka seseorang (10 menit terakhir)
+setInterval(() => {
+  if (pgMem.master && Date.now() - pgMem.akses < 10 * 60 * 1000 && Date.now() - pgMem.waktu >= PG_SEGAR_MS - 5000) {
+    pgMuatMem().catch(e => console.error('Segarkan stok opname gagal:', e.message));
+  }
+}, 60 * 1000);
+
+// GET /api/pindah/data — data CSV + status + isi hitungan (dari memori bersama)
+// ?segar=1 → paksa ambil ulang dari sheet (tombol Muat Ulang), maksimal sekali per 20 detik
 app.get('/api/pindah/data', requireAuth, async (req, res) => {
   try {
-    const data = await pindahGet({ action: 'pgLoad' });
-    if (!data.success) return res.json({ success: false, message: data.message || 'Gagal memuat data pindah gudang.' });
-    res.json({ success: true, master: data.master || [], status: data.status || {}, sedang: {},
-      url: req.sessionUser.role === 'superuser' ? (data.url || '') : '',
-      exportInfo: data.exportInfo || [], exportTim: data.exportTim || {}, saya: req.sessionUser.username, role: req.sessionUser.role });
+    if (req.query.segar === '1' && Date.now() - pgMem.waktu > 20000) await pgMuatMem();
+    else await pgPastikanMem();
+    res.json({ success: true, master: pgMem.master, status: pgMem.status, sedang: {}, versi: pgMem.versi,
+      exportInfo: pgMem.exportInfo, exportTim: pgMem.exportTim, saya: req.sessionUser.username, role: req.sessionUser.role });
   } catch (err) {
     console.error('Pindah load error:', err.message);
-    res.status(500).json({ success: false, message: pesanErrorPindah(err) });
+    res.status(500).json({ success: false, message: err.dariSheet ? err.message : pesanErrorPindah(err) });
   }
 });
 
-// GET /api/pindah/status — data ringan untuk sinkron berkala
+// GET /api/pindah/status?versi=N — hanya perubahan sejak versi N
 app.get('/api/pindah/status', requireAuth, async (req, res) => {
   try {
-    const data = await pindahGet({ action: 'pgStatus' }, 30000);
-    if (!data.success) return res.json({ success: false, message: data.message || 'Gagal memuat status.' });
-    res.json({ success: true, status: data.status || {}, sedang: data.sedang || {} });
+    await pgPastikanMem();
+    const v = Number(req.query.versi) || 0;
+    if (v >= pgMem.versi) return res.json({ success: true, versi: pgMem.versi, sama: true });
+    if (v < pgMem.versiPenuh) return res.json({ success: true, versi: pgMem.versi, status: pgMem.status, penuh: true });
+    const ubah = {};
+    Object.keys(pgMem.ubah).forEach(k => { if (pgMem.ubah[k] > v) ubah[k] = pgMem.status[k] || null; });
+    res.json({ success: true, versi: pgMem.versi, ubah });
   } catch (err) {
     res.status(500).json({ success: false, message: pesanErrorPindah(err) });
   }
@@ -885,7 +950,10 @@ app.post('/api/pindah/upload', requireAuth, async (req, res) => {
       namaFile: String(namaFile || '').slice(0, 200), oleh: req.sessionUser.username,
       namaOleh: await namaTampil(req.sessionUser.username), waktu: waktuWIB()
     });
-    if (data.success) siarkanPindah('muatUlang', { oleh: req.sessionUser.username });
+    if (data.success) {
+      try { await pgMuatMem(); } catch (e) {}
+      siarkanPindah('muatUlang', { oleh: req.sessionUser.username });
+    }
     res.json(data.success
       ? { success: true, message: data.message, perluCek: data.perluCek || [] }
       : { success: false, message: data.message || 'Gagal upload CSV.' });
@@ -901,21 +969,24 @@ app.post('/api/pindah/upload', requireAuth, async (req, res) => {
 //  - satu rak: khusus superuser
 app.post('/api/pindah/hapus', requireAuth, async (req, res) => {
   const saya = req.sessionUser.username;
-  const jenis = req.body.jenis === 'rak' ? 'rak' : 'sku';
+  const jenis = req.body.jenis === 'rak' ? 'rak' : req.body.jenis === 'tim' ? 'tim' : 'sku';
   const kodeRak = String(req.body.kodeRak || '').trim().toUpperCase();
   const id = String(req.body.id || '').trim();
+  const tim = String(req.body.tim || '').trim().slice(0, 10);
+  if (jenis === 'tim' && !tim) return res.status(400).json({ success: false, message: 'Tim tidak diisi.' });
   if (!kodeRak || (jenis === 'sku' && !id)) return res.status(400).json({ success: false, message: 'Data hapus tidak lengkap.' });
-  if (jenis === 'rak' && req.sessionUser.role !== 'superuser') {
+  if (jenis !== 'sku' && req.sessionUser.role !== 'superuser') {
     return res.status(403).json({ success: false, message: 'Hapus hitungan satu rak hanya untuk superuser.' });
   }
   try {
     const data = await pindahPost({
-      action: 'pgHapus', jenis, kodeRak, id, oleh: saya, namaOleh: await namaTampil(saya), waktu: waktuWIB(),
+      action: 'pgHapus', jenis, kodeRak, id, tim, oleh: saya, namaOleh: await namaTampil(saya), waktu: waktuWIB(),
       alasan: String(req.body.alasan || '').slice(0, 300)
     }, 60000);
     if (data.success) {
       console.log(`🗑️ [HAPUS HITUNGAN] ${saya}: ${jenis} ${kodeRak} ${id}`);
-      siarkanPindah('hapusHitung', { oleh: saya, jenis, kodeRak, id, status: data.status || null, kembaliBelum: !!data.kembaliBelum });
+      pgSetStatusMem(kodeRak, data.kembaliBelum ? null : (data.status || null));
+      siarkanPindah('hapusHitung', { oleh: saya, jenis, kodeRak, id, tim, status: data.status || null, kembaliBelum: !!data.kembaliBelum });
     }
     res.json(data.success ? { success: true, message: data.message, status: data.status || null, kembaliBelum: !!data.kembaliBelum }
       : { success: false, message: data.message || 'Gagal menghapus hitungan.' });
@@ -951,6 +1022,11 @@ app.post('/api/pindah/simpan', requireAuth, async (req, res) => {
       const ok = (data.hasil || []).filter(h => h.ok);
       if (ok.length) {
         ok.forEach(h => lepasSedangMemori(h.kodeRak, perangkat));
+        ok.forEach(h => {
+          const lama = pgMem.status[h.kodeRak] || {};
+          pgSetStatusMem(h.kodeRak, { status: h.status, nSelisih: h.nSelisih, nBelum: h.nBelum, perluCek: false,
+            petugas: h.petugas, waktu: h.waktu, versi: h.versi, perangkat: h.perangkat || '', isi: h.isi || lama.isi || [] });
+        });
         siarkanPindah('simpan', { hasil: ok });
         siarkanSedang();
       }
