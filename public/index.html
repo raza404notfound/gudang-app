@@ -18,6 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
   <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/pecah-rak.css">
   <link rel="stylesheet" href="/css/pindah-gudang.css">
   <link rel="stylesheet" href="/css/opname-web.css">
   <link rel="stylesheet" href="/css/dashboard.css">
@@ -213,6 +214,9 @@
             </a>
             <a class="nav-item nav-sub" href="#opname-web" onclick="switchTab('opname-web', this); return false;">
               <span class="material-symbols-outlined">language</span><span>Opname WEB</span>
+            </a>
+            <a class="nav-item nav-sub" href="#pecah-rak" onclick="switchTab('pecah-rak', this); return false;">
+              <span class="material-symbols-outlined">shelves</span><span>Pecah Rak</span>
             </a>
           </div>
         </div>
@@ -1080,6 +1084,24 @@
         </div>
       </section>
 
+<section id="page-pecah-rak" class="page-content">
+        <div class="pr-wrap">
+          <div class="pr-kartu pr-atas">
+            <div class="pr-atas-kiri"><span class="pr-label">TIM</span><div class="pr-chips" id="pr-tim"></div></div>
+            <div class="pr-atas-kanan">
+              <span id="pr-aksi-hapus" style="display:none;">
+                <button class="pr-btn" onclick="prHapusCsv(false)" title="Hapus CSV tim ini"><span class="material-symbols-outlined">delete</span><span>Hapus CSV tim</span></button>
+                <button class="pr-btn" onclick="prHapusCsv(true)" title="Hapus semua CSV Pecah Rak"><span class="material-symbols-outlined">delete_sweep</span><span>Hapus semua</span></button>
+                <button class="pr-btn" onclick="prEksporRingkasan()"><span class="material-symbols-outlined">download</span><span>Ringkasan CSV</span></button>
+              </span>
+              <button class="pr-btn merah" id="pr-btn-upload" onclick="prPilihCsv()"><span class="material-symbols-outlined">upload_file</span><span>Upload CSV</span></button>
+              <input type="file" id="pr-file" accept=".csv,.tsv,.txt,text/csv" hidden onchange="prUpload(this)">
+            </div>
+          </div>
+          <div id="pr-isi"><div class="pr-kosong">Memuat…</div></div>
+        </div>
+      </section>
+
 <section id="page-pengaturan" class="page-content">
         <div class="set-wrap">
           <div class="set-kartu">
@@ -1174,5 +1196,6 @@
   <script src="/js/opname-web.js"></script>
   <script src="/js/dashboard.js"></script>
   <script src="/js/pengaturan.js"></script>
+  <script src="/js/pecah-rak.js"></script>
 </body>
 </html>
