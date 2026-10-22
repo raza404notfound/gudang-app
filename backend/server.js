@@ -1243,6 +1243,41 @@ app.post('/api/profil/:username', requireSuperuser, async (req, res) => {
 });
 
 // =============================================
+// PECAH RAK — CSV sementara untuk perencanaan rak (semua akun)
+// =============================================
+app.get('/api/pecah/data', requireAuth, async (req, res) => {
+  try {
+    const d = await pindahGet({ action: 'prLoad' }, 45000);
+    res.json(d.success ? { success: true, rows: d.rows || [], setel: d.setel || {}, saya: req.sessionUser.username }
+      : { success: false, message: d.message || 'Gagal memuat data Pecah Rak.' });
+  } catch (err) { res.status(500).json({ success: false, message: pesanErrorPindah(err) }); }
+});
+app.post('/api/pecah/upload', requireAuth, async (req, res) => {
+  const rows = Array.isArray(req.body.rows) ? req.body.rows.slice(0, 20000) : [];
+  if (!rows.length) return res.status(400).json({ success: false, message: 'CSV kosong.' });
+  try {
+    const d = await pindahPost({ action: 'prUpload', rows, oleh: await namaTampil(req.sessionUser.username),
+      waktu: waktuWIB(), namaFile: String(req.body.namaFile || '') }, 120000);
+    res.json(d.success ? { success: true, message: d.message } : { success: false, message: d.message || 'Gagal upload.' });
+  } catch (err) { res.status(500).json({ success: false, message: pesanErrorPindah(err) }); }
+});
+app.post('/api/pecah/hapus', requireAuth, async (req, res) => {
+  try {
+    const d = await pindahPost({ action: 'prHapus', tim: String(req.body.tim || '').slice(0, 10) }, 60000);
+    res.json(d.success ? { success: true, message: d.message } : { success: false, message: d.message || 'Gagal menghapus.' });
+  } catch (err) { res.status(500).json({ success: false, message: pesanErrorPindah(err) }); }
+});
+app.post('/api/pecah/setel', requireAuth, async (req, res) => {
+  const tim = String(req.body.tim || '').slice(0, 10);
+  if (!tim) return res.status(400).json({ success: false, message: 'Tim kosong.' });
+  try {
+    const d = await pindahPost({ action: 'prSetel', tim, setel: req.body.setel || {},
+      oleh: await namaTampil(req.sessionUser.username), waktu: waktuWIB() }, 30000);
+    res.json(d.success ? { success: true } : { success: false, message: d.message || 'Gagal menyimpan setelan.' });
+  } catch (err) { res.status(500).json({ success: false, message: pesanErrorPindah(err) }); }
+});
+
+// =============================================
 // DASHBOARD GUDANG
 // GET /api/dashboard/gudang?gudang=pdc|...|semua&dari=YYYY-MM-DD&sampai=YYYY-MM-DD
 //
