@@ -892,6 +892,26 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
+// Jaga Apps Script tetap "bangun" (jam 06.00–23.00 WIB) supaya tidak ada jeda bangun 1–3 detik
+const GAS_OPNAME_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwBaBiM08RtAuPayp-vtJINsO3li2blbVg1sbTJtKFPF3-xLN6zhBg5_UbUG_79mQoJ/exec';
+function jagaGasBangun() {
+  const jam = new Date(Date.now() + 7 * 3600 * 1000).getUTCHours();
+  if (jam < 6 || jam >= 23) return;
+  [...new Set([PINDAH_SCRIPT_URL, SHEET_SCRIPT_URL, GAS_OPNAME_SHEET_URL].filter(Boolean))].forEach(url => {
+    axios.get(url, { params: { action: 'ping' }, timeout: 30000 }).catch(() => {});
+  });
+}
+setInterval(jagaGasBangun, 4 * 60 * 1000);
+// Siapkan memori begitu server menyala (setelah deploy / restart), supaya pengguna pertama tidak menunggu
+setTimeout(() => {
+  if (!PINDAH_SCRIPT_URL) return;
+  pgMuatMem().catch(e => console.error('Siapkan Stok Opname gagal:', e.message));
+  owMuatMem('').catch(() => {});
+  prMuatMem().catch(() => {});
+  ambilProfil(true).catch(() => {});
+  jagaGasBangun();
+}, 3000);
+
 // GET /api/pindah/data — data CSV + status + isi hitungan (dari memori bersama)
 // ?segar=1 → paksa ambil ulang dari sheet (tombol Muat Ulang), maksimal sekali per 20 detik
 app.get('/api/pindah/data', requireAuth, async (req, res) => {
@@ -952,6 +972,7 @@ app.post('/api/pindah/upload', requireAuth, async (req, res) => {
     });
     if (data.success) {
       try { await pgMuatMem(); } catch (e) {}
+      owTandaiBerubah();
       siarkanPindah('muatUlang', { oleh: req.sessionUser.username });
     }
     res.json(data.success
@@ -986,6 +1007,7 @@ app.post('/api/pindah/hapus', requireAuth, async (req, res) => {
     if (data.success) {
       console.log(`🗑️ [HAPUS HITUNGAN] ${saya}: ${jenis} ${kodeRak} ${id}`);
       pgSetStatusMem(kodeRak, data.kembaliBelum ? null : (data.status || null));
+      owTandaiBerubah();
       siarkanPindah('hapusHitung', { oleh: saya, jenis, kodeRak, id, tim, status: data.status || null, kembaliBelum: !!data.kembaliBelum });
     }
     res.json(data.success ? { success: true, message: data.message, status: data.status || null, kembaliBelum: !!data.kembaliBelum }
@@ -1022,6 +1044,7 @@ app.post('/api/pindah/simpan', requireAuth, async (req, res) => {
       const ok = (data.hasil || []).filter(h => h.ok);
       if (ok.length) {
         ok.forEach(h => lepasSedangMemori(h.kodeRak, perangkat));
+        owTandaiBerubah();
         ok.forEach(h => {
           const lama = pgMem.status[h.kodeRak] || {};
           pgSetStatusMem(h.kodeRak, { status: h.status, nSelisih: h.nSelisih, nBelum: h.nBelum, perluCek: false,
@@ -1041,13 +1064,45 @@ app.post('/api/pindah/simpan', requireAuth, async (req, res) => {
 });
 
 // GET /api/pindah/opname?bulan=SO+2026-10 — data per produk untuk menu Opname WEB
+// Memori bersama per bulan: tampil instan, diperbarui di belakang layar
+const owMem = {};   // { bulan: { data, waktu, memuat } }
+function owMuatMem(bulan) {
+  const m = owMem[bulan] || (owMem[bulan] = { data: null, waktu: 0, memuat: null });
+  if (m.memuat) return m.memuat;
+  m.memuat = (async () => {
+    try {
+      const d = await pindahGet({ action: 'pgOpname', bulan }, 90000);
+      if (!d.success) throw Object.assign(new Error(d.message || 'Gagal memuat Opname WEB.'), { dariSheet: true });
+      m.data = d; m.waktu = Date.now();
+      if (!bulan && d.bulan) owMem[d.bulan] = { data: d, waktu: m.waktu, memuat: null };
+      return d;
+    } finally { m.memuat = null; }
+  })();
+  return m.memuat;
+}
+// Dipanggil setiap ada simpan / hapus / upload / barang rusak / ganti nama: segarkan di belakang (digabung 5 detik)
+let owTimerSegar = null;
+function owTandaiBerubah() {
+  Object.values(owMem).forEach(m => { m.waktu = 0; });
+  clearTimeout(owTimerSegar);
+  owTimerSegar = setTimeout(() => {
+    Object.keys(owMem).forEach(b => { if (owMem[b].data) owMuatMem(b).catch(() => {}); });
+  }, 5000);
+}
 app.get('/api/pindah/opname', requireAuth, async (req, res) => {
+  const bulan = String(req.query.bulan || '');
   try {
-    const data = await pindahGet({ action: 'pgOpname', bulan: String(req.query.bulan || '') }, 60000);
-    res.json(data.success ? data : { success: false, message: data.message || 'Gagal memuat Opname WEB.' });
+    const m = owMem[bulan];
+    let data;
+    if (req.query.segar === '1') data = await owMuatMem(bulan);
+    else if (m && m.data) {
+      data = m.data;
+      if (Date.now() - m.waktu > PG_SEGAR_MS) owMuatMem(bulan).catch(() => {});   // tampil dulu, segarkan di belakang
+    } else data = await owMuatMem(bulan);
+    res.json({ ...data, waktuData: (owMem[bulan] && owMem[bulan].waktu) || Date.now() });
   } catch (err) {
     console.error('Opname web error:', err.message);
-    res.status(500).json({ success: false, message: pesanErrorPindah(err) });
+    res.status(500).json({ success: false, message: err.dariSheet ? err.message : pesanErrorPindah(err) });
   }
 });
 
@@ -1074,6 +1129,7 @@ app.post('/api/pindah/rusak', requireAuth, async (req, res) => {
   try {
     const data = await pindahPost({ action: 'pgRusak', namaOleh: await namaTampil(req.sessionUser.username), id, nama: nama || '', kodeRak: kodeRak || '', bulan: bulan || '',
       jumlah: Number(jumlah), keterangan: keterangan || '', oleh, waktu });
+    if (data.success) owTandaiBerubah();
     res.json(data.success ? { success: true, message: data.message, oleh, dicatatPada: waktu }
                           : { success: false, message: data.message || 'Gagal simpan.' });
   } catch (err) {
@@ -1208,7 +1264,7 @@ async function simpanProfil(username, data, res) {
   try {
     const d = await pindahPost({ action: 'pgSimpanProfil', username, nama, hp: data.hp,
       foto: data.foto, waktu: waktuWIB() }, 90000);
-    if (d.success) { await ambilProfil(true); siarkanPindah('profil', { username }); }
+    if (d.success) { await ambilProfil(true); siarkanPindah('profil', { username }); owTandaiBerubah(); pgMuatMem().catch(() => {}); }
     res.json(d.success ? { success: true, message: d.message, nama: d.nama } : { success: false, message: d.message || 'Gagal menyimpan profil.' });
   } catch (err) {
     res.status(500).json({ success: false, message: pesanErrorPindah(err) });
@@ -1245,12 +1301,26 @@ app.post('/api/profil/:username', requireSuperuser, async (req, res) => {
 // =============================================
 // PECAH RAK — CSV sementara untuk perencanaan rak (semua akun)
 // =============================================
+const prMem = { data: null, waktu: 0, memuat: null };
+function prMuatMem() {
+  if (prMem.memuat) return prMem.memuat;
+  prMem.memuat = (async () => {
+    try {
+      const d = await pindahGet({ action: 'prLoad' }, 60000);
+      if (!d.success) throw new Error(d.message || 'Gagal memuat data Pecah Rak.');
+      prMem.data = { rows: d.rows || [], setel: d.setel || {} }; prMem.waktu = Date.now();
+      return prMem.data;
+    } finally { prMem.memuat = null; }
+  })();
+  return prMem.memuat;
+}
 app.get('/api/pecah/data', requireAuth, async (req, res) => {
   try {
-    const d = await pindahGet({ action: 'prLoad' }, 45000);
-    res.json(d.success ? { success: true, rows: d.rows || [], setel: d.setel || {}, saya: req.sessionUser.username }
-      : { success: false, message: d.message || 'Gagal memuat data Pecah Rak.' });
-  } catch (err) { res.status(500).json({ success: false, message: pesanErrorPindah(err) }); }
+    let d = prMem.data;
+    if (!d || req.query.segar === '1') d = await prMuatMem();
+    else if (Date.now() - prMem.waktu > PG_SEGAR_MS) prMuatMem().catch(() => {});
+    res.json({ success: true, rows: d.rows, setel: d.setel, saya: req.sessionUser.username });
+  } catch (err) { res.status(500).json({ success: false, message: err.message || pesanErrorPindah(err) }); }
 });
 app.post('/api/pecah/upload', requireAuth, async (req, res) => {
   const rows = Array.isArray(req.body.rows) ? req.body.rows.slice(0, 20000) : [];
@@ -1258,12 +1328,14 @@ app.post('/api/pecah/upload', requireAuth, async (req, res) => {
   try {
     const d = await pindahPost({ action: 'prUpload', rows, oleh: await namaTampil(req.sessionUser.username),
       waktu: waktuWIB(), namaFile: String(req.body.namaFile || '') }, 120000);
+    if (d.success) await prMuatMem().catch(() => {});
     res.json(d.success ? { success: true, message: d.message } : { success: false, message: d.message || 'Gagal upload.' });
   } catch (err) { res.status(500).json({ success: false, message: pesanErrorPindah(err) }); }
 });
 app.post('/api/pecah/hapus', requireAuth, async (req, res) => {
   try {
     const d = await pindahPost({ action: 'prHapus', tim: String(req.body.tim || '').slice(0, 10) }, 60000);
+    if (d.success) await prMuatMem().catch(() => {});
     res.json(d.success ? { success: true, message: d.message } : { success: false, message: d.message || 'Gagal menghapus.' });
   } catch (err) { res.status(500).json({ success: false, message: pesanErrorPindah(err) }); }
 });
@@ -1271,6 +1343,7 @@ app.post('/api/pecah/setel', requireAuth, async (req, res) => {
   const tim = String(req.body.tim || '').slice(0, 10);
   if (!tim) return res.status(400).json({ success: false, message: 'Tim kosong.' });
   try {
+    if (prMem.data) prMem.data.setel[tim] = req.body.setel || {};   // langsung berlaku di memori
     const d = await pindahPost({ action: 'prSetel', tim, setel: req.body.setel || {},
       oleh: await namaTampil(req.sessionUser.username), waktu: waktuWIB() }, 30000);
     res.json(d.success ? { success: true } : { success: false, message: d.message || 'Gagal menyimpan setelan.' });
