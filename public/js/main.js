@@ -1883,6 +1883,16 @@ let allTrackedData = [];
 
       const totalTrx = teams.reduce((s, t) => s + (t.transaksi || 0), 0);
       const maxTrx   = Math.max(...teams.map(t => t.transaksi || 0), 1);
+      const totBelanja = teams.reduce((s, t) => s + (t.nilai_belanja || 0), 0);
+      const totNilai   = teams.reduce((s, t) => s + (t.nilai_transaksi || 0), 0);
+      const rp = n => 'Rp ' + Math.round(n || 0).toLocaleString('id-ID');
+      const jam = ms => {
+        if (!ms) return '-';
+        const d = new Date(ms + 7 * 3600 * 1000);
+        const p = n => String(n).padStart(2, '0');
+        return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+      };
+      const TH = 'padding:9px 12px;text-align:right;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;white-space:nowrap;';
 
       // Format tanggal untuk label
       const fmtDate = s => {
@@ -1916,6 +1926,14 @@ let allTrackedData = [];
             <div class="ins-stat-n">${totalTrx > 0 ? Math.round(totalTrx / teams.length).toLocaleString('id-ID') : 0}</div>
             <div class="ins-stat-l">Rata-rata / Team</div>
           </div>
+          <div class="ins-stat">
+            <div class="ins-stat-n" style="font-size:18px;">${rp(totBelanja)}</div>
+            <div class="ins-stat-l">Nilai Belanja</div>
+          </div>
+          <div class="ins-stat">
+            <div class="ins-stat-n" style="font-size:18px;">${rp(totNilai)}</div>
+            <div class="ins-stat-l">Nilai Transaksi</div>
+          </div>
         </div>
 
         <!-- Tabel team -->
@@ -1928,6 +1946,9 @@ let allTrackedData = [];
                   <th style="padding:9px 12px;text-align:left;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;white-space:nowrap;">No</th>
                   <th style="padding:9px 12px;text-align:left;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;">Nama Team</th>
                   <th style="padding:9px 12px;text-align:right;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Transaksi</th>
+                  <th style="${TH}">Nilai Belanja</th>
+                  <th style="${TH}">Nilai Transaksi</th>
+                  <th style="${TH}">Terakhir</th>
                   <th style="padding:9px 12px;text-align:right;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Share</th>
                   <th style="padding:9px 12px;text-align:left;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;min-width:120px;">Bar</th>
                 </tr>
@@ -1947,6 +1968,9 @@ let allTrackedData = [];
                       ${isTop ? '<span style="margin-left:6px;background:#f1f5f9;color:#334155;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;">🏆 #1</span>' : ''}
                     </td>
                     <td style="padding:9px 12px;text-align:right;font-weight:800;color:#0284c7;font-variant-numeric:tabular-nums;">${trx.toLocaleString('id-ID')}</td>
+                    <td style="padding:9px 12px;text-align:right;color:#334155;white-space:nowrap;font-variant-numeric:tabular-nums;">${rp(t.nilai_belanja)}</td>
+                    <td style="padding:9px 12px;text-align:right;color:#334155;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;">${rp(t.nilai_transaksi)}</td>
+                    <td style="padding:9px 12px;text-align:right;color:#64748b;font-size:11px;white-space:nowrap;">${jam(t.terakhir)}</td>
                     <td style="padding:9px 12px;text-align:right;color:#64748b;font-size:11px;white-space:nowrap;">${pct}%</td>
                     <td style="padding:9px 12px;">
                       <div style="background:#f1f5f9;border-radius:4px;height:8px;overflow:hidden;">
@@ -1960,6 +1984,9 @@ let allTrackedData = [];
                 <tr style="background:#f8fafc;border-top:2px solid #e2e8f0;">
                   <td colspan="2" style="padding:9px 12px;font-weight:700;color:#1e293b;font-size:11px;">TOTAL</td>
                   <td style="padding:9px 12px;text-align:right;font-weight:800;color:#0284c7;font-variant-numeric:tabular-nums;">${totalTrx.toLocaleString('id-ID')}</td>
+                  <td style="padding:9px 12px;text-align:right;font-weight:700;white-space:nowrap;">${rp(totBelanja)}</td>
+                  <td style="padding:9px 12px;text-align:right;font-weight:800;white-space:nowrap;">${rp(totNilai)}</td>
+                  <td></td>
                   <td style="padding:9px 12px;text-align:right;color:#64748b;font-size:11px;">100%</td>
                   <td></td>
                 </tr>
