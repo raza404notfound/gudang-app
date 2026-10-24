@@ -1988,8 +1988,9 @@ function encodeTeamStatMetricRequest(timeStartSec, timeEndSec) {
     encodeInt32Field(3, 1),
   ]);
 
-  // Field4: {field1: 1}
-  const field4 = encodeInt32Field(1, 1);
+  // Field4 = daftar metrik (packed). Web asli kirim [1] = transaksi → bytes 22 01 01.
+  // Dulu kita kirim 22 02 08 01 = metrik [8, 1] → server balas metrik 8 duluan (bukan transaksi) → angka tidak valid.
+  const field4 = Buffer.from([0x01]);
 
   // Outer message: Connect Protocol — raw protobuf, TANPA gRPC-Web frame
   const body = Buffer.concat([
@@ -2082,9 +2083,10 @@ function parseOuterRecord(buf, teams) {
     if (wireType === 2) {
       const ld = readLengthDelimited(buf, pos);
       pos = ld.next;
-      if (fieldNum === 8) {
-        // field8 berisi repeated field1 = team entries
+      if (fieldNum === 1) {
+        // field1 = metrik transaksi → berisi repeated field1 = team entries (sama dengan web asli)
         parseTeamEntries(ld.data, teams);
+        return;
       }
       // skip field lain
     } else {
@@ -2160,7 +2162,10 @@ function parseOneTeam(buf) {
             if (sfn === 5) team.nilai_transaksi = f64;
           } else if (swt === 2) {
             const sl = readLengthDelimited(ld.data, sp); sp = sl.next;
-            // skip nested (field6 = timestamp range)
+            if (sfn === 6) {   // field6 = Timestamp {1: detik, 2: nano} → waktu transaksi terakhir
+              const d = decodeVarint(sl.data, 1);
+              if (sl.data[0] === 0x08) team.terakhir = Number(d.value) * 1000;
+            }
           } else {
             sp = skipField(ld.data, sp, swt);
           }
