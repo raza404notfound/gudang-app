@@ -28,21 +28,32 @@ async function prApi(url, opsi = {}) {
 // ============================================================
 async function prInit() {
   if (!prState.sudah) await prMuat();
-  else prRender();
+  else { prRender(); prMuat(); }   // buka ulang: tampil dulu, cek perubahan diam-diam
 }
-async function prMuat() {
+// Cache perangkat: tampil instan dari data terakhir, diperbarui di belakang layar
+const PR_CACHE = 'pr_cache_v1';
+function prTerapkan(d) {
+  prState.rows = d.rows || [];
+  prState.setel = d.setel || {};
+  prState.sudah = true;
+  const tims = prDaftarTim();
+  if (!tims.includes(prState.tim)) prState.tim = tims[0] || '';
+  prRender();
+}
+async function prMuat(segar) {
   const isi = document.getElementById('pr-isi');
-  if (isi && !prState.sudah) isi.innerHTML = '<div class="pr-kosong">Memuat data…</div>';
+  let cache = null;
+  if (!prState.sudah) { try { cache = JSON.parse(localStorage.getItem(PR_CACHE) || 'null'); } catch (e) {} }
+  if (cache) prTerapkan(cache);
+  else if (isi && !prState.sudah) isi.innerHTML = '<div class="pr-kosong">Memuat data…</div>';
   try {
-    const d = await prApi('/api/pecah/data');
-    prState.rows = d.rows || [];
-    prState.setel = d.setel || {};
-    prState.sudah = true;
-    const tims = prDaftarTim();
-    if (!tims.includes(prState.tim)) prState.tim = tims[0] || '';
-    prRender();
+    const d = await prApi('/api/pecah/data' + (segar ? '?segar=1' : ''));
+    const baru = { rows: d.rows || [], setel: d.setel || {} };
+    try { localStorage.setItem(PR_CACHE, JSON.stringify(baru)); } catch (e) { try { localStorage.removeItem(PR_CACHE); } catch (x) {} }
+    const lama = JSON.stringify({ rows: prState.rows, setel: prState.setel });
+    if (!prState.sudah || lama !== JSON.stringify(baru)) prTerapkan(baru);
   } catch (err) {
-    if (isi) isi.innerHTML = `<div class="pr-kosong">${prEsc(err.message)}</div>`;
+    if (isi && !prState.sudah) isi.innerHTML = `<div class="pr-kosong">${prEsc(err.message)}</div>`;
   }
 }
 function prDaftarTim() {
