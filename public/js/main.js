@@ -2121,79 +2121,123 @@ let allTrackedData = [];
       document.getElementById('so-personil-dropdown').style.display = 'none';
     }
 
+    // Cache perangkat Opname Sheet: tampil instan dari data terakhir, diperbarui di belakang layar
+    const SO_CACHE = 'so_cache_v1';
+    function soCacheBaca() { try { return JSON.parse(localStorage.getItem(SO_CACHE) || '{}'); } catch (e) { return {}; } }
+    function soCacheTulis(ubah) {
+      try {
+        const c = Object.assign(soCacheBaca(), ubah);
+        const kunci = Object.keys(c.data || {});
+        if (kunci.length > 2) kunci.slice(0, kunci.length - 2).forEach(k => delete c.data[k]);   // simpan 2 sesi terakhir
+        localStorage.setItem(SO_CACHE, JSON.stringify(c));
+      } catch (e) { try { localStorage.removeItem(SO_CACHE); } catch (x) {} }
+    }
+    async function soAmbil(params) {
+      const url = new URL(GAS_URL);
+      Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+      return (await fetch(url.toString())).json();
+    }
+
     async function initSoPage() {
-      if (soSudahInit) return;
+      if (soSudahInit) { if (soSesiAktif) soGantiSesi(true); return; }   // buka ulang: cek perubahan diam-diam
       soSudahInit = true;
       await soMuatDaftarSesi();
     }
 
+    function soIsiDaftarSesi(daftar) {
+      const sel = document.getElementById('so-sesi-select');
+      const bMap = {1:'Januari',2:'Februari',3:'Maret',4:'April',5:'Mei',6:'Juni',7:'Juli',8:'Agustus',9:'September',10:'Oktober',11:'November',12:'Desember'};
+      const pilih = sel.value;
+      sel.innerHTML = '<option value="">— Pilih Bulan SO —</option>';
+      daftar.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s.nama; o.textContent = `${bMap[s.bulan]||s.bulan} ${s.tahun}`;
+        sel.appendChild(o);
+      });
+      sel.disabled = false;
+      if (pilih && daftar.some(s => s.nama === pilih)) sel.value = pilih;
+    }
+
     async function soMuatDaftarSesi() {
       const sel = document.getElementById('so-sesi-select');
-      sel.innerHTML = '<option value="">Memuat daftar sesi...</option>';
-      sel.disabled = true;
+      const cache = soCacheBaca();
+      if (cache.sesi && cache.sesi.length) {
+        soIsiDaftarSesi(cache.sesi);
+        sel.value = cache.sesi[0].nama; soGantiSesi();
+      } else {
+        sel.innerHTML = '<option value="">Memuat daftar sesi...</option>';
+        sel.disabled = true;
+      }
       try {
-        const url = new URL(GAS_URL);
-        url.searchParams.set('action', 'soListSesi');
-        const data = await (await fetch(url.toString())).json();
+        const data = await soAmbil({ action: 'soListSesi' });
         if (!data.success || !data.data || !data.data.length) {
-          sel.innerHTML = '<option value="">Tidak ada data SO</option>'; return;
+          if (!cache.sesi) sel.innerHTML = '<option value="">Tidak ada data SO</option>';
+          return;
         }
-        const bMap = {1:'Januari',2:'Februari',3:'Maret',4:'April',5:'Mei',6:'Juni',7:'Juli',8:'Agustus',9:'September',10:'Oktober',11:'November',12:'Desember'};
-        sel.innerHTML = '<option value="">— Pilih Bulan SO —</option>';
-        data.data.forEach(s => {
-          const o = document.createElement('option');
-          o.value = s.nama; o.textContent = `${bMap[s.bulan]||s.bulan} ${s.tahun}`;
-          sel.appendChild(o);
-        });
-        sel.disabled = false;
-        if (data.data.length) { sel.value = data.data[0].nama; soGantiSesi(); }
+        soCacheTulis({ sesi: data.data });
+        const lamaPertama = cache.sesi && cache.sesi[0] && cache.sesi[0].nama;
+        soIsiDaftarSesi(data.data);
+        if (!lamaPertama) { sel.value = data.data[0].nama; soGantiSesi(); }
+        else if (lamaPertama !== data.data[0].nama && soSesiAktif === lamaPertama) { sel.value = data.data[0].nama; soGantiSesi(); }
       } catch(err) {
-        sel.innerHTML = '<option value="">Gagal memuat daftar sesi</option>';
+        if (!cache.sesi) sel.innerHTML = '<option value="">Gagal memuat daftar sesi</option>';
       }
     }
 
-    async function soGantiSesi() {
-      const sesi = document.getElementById('so-sesi-select').value;
+    function soTerapkanData(rows) {
+      soSemuaData = rows || [];
+      soPersonilList = [];
+      const seen = {};
+      soSemuaData.forEach(r => {
+        const raw = String(r.personil || '').trim();
+        if (!raw) return;
+        const key = raw.toLowerCase();
+        if (!seen[key]) { seen[key] = true; soPersonilList.push(raw); }
+      });
+      soPersonilList.sort((a,b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+      soHitungStats();
+      soFilter();
+    }
+
+    let soMuatKe = 0;
+    async function soGantiSesi(diam) {
+      const sesi = diam ? soSesiAktif : document.getElementById('so-sesi-select').value;
       if (!sesi) return;
-      soSesiAktif     = sesi;
-      soSemuaData     = [];
-      soDataFilter    = [];
-      soHalamanAkt    = 1;
-      soStatusAkt     = 'Semua';
-      soPersonilAktif = '';
-      document.querySelectorAll('#page-pusat-inventory .pi-chip').forEach(c => c.className = 'pi-chip');
-      document.getElementById('pi-chip-Semua').classList.add('aktif-Semua');
-      document.getElementById('so-cari').value = '';
-      document.getElementById('so-rak-filter').value = '';
-      document.getElementById('so-personil-input').value = '';
-      document.getElementById('so-personil-input').style.borderColor = '';
-      document.getElementById('so-personil-dropdown').style.display = 'none';
-      document.getElementById('so-stats').style.display   = 'none';
-      document.getElementById('so-info-bar').style.display = 'none';
-      document.getElementById('so-pager').style.display   = 'none';
-      document.getElementById('pi-view-container').style.display = 'none';
-      soTampilLoading('Memuat data SO...');
+      const ke = ++soMuatKe;
+      const simpanan = ((soCacheBaca().data) || {})[sesi];
+      if (!diam) {
+        soSesiAktif     = sesi;
+        soSemuaData     = [];
+        soDataFilter    = [];
+        soHalamanAkt    = 1;
+        soStatusAkt     = 'Semua';
+        soPersonilAktif = '';
+        document.querySelectorAll('#page-pusat-inventory .pi-chip').forEach(c => c.className = 'pi-chip');
+        document.getElementById('pi-chip-Semua').classList.add('aktif-Semua');
+        document.getElementById('so-cari').value = '';
+        document.getElementById('so-rak-filter').value = '';
+        document.getElementById('so-personil-input').value = '';
+        document.getElementById('so-personil-input').style.borderColor = '';
+        document.getElementById('so-personil-dropdown').style.display = 'none';
+        if (simpanan) soTerapkanData(simpanan);
+        else {
+          document.getElementById('so-stats').style.display   = 'none';
+          document.getElementById('so-info-bar').style.display = 'none';
+          document.getElementById('so-pager').style.display   = 'none';
+          document.getElementById('pi-view-container').style.display = 'none';
+          soTampilLoading('Memuat data SO...');
+        }
+      }
       try {
-        const url = new URL(GAS_URL);
-        url.searchParams.set('action', 'soLoadData');
-        url.searchParams.set('sesi', sesi);
-        const data = await (await fetch(url.toString())).json();
-        if (!data.success) { soTampilPesan('error', data.message || 'Gagal memuat data.'); return; }
-        soSemuaData = data.rows || [];
-        // Build personil list
-        soPersonilList = [];
-        const seen = {};
-        (data.rows || []).forEach(r => {
-          const raw = String(r.personil || '').trim();
-          if (!raw) return;
-          const key = raw.toLowerCase();
-          if (!seen[key]) { seen[key] = true; soPersonilList.push(raw); }
-        });
-        soPersonilList.sort((a,b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-        soHitungStats();
-        soFilter();
+        const data = await soAmbil({ action: 'soLoadData', sesi });
+        if (ke !== soMuatKe) return;
+        if (!data.success) { if (!simpanan && !diam) soTampilPesan('error', data.message || 'Gagal memuat data.'); return; }
+        const c = soCacheBaca(); c.data = c.data || {}; delete c.data[sesi]; c.data[sesi] = data.rows || [];
+        soCacheTulis({ data: c.data });
+        const lama = diam ? soSemuaData : simpanan;
+        if (!lama || JSON.stringify(lama) !== JSON.stringify(data.rows || [])) soTerapkanData(data.rows);
       } catch(err) {
-        soTampilPesan('error', 'Gagal terhubung ke Apps Script.');
+        if (ke === soMuatKe && !simpanan && !diam) soTampilPesan('error', 'Gagal terhubung ke Apps Script.');
       }
     }
 
