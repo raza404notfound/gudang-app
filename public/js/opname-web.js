@@ -113,31 +113,67 @@ async function owInit() {
   const role = (typeof currentUserRole !== 'undefined' && currentUserRole) || sessionStorage.getItem('sessionRole') || '';
   const btnRh = document.getElementById('ow-btn-riwayat-hapus');
   if (btnRh) btnRh.style.display = role === 'superuser' ? '' : 'none';
-  if (owSudahInit) return;
+  if (owSudahInit) { owSegarDiam(); return; }
   owSudahInit = true;
   await owMuat('');
 }
-
-async function owMuat(bulan) {
-  const sel = document.getElementById('ow-sesi-select');
-  sel.disabled = true;
-  owReset();
-  owTampilLoading('Memuat data dari sheet LAPORAN BARANG...');
+// Buka ulang menu: data lama tetap tampil, cek perubahan di belakang layar
+async function owSegarDiam() {
+  const bulan = owSesiAktif, ke = owMuatKe;
   try {
     const data = await owApi('/api/pindah/opname?bulan=' + encodeURIComponent(bulan || ''));
-    sel.innerHTML = '<option value="">— Pilih Bulan SO —</option>' +
-      (data.daftarBulan || []).map(b => `<option value="${owEsc(b)}">${owEsc(owNamaBulan(b))}</option>`).join('');
-    sel.value = data.bulan || '';
-    owSesiAktif = data.bulan || '';
-    owSemuaData = data.rows || [];
-    owPersonilList = data.personil || [];
-    owHitungStats();
-    owFilter();
+    if (ke !== owMuatKe || bulan !== owSesiAktif) return;
+    owCacheTulis(bulan, data);
+    if (JSON.stringify(data.rows) !== JSON.stringify(owSemuaData)) owTerapkan(data, true);
+  } catch (e) {}
+}
+
+// Cache perangkat: tampil instan dari data terakhir, lalu diperbarui diam-diam di belakang
+const OW_CACHE = 'ow_cache_v1';
+function owCacheBaca(bulan) {
+  try { const c = JSON.parse(localStorage.getItem(OW_CACHE) || '{}'); return c[bulan || ''] || null; } catch (e) { return null; }
+}
+function owCacheTulis(bulan, data) {
+  try {
+    const c = JSON.parse(localStorage.getItem(OW_CACHE) || '{}');
+    const isi = { daftarBulan: data.daftarBulan, bulan: data.bulan, rows: data.rows, personil: data.personil };
+    const baru = { '': c[''] && c[''].bulan === data.bulan ? isi : c[''] };   // simpan maksimal 2 kunci supaya ringan
+    baru[bulan || ''] = isi;
+    if (!bulan) baru[data.bulan || ''] = isi;
+    localStorage.setItem(OW_CACHE, JSON.stringify(baru));
+  } catch (e) { try { localStorage.removeItem(OW_CACHE); } catch (x) {} }
+}
+function owTerapkan(data, pertahankanFilter) {
+  const sel = document.getElementById('ow-sesi-select');
+  sel.innerHTML = '<option value="">— Pilih Bulan SO —</option>' +
+    (data.daftarBulan || []).map(b => `<option value="${owEsc(b)}">${owEsc(owNamaBulan(b))}</option>`).join('');
+  sel.value = data.bulan || '';
+  owSesiAktif = data.bulan || '';
+  owSemuaData = data.rows || [];
+  owPersonilList = data.personil || [];
+  owHitungStats();
+  owFilter();   // filter/cari yang sedang diketik tetap dipakai
+}
+let owMuatKe = 0;
+async function owMuat(bulan, segar) {
+  const sel = document.getElementById('ow-sesi-select');
+  const ke = ++owMuatKe;
+  const cache = segar ? null : owCacheBaca(bulan);
+  owReset();
+  if (cache) owTerapkan(cache);
+  else { sel.disabled = true; owTampilLoading('Memuat data dari sheet LAPORAN BARANG...'); }
+  try {
+    const data = await owApi('/api/pindah/opname?bulan=' + encodeURIComponent(bulan || '') + (segar ? '&segar=1' : ''));
+    if (ke !== owMuatKe) return;
+    owCacheTulis(bulan, data);
+    const sama = cache && JSON.stringify(cache.rows) === JSON.stringify(data.rows) &&
+      JSON.stringify(cache.daftarBulan) === JSON.stringify(data.daftarBulan);
+    if (!sama) owTerapkan(data, !!cache);
   } catch (err) {
-    owSudahInit = false;
-    owTampilPesan('error', err.message || 'Gagal memuat data.');
+    if (ke !== owMuatKe) return;
+    if (!cache) { owSudahInit = false; owTampilPesan('error', err.message || 'Gagal memuat data.'); }
   } finally {
-    sel.disabled = false;
+    if (ke === owMuatKe) sel.disabled = false;
   }
 }
 
