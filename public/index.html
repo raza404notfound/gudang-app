@@ -22,6 +22,9 @@
   <link rel="stylesheet" href="/css/pindah-gudang.css">
   <link rel="stylesheet" href="/css/opname-web.css">
   <link rel="stylesheet" href="/css/dashboard.css">
+  <!-- Kalau masih ada sesi, jangan tampilkan halaman login saat refresh -->
+  <style>html.ada-sesi #auth-modal{display:none}</style>
+  <script>try{if(sessionStorage.getItem('sessionToken'))document.documentElement.classList.add('ada-sesi')}catch(e){}</script>
 </head>
 <body>
   <!-- TOAST CONTAINER -->
