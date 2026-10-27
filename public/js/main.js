@@ -1329,7 +1329,7 @@ let allTrackedData = [];
         try {
           const res = await fetch('/api/track-awb-chunk', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-session-token': sessionStorage.getItem('sessionToken') || '' },
             body: JSON.stringify({ batchResi: chunk })
           });
           const result = await res.json();
