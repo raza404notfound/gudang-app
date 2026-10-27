@@ -11,5 +11,8 @@
     "cors": "^2.8.5",
     "express": "^4.22.2",
     "papaparse": "^5.4.1"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }
