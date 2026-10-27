@@ -1963,7 +1963,6 @@ async function getSellingToken(forceRefresh = false) {
   try {
     // PDC Selling login: coba username dulu, fallback ke email jika gagal
     const loginBody = { username: user, password: pass, from: 'selling' };
-    console.log('🔍 [SELLING] Mencoba login dengan body:', JSON.stringify({ ...loginBody, password: '***' }));
     const res = await axios.post(`${BASE_URL}/users/login`, loginBody, {
       headers: {
         'Content-Type': 'application/json',
@@ -1974,7 +1973,6 @@ async function getSellingToken(forceRefresh = false) {
       timeout: 15000
     });
     const d = res.data?.data || res.data;
-    console.log('🔍 [SELLING] Login response keys:', Object.keys(d || {}));
     const token = d?.auth_token || d?.token || d?.access_token;
     if (token) {
       sellingTokenCache.token = token;
@@ -2291,12 +2289,50 @@ function parseOneTeam(buf) {
 }
 
 // GET /api/selling/team-stat?date_from=2026-01-01&date_to=2026-10-16
+// Cache hasil Statistik Team: periode yang memuat hari ini disegarkan tiap 2 menit, periode lampau 30 menit.
+// Pengguna langsung dapat data dari memori; kalau sudah lewat waktunya, data lama dikirim dulu lalu disegarkan di belakang.
+const tsCache = new Map();   // "from|to" → { data, waktu, memuat }
+function tsUmurMaks(date_to) {
+  const hariIni = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+  return date_to >= hariIni ? 2 * 60 * 1000 : 30 * 60 * 1000;
+}
+async function tsAmbilLewatCache(req, date_from, date_to, paksa) {
+  const kunci = date_from + '|' + date_to;
+  const c = tsCache.get(kunci);
+  const segarkan = () => {
+    if (c && c.memuat) return c.memuat;
+    const isi = c || { data: null, waktu: 0, memuat: null };
+    tsCache.set(kunci, isi);
+    isi.memuat = new Promise((ok, gagal) => {
+      const resPalsu = { status() { return this; }, json(d) { d && d.success ? ok(d) : gagal(new Error((d && d.message) || 'Gagal')); } };
+      tsHandler({ query: { date_from, date_to } }, resPalsu);
+    }).then(d => { isi.data = d; isi.waktu = Date.now(); return d; })
+      .finally(() => { isi.memuat = null; });
+    if (tsCache.size > 30) tsCache.delete(tsCache.keys().next().value);
+    return isi.memuat;
+  };
+  if (c && c.data && !paksa) {
+    if (Date.now() - c.waktu > tsUmurMaks(date_to)) segarkan().catch(() => {});
+    return c.data;
+  }
+  return segarkan();
+}
 app.get('/api/selling/team-stat', requireAuth, async (req, res) => {
+  const { date_from, date_to } = req.query;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date_from || '')) || !/^\d{4}-\d{2}-\d{2}$/.test(String(date_to || ''))) {
+    return res.status(400).json({ success: false, message: 'date_from dan date_to wajib diisi (YYYY-MM-DD).' });
+  }
+  try {
+    const d = await tsAmbilLewatCache(req, date_from, date_to, req.query.segar === '1');
+    const c = tsCache.get(date_from + '|' + date_to);
+    res.json({ ...d, waktuData: c ? c.waktu : Date.now() });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+async function tsHandler(req, res) {
   try {
     const { date_from, date_to } = req.query;
-    if (!date_from || !date_to) {
-      return res.status(400).json({ success: false, message: 'date_from dan date_to wajib diisi.' });
-    }
 
     // Millisecond → seconds (Connect Protocol pakai seconds, bukan microseconds)
     const timeStartSec = Math.floor(dateToTimestamp(date_from, false) / 1000);
@@ -2340,12 +2376,8 @@ app.get('/api/selling/team-stat', requireAuth, async (req, res) => {
     }
 
     const rawBuf = Buffer.from(apiRes.data);
-    console.log('🔍 [SELLING] Response status:', apiRes.status);
-    console.log('🔍 [SELLING] Raw buffer length:', rawBuf.length);
-    console.log('🔍 [SELLING] Raw hex (first 300 bytes):', rawBuf.slice(0, 300).toString('hex'));
 
     const teams  = decodeTeamStatMetricResponse(rawBuf);
-    console.log('🔍 [SELLING] Teams parsed:', teams.length, JSON.stringify(teams.slice(0,2)));
 
     // Ambil nama tim dari PublicTeamIDs (di-cache 1 jam)
     const nameMap = await getTeamNames(token, teams.map(t => t.team_id));
@@ -2363,7 +2395,7 @@ app.get('/api/selling/team-stat', requireAuth, async (req, res) => {
     console.error('❌ [SELLING team-stat]', err.message);
     res.status(500).json({ success: false, message: 'Gagal mengambil data statistik tim: ' + err.message });
   }
-});
+}
 
 // Fallback route
 app.get(/.*/, (req, res) => {
