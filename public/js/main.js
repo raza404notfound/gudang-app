@@ -145,67 +145,69 @@ let allTrackedData = [];
       } catch (e) { return null; }
     }
 
+    // Simpan token baru yang dikirim server (diperbarui otomatis tiap 15 menit selama dipakai)
+    (function () {
+      const fetchAsli = window.fetch.bind(window);
+      window.fetch = async function (...arg) {
+        const res = await fetchAsli(...arg);
+        try {
+          const baru = res.headers.get('x-sesi-baru');
+          if (baru && sessionStorage.getItem('sessionToken')) {
+            sessionStorage.setItem('sessionToken', baru);
+            if (typeof currentSessionToken !== 'undefined') currentSessionToken = baru;
+          }
+        } catch (e) {}
+        return res;
+      };
+    })();
+
+    function tampilLogin() {
+      sessionStorage.clear();
+      document.documentElement.classList.remove('ada-sesi');
+      showPageLoading(false);
+      document.getElementById('auth-modal').style.display = 'flex';
+    }
+
+    function terapkanSesi(username, role) {
+      currentUserRole = role;
+      sessionStorage.setItem('sessionRole', role);
+      sessionStorage.setItem('sessionUser', username);
+      document.getElementById('user-name-display').innerText = username.toUpperCase();
+      document.getElementById('user-avatar').innerText       = username.charAt(0).toUpperCase();
+      document.getElementById('nav-kelola-akun').style.display = role === 'superuser' ? 'flex' : 'none';
+    }
+
     async function checkAuthStatus() {
       const token     = sessionStorage.getItem('sessionToken');
       const savedUser = sessionStorage.getItem('sessionUser');
 
       // Tidak ada sesi sama sekali → tampil login langsung
-      if (!token || !savedUser) {
-        showPageLoading(false);
-        document.getElementById('auth-modal').style.display = 'flex';
-        return;
-      }
+      if (!token || !savedUser) { tampilLogin(); return; }
 
-      // Ada sesi → sidebar sudah tampil (tidak kedip),
-      // area konten tampil spinner putih sampai verifikasi selesai
-      showPageLoading(true);
+      // Ada sesi → langsung buka halaman terakhir (tanpa menunggu server), verifikasi di belakang
+      currentSessionToken = token;
+      document.getElementById('auth-modal').style.display = 'none';
+      terapkanSesi(savedUser, sessionStorage.getItem('sessionRole') || 'user');
+      showPageLoading(false);
+      initRouterFromHash();
+      startRealtimeTimer();
+      muatNamaPeta();
+      muatProfilSaya();
 
-      // Isi sidebar dari cache supaya tidak berubah selama loading
-      const cachedUser = sessionStorage.getItem('sessionUser') || 'U';
-      document.getElementById('user-name-display').innerText = cachedUser.toUpperCase();
-      document.getElementById('user-avatar').innerText       = cachedUser.charAt(0).toUpperCase();
-      const cachedRole = sessionStorage.getItem('sessionRole') || '';
-      if (cachedRole === 'superuser') {
-        document.getElementById('nav-kelola-akun').style.display = 'flex';
-      }
-
-      // Verifikasi token ke server
-      try {
-        const res  = await fetch('/api/auth/me', { headers: { 'x-session-token': token } });
-        const data = await res.json();
-
-        if (data.success) {
-          currentSessionToken = token;
-          currentUserRole     = data.role;
-          sessionStorage.setItem('sessionRole', data.role);
-          sessionStorage.setItem('sessionUser', data.username);
-
-          // Update sidebar dengan data fresh dari server
-          document.getElementById('user-name-display').innerText = data.username.toUpperCase();
-          document.getElementById('user-avatar').innerText       = data.username.charAt(0).toUpperCase();
-          if (data.role === 'superuser') {
-            document.getElementById('nav-kelola-akun').style.display = 'flex';
+      // Verifikasi token ke server. Kalau internet/server sedang putus, coba lagi — JANGAN langsung logout.
+      for (let coba = 1; coba <= 5; coba++) {
+        try {
+          const res = await fetch('/api/auth/me', { headers: { 'x-session-token': sessionStorage.getItem('sessionToken') || token } });
+          if (res.status === 401) { tampilLogin(); return; }       // sesi memang habis / dicabut
+          const data = await res.json();
+          if (data.success) {
+            if (data.role !== sessionStorage.getItem('sessionRole') || data.username !== savedUser) terapkanSesi(data.username, data.role);
+            return;
           }
-
-          // Sembunyikan loading, render halaman
-          showPageLoading(false);
-          document.getElementById('auth-modal').style.display = 'none';
-          initRouterFromHash();
-          startRealtimeTimer();
-          muatNamaPeta();
-          muatProfilSaya();
-        } else {
-          // Token tidak valid → tampil login
-          sessionStorage.clear();
-          showPageLoading(false);
-          document.getElementById('auth-modal').style.display = 'flex';
+        } catch (err) {
+          console.warn('Cek sesi gagal (percobaan ' + coba + '):', err.message);
         }
-      } catch (err) {
-        // Network error — tetap tampil login, jangan biarkan spinner selamanya
-        console.error('Auth check error:', err.message);
-        sessionStorage.clear();
-        showPageLoading(false);
-        document.getElementById('auth-modal').style.display = 'flex';
+        await new Promise(r => setTimeout(r, coba * 2000));
       }
     }
 
