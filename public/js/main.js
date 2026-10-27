@@ -1883,6 +1883,16 @@ let allTrackedData = [];
         return;
       }
 
+      // Cadangan nama team di perangkat: kalau server sesekali gagal ambil nama, pakai nama terakhir yang pernah ketemu
+      let petaTim = {};
+      try { petaTim = JSON.parse(localStorage.getItem('ts_nama_tim_v1') || '{}') || {}; } catch (e) {}
+      teams.forEach(t => {
+        const asli = t.team_name && !/^ID \d+$/.test(t.team_name);
+        if (asli) petaTim[t.team_id] = t.team_name;
+        else if (petaTim[t.team_id]) t.team_name = petaTim[t.team_id];
+      });
+      try { localStorage.setItem('ts_nama_tim_v1', JSON.stringify(petaTim)); } catch (e) {}
+
       const totalTrx = teams.reduce((s, t) => s + (t.transaksi || 0), 0);
       const maxTrx   = Math.max(...teams.map(t => t.transaksi || 0), 1);
       const totBelanja = teams.reduce((s, t) => s + (t.nilai_belanja || 0), 0);
@@ -1951,34 +1961,24 @@ let allTrackedData = [];
                   <th style="${TH}">Nilai Belanja</th>
                   <th style="${TH}">Nilai Transaksi</th>
                   <th style="${TH}">Terakhir</th>
-                  <th style="padding:9px 12px;text-align:right;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Share</th>
-                  <th style="padding:9px 12px;text-align:left;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;min-width:120px;">Bar</th>
+
                 </tr>
               </thead>
               <tbody>
                 ${teams.map((t, i) => {
                   const trx  = t.transaksi || 0;
-                  const pct  = totalTrx > 0 ? ((trx / totalTrx) * 100).toFixed(1) : '0.0';
-                  const bar  = maxTrx > 0 ? Math.max(2, Math.round((trx / maxTrx) * 100)) : 2;
-                  const isTop = i === 0;
                   return `<tr style="border-bottom:1px solid #f1f5f9;transition:background .1s;"
                     onmouseover="this.style.background='#f8fafc'"
                     onmouseout="this.style.background=''">
                     <td style="padding:9px 12px;color:#94a3b8;font-size:11px;">${i + 1}</td>
                     <td style="padding:9px 12px;">
-                      <span style="font-weight:700;color:#1e293b;">${t.team_name || ('Team ' + (t.team_id || ''))}</span>
-                      ${isTop ? '<span style="margin-left:6px;background:#f1f5f9;color:#334155;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;">🏆 #1</span>' : ''}
+                      <span style="font-weight:800;font-size:13px;color:#0f172a;white-space:nowrap;">${t.team_name || ('ID ' + (t.team_id || ''))}</span>
                     </td>
                     <td style="padding:9px 12px;text-align:right;font-weight:800;color:#0284c7;font-variant-numeric:tabular-nums;">${trx.toLocaleString('id-ID')}</td>
                     <td style="padding:9px 12px;text-align:right;color:#334155;white-space:nowrap;font-variant-numeric:tabular-nums;">${rp(t.nilai_belanja)}</td>
                     <td style="padding:9px 12px;text-align:right;color:#334155;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;">${rp(t.nilai_transaksi)}</td>
                     <td style="padding:9px 12px;text-align:right;color:#64748b;font-size:11px;white-space:nowrap;">${jam(t.terakhir)}</td>
-                    <td style="padding:9px 12px;text-align:right;color:#64748b;font-size:11px;white-space:nowrap;">${pct}%</td>
-                    <td style="padding:9px 12px;">
-                      <div style="background:#f1f5f9;border-radius:4px;height:8px;overflow:hidden;">
-                        <div style="height:100%;width:${bar}%;background:${isTop?'#64748b':'#475569'};border-radius:4px;transition:width .4s;"></div>
-                      </div>
-                    </td>
+
                   </tr>`;
                 }).join('')}
               </tbody>
@@ -1989,34 +1989,13 @@ let allTrackedData = [];
                   <td style="padding:9px 12px;text-align:right;font-weight:700;white-space:nowrap;">${rp(totBelanja)}</td>
                   <td style="padding:9px 12px;text-align:right;font-weight:800;white-space:nowrap;">${rp(totNilai)}</td>
                   <td></td>
-                  <td style="padding:9px 12px;text-align:right;color:#64748b;font-size:11px;">100%</td>
-                  <td></td>
                 </tr>
               </tfoot>
             </table>
           </div>
         </div>
 
-        <!-- Chart bar horizontal top 10 -->
-        ${teams.length > 0 ? `
-        <div class="ins-toprod">
-          <div class="ins-toprod-title">📈 Perbandingan Transaksi (Top ${Math.min(10, teams.length)})</div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-            ${teams.slice(0, 10).map((t, i) => {
-              const trx = t.transaksi || 0;
-              const bar = maxTrx > 0 ? Math.max(2, Math.round((trx / maxTrx) * 100)) : 2;
-              return `<div style="display:flex;align-items:center;gap:10px;">
-                <div style="width:110px;text-align:right;font-size:11px;font-weight:700;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;" title="${t.team_name || t.team_id}">${t.team_name || ('Team ' + t.team_id)}</div>
-                <div style="flex:1;background:#f1f5f9;border-radius:4px;height:18px;overflow:hidden;">
-                  <div style="height:100%;width:${bar}%;background:${i===0?'#64748b':i<3?'#475569':'#93c5fd'};border-radius:4px;display:flex;align-items:center;padding-left:6px;transition:width .4s;">
-                    <span style="font-size:10px;font-weight:700;color:#1e293b;white-space:nowrap;">${bar > 20 ? trx.toLocaleString('id-ID') : ''}</span>
-                  </div>
-                </div>
-                <div style="width:45px;text-align:right;font-size:11px;font-weight:700;color:#0284c7;flex-shrink:0;">${trx.toLocaleString('id-ID')}</div>
-              </div>`;
-            }).join('')}
-          </div>
-        </div>` : ''}
+
       `;
 
       document.getElementById('ts-container').innerHTML = html;
