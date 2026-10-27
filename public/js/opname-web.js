@@ -73,7 +73,7 @@ function owPersonilInput() {
   if (!hits.length) { dd.style.display = 'none'; return; }
   dd.innerHTML = hits.map((nama, i) => {
     const idxH = nama.toLowerCase().indexOf(q);
-    const hl = idxH >= 0 ? owEsc(nama.slice(0, idxH)) + '<b style="color:#e11d48;">' + owEsc(nama.slice(idxH, idxH + q.length)) + '</b>' + owEsc(nama.slice(idxH + q.length)) : owEsc(nama);
+    const hl = idxH >= 0 ? owEsc(nama.slice(0, idxH)) + '<b style="color:#8a6d1f;">' + owEsc(nama.slice(idxH, idxH + q.length)) + '</b>' + owEsc(nama.slice(idxH + q.length)) : owEsc(nama);
     return `<div class="so-personil-item" data-nama="${owEsc(nama)}" data-idx="${i}"
       style="padding:8px 13px;cursor:pointer;font-size:13px;color:#334155;border-bottom:1px solid #f8fafc;transition:background .1s;"
       onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background=''"
@@ -92,7 +92,7 @@ function owPersonilKeydown(e) {
   else if (e.key === 'Escape') owPersonilTutupDd();
 }
 function owPersonilHighlight(items) {
-  items.forEach((el, i) => { el.style.background = i === owPersonilIdx ? '#fff1f2' : ''; el.style.color = i === owPersonilIdx ? '#e11d48' : '#334155'; });
+  items.forEach((el, i) => { el.style.background = i === owPersonilIdx ? '#faf6ec' : ''; el.style.color = i === owPersonilIdx ? '#8a6d1f' : '#334155'; });
   if (items[owPersonilIdx]) items[owPersonilIdx].scrollIntoView({ block: 'nearest' });
 }
 function owPersonilPilih(nama) {
