@@ -1836,43 +1836,48 @@ const sellingTokenCache = { token: null, time: 0 };
 // Cache nama tim: { id: nama } — di-refresh sekali per jam
 const teamNameCache = { map: {}, time: 0 };
 
-async function getTeamNames(token) {
-  const age = Date.now() - teamNameCache.time;
-  if (teamNameCache.time > 0 && age < 60 * 60 * 1000) return teamNameCache.map;
+// PublicTeamIDs: request field1 = DAFTAR ID TEAM (packed varint) yang mau diambil namanya.
+// Dulu body-nya disalin mentah dari cURL → isinya cuma 20 ID team tertentu, sehingga team lain
+// tampil sebagai "Tim {id internal}" (mis. "Tim 82" padahal Team 21).
+// Sekarang: semua ID diminta, dipecah per 20 (sama seperti web asli), yang belum ketemu dicoba ulang.
+async function mintaNamaTeam(token, ids) {
+  const isi = Buffer.concat(ids.map(id => encodeVarint(BigInt(id))));
+  const body = Buffer.concat([Buffer.from([0x0a]), encodeVarint(BigInt(isi.length)), isi]);
+  const res = await axios.post(`${SHARED_SERVICE_URL}/common.v1.TeamService/PublicTeamIDs`, body, {
+    headers: {
+      'content-type': 'application/proto',
+      'accept': '*/*',
+      'connect-protocol-version': '1',
+      'authorization': `Bearer ${token}`,
+      'origin': 'https://sellingteam.pdcoke.com',
+      'referer': 'https://sellingteam.pdcoke.com/',
+      'x-pdc-source': 'CDQQAQ=='
+    },
+    responseType: 'arraybuffer',
+    timeout: 15000
+  });
+  return decodePublicTeamIDs(Buffer.from(res.data));
+}
+async function getTeamNames(token, ids = []) {
+  ids = [...new Set(ids.map(Number).filter(n => n > 0))];
+  const basi = Date.now() - teamNameCache.time > 60 * 60 * 1000;
+  let minta = basi ? ids : ids.filter(id => !teamNameCache.map[id]);
+  if (!minta.length) return teamNameCache.map;
 
-  try {
-    // Body persis dari cURL intercept: field1 = 20-byte session fingerprint
-    const body = Buffer.from('0a142c2f453d4c304b3f1f4d3b2d3e33425062343248', 'hex');
-    const res = await axios.post(
-      `${SHARED_SERVICE_URL}/common.v1.TeamService/PublicTeamIDs`,
-      body,
-      {
-        headers: {
-          'content-type': 'application/proto',
-          'accept': '*/*',
-          'connect-protocol-version': '1',
-          'authorization': `Bearer ${token}`,
-          'origin': 'https://sellingteam.pdcoke.com',
-          'referer': 'https://sellingteam.pdcoke.com/',
-          'x-pdc-source': 'CDQQAQ=='
-        },
-        responseType: 'arraybuffer',
-        timeout: 15000
-      }
-    );
-    const buf = Buffer.from(res.data);
-    console.log('✅ [TEAM NAMES] Response length:', buf.length, 'hex[:100]:', buf.slice(0, 100).toString('hex'));
-    const map = decodePublicTeamIDs(buf);
-    if (Object.keys(map).length > 0) {
-      teamNameCache.map  = map;
-      teamNameCache.time = Date.now();
-      console.log('✅ [TEAM NAMES] Loaded', Object.keys(map).length, 'teams');
-    }
-    return map;
-  } catch (err) {
-    console.error('⚠️ [TEAM NAMES] Gagal fetch, pakai "Tim {id}":', err.message);
-    return teamNameCache.map; // fallback ke cache lama atau kosong
+  for (let putaran = 1; putaran <= 3 && minta.length; putaran++) {
+    const ukuran = putaran === 1 ? 20 : putaran === 2 ? 5 : 1;   // makin kecil kalau masih ada yang belum ketemu
+    const kelompok = [];
+    for (let i = 0; i < minta.length; i += ukuran) kelompok.push(minta.slice(i, i + ukuran));
+    const hasil = await Promise.all(kelompok.map(k => mintaNamaTeam(token, k).catch(err => {
+      console.error('⚠️ [TEAM NAMES] Gagal ambil', k.join(','), ':', err.message); return {};
+    })));
+    hasil.forEach(m => Object.assign(teamNameCache.map, m));
+    minta = minta.filter(id => !hasil.some(m => m[id]));
   }
+  if (basi) teamNameCache.time = Date.now();
+  if (minta.length) console.warn('⚠️ [TEAM NAMES] Nama belum ketemu untuk ID:', minta.join(', '));
+  else console.log('✅ [TEAM NAMES] Semua nama ketemu (' + ids.length + ' team)');
+  return teamNameCache.map;
 }
 
 // Field nama di PublicTeamIDs ternyata pesan bersarang (berisi nama, kode, "selling",
@@ -1935,6 +1940,7 @@ function decodePublicTeamIDs(buf) {
           else break;
         }
         if (tid && tname) map[tid] = tname;
+        else if (tid) console.warn('⚠️ [TEAM NAMES] ID', tid, 'tanpa nama terbaca, hex:', ld.data.slice(0, 120).toString('hex'));
       }
     } else {
       pos = skipField(buf, pos, wt);
@@ -2280,7 +2286,7 @@ function parseOneTeam(buf) {
   }
   if (!team.team_id) return null;
   // Buat nama tim dari team_id (karena nama tidak ada di response)
-  team.team_name = `Tim ${team.team_id}`;
+  team.team_name = `ID ${team.team_id}`;   // sementara, diganti nama asli dari PublicTeamIDs
   return team;
 }
 
@@ -2342,7 +2348,7 @@ app.get('/api/selling/team-stat', requireAuth, async (req, res) => {
     console.log('🔍 [SELLING] Teams parsed:', teams.length, JSON.stringify(teams.slice(0,2)));
 
     // Ambil nama tim dari PublicTeamIDs (di-cache 1 jam)
-    const nameMap = await getTeamNames(token);
+    const nameMap = await getTeamNames(token, teams.map(t => t.team_id));
     teams.forEach(t => {
       const nama = nameMap[Number(t.team_id)];
       if (nama) t.team_name = nama;
