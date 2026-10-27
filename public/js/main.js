@@ -479,7 +479,6 @@ let allTrackedData = [];
       'lacak-awb'         : () => null,
       'kelola-akun'       : () => loadUserList(),
       'pengaturan'        : () => (typeof setInit === 'function' ? setInit() : null),
-      'gudang-insight'    : () => initInsightPage(),
       'statistik-team'    : () => initTeamStatPage()
     };
 
@@ -542,7 +541,8 @@ let allTrackedData = [];
 
     // Handle tombol back/forward browser
     window.addEventListener('popstate', e => {
-      const pageId = e.state?.page || 'dashboard';
+      const p = e.state?.page || 'dashboard';
+      const pageId = Object.keys(PAGE_DATA_LOADERS).includes(p) ? p : 'dashboard';
       switchTab(pageId, null, false);
     });
 
@@ -1809,80 +1809,87 @@ let allTrackedData = [];
     let tsInit = false;
 
     function initTeamStatPage() {
-      if (tsInit) return;
+      if (tsInit) { tsLoad(true); return; }   // buka ulang: tampil dari data terakhir, cek perubahan diam-diam
       tsInit = true;
-      tsPreset('sebulan', document.querySelector('#page-statistik-team .ins-preset-btn.aktif'));
+      tsPreset('sebulan', document.querySelector('#page-statistik-team .ins-preset-btn.aktif'), true);
       tsLoad();
     }
 
-    function tsPreset(preset, el) {
+    // Tanggal dihitung dalam WIB (dulu pakai UTC, sehingga sebelum jam 07.00 "Hari Ini" jadi kemarin)
+    function tsPreset(preset, el, tanpaMuat) {
       document.querySelectorAll('#page-statistik-team .ins-preset-btn').forEach(b => b.classList.remove('aktif'));
       if (el) el.classList.add('aktif');
-      const today = new Date();
-      const fmt   = d => d.toISOString().slice(0, 10);
-      let from = new Date(today);
-      let to   = new Date(today);
-
-      if (preset === 'hari-ini') {
-        // from = to = hari ini
-      } else if (preset === 'kemarin') {
-        from.setDate(today.getDate() - 1);
-        to.setDate(today.getDate() - 1);
-      } else if (preset === 'seminggu') {
-        from.setDate(today.getDate() - 6);
-      } else if (preset === 'sebulan') {
-        from.setMonth(today.getMonth() - 1);
-      } else if (preset === '3bulan') {
-        from.setMonth(today.getMonth() - 3);
-      } else if (preset === '6bulan') {
-        from.setMonth(today.getMonth() - 6);
-      } else if (preset === 'setahun') {
-        from.setFullYear(today.getFullYear() - 1);
-      }
-
+      const hari = n => new Date(Date.now() + 7 * 3600 * 1000 - n * 86400000);
+      const fmt  = d => d.toISOString().slice(0, 10);
+      const to = hari(preset === 'kemarin' ? 1 : 0);
+      const from = new Date(to);
+      if (preset === 'seminggu') from.setUTCDate(from.getUTCDate() - 6);
+      else if (preset === 'sebulan') from.setUTCMonth(from.getUTCMonth() - 1);
+      else if (preset === '3bulan') from.setUTCMonth(from.getUTCMonth() - 3);
+      else if (preset === '6bulan') from.setUTCMonth(from.getUTCMonth() - 6);
+      else if (preset === 'setahun') from.setUTCFullYear(from.getUTCFullYear() - 1);
       document.getElementById('ts-from').value = fmt(from);
       document.getElementById('ts-to').value   = fmt(to);
+      if (!tanpaMuat) tsLoad();   // pilih preset langsung memuat, tidak perlu klik Terapkan
     }
 
-    async function tsLoad() {
+    // Cache perangkat: data terakhir per periode tampil instan, lalu diperbarui di belakang layar
+    const TS_CACHE = 'ts_cache_v1';
+    function tsCacheBaca(kunci) { try { return (JSON.parse(localStorage.getItem(TS_CACHE) || '{}'))[kunci] || null; } catch (e) { return null; } }
+    function tsCacheTulis(kunci, teams) {
+      try {
+        const c = JSON.parse(localStorage.getItem(TS_CACHE) || '{}');
+        delete c[kunci]; c[kunci] = teams;
+        const k = Object.keys(c); if (k.length > 6) k.slice(0, k.length - 6).forEach(x => delete c[x]);
+        localStorage.setItem(TS_CACHE, JSON.stringify(c));
+      } catch (e) { try { localStorage.removeItem(TS_CACHE); } catch (x) {} }
+    }
+    let tsMuatKe = 0;
+    async function tsLoad(diam) {
       const from = document.getElementById('ts-from').value;
       const to   = document.getElementById('ts-to').value;
       if (!from || !to) return showToast('Pilih rentang tanggal dulu.', 'warning');
-
+      const kunci = from + '|' + to, ke = ++tsMuatKe;
+      const simpanan = tsCacheBaca(kunci);
       const btn = document.getElementById('ts-apply-btn');
-      btn.disabled = true;
-      btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Memuat...';
-      document.getElementById('ts-container').innerHTML =
-        '<div class="ins-empty"><span class="material-symbols-outlined" style="animation:spin 1s linear infinite;font-size:48px;">sync</span><p style="font-size:13px;font-weight:600;color:#64748b;margin-top:10px;">Mengambil data dari PDC Selling...</p></div>';
-
+      const putar = on => {
+        btn.disabled = on;
+        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;${on ? 'animation:spin 1s linear infinite;' : ''}">${on ? 'sync' : 'refresh'}</span> ${on ? 'Memuat...' : 'Terapkan'}`;
+      };
+      if (simpanan) { if (!diam || tsData.from !== from || tsData.to !== to) tsRender(simpanan, from, to); }
+      else {
+        document.getElementById('ts-container').innerHTML =
+          '<div class="ins-empty"><span class="material-symbols-outlined" style="animation:spin 1s linear infinite;font-size:48px;">sync</span><p style="font-size:13px;font-weight:600;color:#64748b;margin-top:10px;">Mengambil data dari PDC Selling...</p></div>';
+      }
+      putar(true);
       try {
-        const token = sessionStorage.getItem('sessionToken');
-        const res   = await fetch(`/api/selling/team-stat?date_from=${from}&date_to=${to}`, {
-          headers: { 'x-session-token': token }
-        });
+        const res  = await fetch(`/api/selling/team-stat?date_from=${from}&date_to=${to}`, { headers: { 'x-session-token': sessionStorage.getItem('sessionToken') || '' } });
         const data = await res.json();
+        if (ke !== tsMuatKe) return;
         if (!data.success) {
-          document.getElementById('ts-container').innerHTML =
-            `<div class="ins-empty"><span class="material-symbols-outlined" style="color:#e11d48;">error</span><p style="font-size:13px;color:#e11d48;margin-top:8px;">${data.message || 'Gagal mengambil data.'}</p></div>`;
+          if (!simpanan) document.getElementById('ts-container').innerHTML =
+            `<div class="ins-empty"><span class="material-symbols-outlined" style="color:#b91c1c;">error</span><p style="font-size:13px;color:#b91c1c;margin-top:8px;">${data.message || 'Gagal mengambil data.'}</p></div>`;
           return;
         }
-        tsRender(data.teams || [], from, to);
+        const teams = data.teams || [];
+        tsCacheTulis(kunci, teams);
+        if (!simpanan || JSON.stringify(simpanan) !== JSON.stringify(teams) || tsData.from !== from || tsData.to !== to) tsRender(teams, from, to);
       } catch (e) {
-        document.getElementById('ts-container').innerHTML =
-          '<div class="ins-empty"><span class="material-symbols-outlined">wifi_off</span><p style="font-size:13px;color:#e11d48;margin-top:8px;">Gagal terhubung ke server.</p></div>';
+        if (ke === tsMuatKe && !simpanan) document.getElementById('ts-container').innerHTML =
+          '<div class="ins-empty"><span class="material-symbols-outlined">wifi_off</span><p style="font-size:13px;color:#b91c1c;margin-top:8px;">Gagal terhubung ke server.</p></div>';
       } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:15px;">refresh</span> Terapkan';
+        if (ke === tsMuatKe) putar(false);
       }
     }
 
+    // Tampilan meniru tabel Team di web PDC Selling + baris ringkasan total di atas
+    let tsData = { teams: [], from: '', to: '' }, tsUrut = { kolom: 'transaksi', turun: true }, tsCari = '';
     function tsRender(teams, from, to) {
       if (!teams.length) {
         document.getElementById('ts-container').innerHTML =
           '<div class="ins-empty"><span class="material-symbols-outlined">search_off</span><p style="font-size:13px;color:#64748b;margin-top:8px;">Tidak ada data untuk periode ini.</p></div>';
         return;
       }
-
       // Cadangan nama team di perangkat: kalau server sesekali gagal ambil nama, pakai nama terakhir yang pernah ketemu
       let petaTim = {};
       try { petaTim = JSON.parse(localStorage.getItem('ts_nama_tim_v1') || '{}') || {}; } catch (e) {}
@@ -1892,113 +1899,88 @@ let allTrackedData = [];
         else if (petaTim[t.team_id]) t.team_name = petaTim[t.team_id];
       });
       try { localStorage.setItem('ts_nama_tim_v1', JSON.stringify(petaTim)); } catch (e) {}
-
-      const totalTrx = teams.reduce((s, t) => s + (t.transaksi || 0), 0);
-      const maxTrx   = Math.max(...teams.map(t => t.transaksi || 0), 1);
-      const totBelanja = teams.reduce((s, t) => s + (t.nilai_belanja || 0), 0);
-      const totNilai   = teams.reduce((s, t) => s + (t.nilai_transaksi || 0), 0);
+      tsData = { teams, from, to };
+      tsGambar();
+    }
+    let tsCariTimer = null;
+    function tsCariKetik(v) {
+      tsCari = v;
+      clearTimeout(tsCariTimer);
+      tsCariTimer = setTimeout(() => {
+        tsGambar();
+        const el = document.getElementById('ts-cari');
+        if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+      }, 200);
+    }
+    function tsEksporCsv() {
+      if (!tsData.teams.length) return;
+      const k = tsUrut.kolom, arah = tsUrut.turun ? -1 : 1;
+      const cari = tsCari.trim().toLowerCase();
+      const baris = tsData.teams.slice().sort((a, b) => ((a[k] || 0) - (b[k] || 0)) * arah || (b.transaksi - a.transaksi))
+        .filter(t => !cari || String(t.team_name || t.team_id).toLowerCase().includes(cari));
+      const jam = ms => { if (!ms) return ''; const d = new Date(ms + 7 * 3600 * 1000); return d.toISOString().slice(0, 16).replace('T', ' '); };
+      const esc = v => /[;"\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
+      const isi = [['Team', 'Transaksi', 'Nilai Belanja', 'Nilai Transaksi', 'Terakhir Dibuat (WIB)']]
+        .concat(baris.map(t => [t.team_name || ('ID ' + t.team_id), t.transaksi || 0, Math.round(t.nilai_belanja || 0), Math.round(t.nilai_transaksi || 0), jam(t.terakhir)]))
+        .map(r => r.map(esc).join(';')).join('\r\n');
+      const blob = new Blob(['\ufeff' + isi], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `statistik-team_${tsData.from}_sd_${tsData.to}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+    function tsUrutkan(kolom) {
+      tsUrut = { kolom, turun: tsUrut.kolom === kolom ? !tsUrut.turun : true };
+      tsGambar();
+    }
+    function tsGambar() {
+      const { from, to } = tsData;
+      const k = tsUrut.kolom, arah = tsUrut.turun ? -1 : 1;
+      const cari = tsCari.trim().toLowerCase();
+      const semua = tsData.teams.slice().sort((a, b) => ((a[k] || 0) - (b[k] || 0)) * arah || (b.transaksi - a.transaksi));
+      const teams = cari ? semua.filter(t => String(t.team_name || t.team_id).toLowerCase().includes(cari)) : semua;
+      const totTrx = teams.reduce((s, t) => s + (t.transaksi || 0), 0);
+      const totBel = teams.reduce((s, t) => s + (t.nilai_belanja || 0), 0);
+      const totNil = teams.reduce((s, t) => s + (t.nilai_transaksi || 0), 0);
       const rp = n => 'Rp ' + Math.round(n || 0).toLocaleString('id-ID');
+      const BLN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+      const tgl = s => { if (!s) return ''; const [y, m, d] = s.split('-'); return `${parseInt(d)} ${BLN[parseInt(m) - 1]} ${y}`; };
       const jam = ms => {
-        if (!ms) return '-';
-        const d = new Date(ms + 7 * 3600 * 1000);
-        const p = n => String(n).padStart(2, '0');
-        return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+        if (!ms) return '—';
+        const d = new Date(ms + 7 * 3600 * 1000), p = n => String(n).padStart(2, '0');
+        return `${d.getUTCDate()} ${BLN[d.getUTCMonth()]} ${d.getUTCFullYear()} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
       };
-      const TH = 'padding:9px 12px;text-align:right;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;white-space:nowrap;';
+      const th = (kunci, label) => `<th class="${k === kunci ? 'urut' : ''}" onclick="tsUrutkan('${kunci}')">${label}${k === kunci ? (tsUrut.turun ? ' ↓' : ' ↑') : ''}</th>`;
+      const periode = from === to ? tgl(from) : `${tgl(from)} – ${tgl(to)}`;
 
-      // Format tanggal untuk label
-      const fmtDate = s => {
-        if (!s) return '';
-        const [y, m, d] = s.split('-');
-        const BLN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
-        return `${parseInt(d)} ${BLN[parseInt(m)-1]} ${y}`;
-      };
-
-      let html = `
-        <!-- Header ringkasan -->
-        <div class="ins-wh-hdr" style="margin-bottom:16px;">
-          <div class="ins-wh-icon"><span class="material-symbols-outlined">groups</span></div>
-          <div>
-            <div class="ins-wh-name">Statistik Team — PDC Selling</div>
-            <div class="ins-wh-sub">${fmtDate(from)} — ${fmtDate(to)} · ${teams.length} team aktif</div>
-          </div>
+      document.getElementById('ts-container').innerHTML = `
+        <div class="ts-ringkas">
+          <div><span>Total Transaksi</span><b>${totTrx.toLocaleString('id-ID')}</b></div>
+          <div><span>Nilai Belanja</span><b>${rp(totBel)}</b></div>
+          <div><span>Nilai Transaksi</span><b>${rp(totNil)}</b></div>
+          <div><span>Team</span><b>${teams.length}</b></div>
+          <em>${periode}${cari ? ' · hasil pencarian' : ''}</em>
         </div>
-
-        <!-- Stat total -->
-        <div class="ins-stats" style="margin-bottom:16px;">
-          <div class="ins-stat trx">
-            <div class="ins-stat-n">${totalTrx.toLocaleString('id-ID')}</div>
-            <div class="ins-stat-l">Total Transaksi</div>
-          </div>
-          <div class="ins-stat pcs">
-            <div class="ins-stat-n">${teams.length}</div>
-            <div class="ins-stat-l">Jumlah Team</div>
-          </div>
-          <div class="ins-stat batal">
-            <div class="ins-stat-n">${totalTrx > 0 ? Math.round(totalTrx / teams.length).toLocaleString('id-ID') : 0}</div>
-            <div class="ins-stat-l">Rata-rata / Team</div>
-          </div>
-          <div class="ins-stat">
-            <div class="ins-stat-n" style="font-size:18px;">${rp(totBelanja)}</div>
-            <div class="ins-stat-l">Nilai Belanja</div>
-          </div>
-          <div class="ins-stat">
-            <div class="ins-stat-n" style="font-size:18px;">${rp(totNilai)}</div>
-            <div class="ins-stat-l">Nilai Transaksi</div>
-          </div>
+        <div class="ts-alat">
+          <label class="ts-cari"><span class="material-symbols-outlined">search</span>
+            <input id="ts-cari" type="search" placeholder="Cari team…" value="${tsCari.replace(/"/g, '&quot;')}" oninput="tsCariKetik(this.value)"></label>
+          <button class="ts-ekspor" onclick="tsEksporCsv()"><span class="material-symbols-outlined">download</span> Ekspor CSV</button>
         </div>
-
-        <!-- Tabel team -->
-        <div class="ins-toprod" style="margin-bottom:16px;">
-          <div class="ins-toprod-title">📊 Transaksi Per Team</div>
-          <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;">
-              <thead>
-                <tr style="background:#f8fafc;">
-                  <th style="padding:9px 12px;text-align:left;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;white-space:nowrap;">No</th>
-                  <th style="padding:9px 12px;text-align:left;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;">Nama Team</th>
-                  <th style="padding:9px 12px;text-align:right;color:#64748b;font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Transaksi</th>
-                  <th style="${TH}">Nilai Belanja</th>
-                  <th style="${TH}">Nilai Transaksi</th>
-                  <th style="${TH}">Terakhir</th>
-
-                </tr>
-              </thead>
-              <tbody>
-                ${teams.map((t, i) => {
-                  const trx  = t.transaksi || 0;
-                  return `<tr style="border-bottom:1px solid #f1f5f9;transition:background .1s;"
-                    onmouseover="this.style.background='#f8fafc'"
-                    onmouseout="this.style.background=''">
-                    <td style="padding:9px 12px;color:#94a3b8;font-size:11px;">${i + 1}</td>
-                    <td style="padding:9px 12px;">
-                      <span style="font-weight:800;font-size:13px;color:#0f172a;white-space:nowrap;">${t.team_name || ('ID ' + (t.team_id || ''))}</span>
-                    </td>
-                    <td style="padding:9px 12px;text-align:right;font-weight:800;color:#0284c7;font-variant-numeric:tabular-nums;">${trx.toLocaleString('id-ID')}</td>
-                    <td style="padding:9px 12px;text-align:right;color:#334155;white-space:nowrap;font-variant-numeric:tabular-nums;">${rp(t.nilai_belanja)}</td>
-                    <td style="padding:9px 12px;text-align:right;color:#334155;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;">${rp(t.nilai_transaksi)}</td>
-                    <td style="padding:9px 12px;text-align:right;color:#64748b;font-size:11px;white-space:nowrap;">${jam(t.terakhir)}</td>
-
-                  </tr>`;
-                }).join('')}
-              </tbody>
-              <tfoot>
-                <tr style="background:#f8fafc;border-top:2px solid #e2e8f0;">
-                  <td colspan="2" style="padding:9px 12px;font-weight:700;color:#1e293b;font-size:11px;">TOTAL</td>
-                  <td style="padding:9px 12px;text-align:right;font-weight:800;color:#0284c7;font-variant-numeric:tabular-nums;">${totalTrx.toLocaleString('id-ID')}</td>
-                  <td style="padding:9px 12px;text-align:right;font-weight:700;white-space:nowrap;">${rp(totBelanja)}</td>
-                  <td style="padding:9px 12px;text-align:right;font-weight:800;white-space:nowrap;">${rp(totNilai)}</td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-
-
-      `;
-
-      document.getElementById('ts-container').innerHTML = html;
+        <div class="ts-wrap"><table class="ts-tabel">
+          <thead>
+            <tr><th rowspan="2" class="ts-team">Team</th><th colspan="4" class="ts-grup">Order Dibuat</th></tr>
+            <tr>${th('transaksi', 'Transaksi')}${th('nilai_belanja', 'Nilai Belanja')}${th('nilai_transaksi', 'Nilai Transaksi')}${th('terakhir', 'Terakhir Dibuat')}</tr>
+          </thead>
+          <tbody>${teams.length ? '' : '<tr><td colspan="5" class="ts-kosong">Team tidak ditemukan</td></tr>'}${teams.map(t => `<tr>
+              <td class="ts-team"><b>${String(t.team_name || ('ID ' + (t.team_id || ''))).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))}</b><span class="ts-badge">Selling</span></td>
+              <td class="${k === 'transaksi' ? 'urut' : ''}">${(t.transaksi || 0).toLocaleString('id-ID')}</td>
+              <td class="${k === 'nilai_belanja' ? 'urut' : ''}">${rp(t.nilai_belanja)}</td>
+              <td class="${k === 'nilai_transaksi' ? 'urut' : ''}">${rp(t.nilai_transaksi)}</td>
+              <td class="${k === 'terakhir' ? 'urut' : ''}">${jam(t.terakhir)}</td>
+            </tr>`).join('')}</tbody>
+          <tfoot><tr><td class="ts-team">Total</td><td>${totTrx.toLocaleString('id-ID')}</td><td>${rp(totBel)}</td><td>${rp(totNil)}</td><td></td></tr></tfoot>
+        </table></div>`;
     }
 
     document.addEventListener('DOMContentLoaded', checkAuthStatus);
