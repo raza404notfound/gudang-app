@@ -72,7 +72,7 @@ let allTrackedData = [];
         showToast('Gagal terhubung ke server. Coba lagi.', 'error');
       } finally {
         btn.disabled = false;
-        btn.innerText = 'Login';
+        btn.innerText = 'Masuk →';
       }
     }
 
@@ -1051,7 +1051,7 @@ let allTrackedData = [];
         banner.style.borderColor = '#cbd5e1';
         document.getElementById('awb-banner-jumlah').innerHTML =
           `<span style="font-size:26px;font-weight:800;color:#334155;">${resiList.length}</span>` +
-          ` <span style="font-size:13px;font-weight:500;color:#dc2626;">resi siap dilacak</span>`;
+          ` <span style="font-size:13px;font-weight:500;color:#8a6d1f;">resi siap dilacak</span>`;
         document.getElementById('awb-banner-sub').textContent =
           `${d} ${bulan[parseInt(m)-1]} ${y} · ${gudangLabel} · dimuat ${new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}`;
         awbBannerReset();
@@ -1147,7 +1147,7 @@ let allTrackedData = [];
         banner.style.borderColor = '#cbd5e1';
         document.getElementById('awb-banner-jumlah').innerHTML =
           `<span style="font-size:26px;font-weight:800;color:#334155;">${data.rows.length}</span>` +
-          ` <span style="font-size:13px;font-weight:500;color:#dc2626;">resi dari Tracking AWB</span>`;
+          ` <span style="font-size:13px;font-weight:500;color:#8a6d1f;">resi dari Tracking AWB</span>`;
         document.getElementById('awb-banner-sub').textContent =
           `${d} ${bulan[parseInt(m)-1]} ${y} · ${gudangLabel}`;
         awbBannerReset();
@@ -1736,7 +1736,7 @@ let allTrackedData = [];
           const h_px = d.val > 0 ? Math.max(4, Math.round((d.val/mx)*115)) : 4;
           const isMax = d.val === mx && d.val > 0;
           h += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
-            <div style="font-size:10px;font-weight:700;color:${isMax?'#dc2626':'#94a3b8'};">${d.val>0?d.val.toLocaleString('id-ID'):''}</div>
+            <div style="font-size:10px;font-weight:700;color:${isMax?'#8a6d1f':'#94a3b8'};">${d.val>0?d.val.toLocaleString('id-ID'):''}</div>
             <div style="height:${h_px}px;width:100%;border-radius:4px 4px 0 0;
               background:${d.val===0?'#f1f5f9':isMax?'#64748b':'#475569'};min-height:4px;"
               title="${d.full}: ${d.val.toLocaleString('id-ID')} trx"></div>
@@ -2093,7 +2093,7 @@ let allTrackedData = [];
       if (!hits.length) { dd.style.display = 'none'; return; }
       dd.innerHTML = hits.map((nama, i) => {
         const idxH = nama.toLowerCase().indexOf(q);
-        const hl   = idxH >= 0 ? nama.slice(0,idxH)+'<b style="color:#e11d48;">'+nama.slice(idxH,idxH+q.length)+'</b>'+nama.slice(idxH+q.length) : nama;
+        const hl   = idxH >= 0 ? nama.slice(0,idxH)+'<b style="color:#8a6d1f;">'+nama.slice(idxH,idxH+q.length)+'</b>'+nama.slice(idxH+q.length) : nama;
         return `<div class="so-personil-item" data-nama="${nama}" data-idx="${i}"
           style="padding:8px 13px;cursor:pointer;font-size:13px;color:#334155;border-bottom:1px solid #f8fafc;transition:background .1s;"
           onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background=''"
@@ -2113,7 +2113,7 @@ let allTrackedData = [];
       else if (e.key === 'Escape') soPersonilTutupDd();
     }
     function soPersonilHighlight(items) {
-      items.forEach((el, i) => { el.style.background = i===soPersonilIdx?'#fff1f2':''; el.style.color = i===soPersonilIdx?'#e11d48':'#334155'; });
+      items.forEach((el, i) => { el.style.background = i===soPersonilIdx?'#faf6ec':''; el.style.color = i===soPersonilIdx?'#8a6d1f':'#334155'; });
       if (items[soPersonilIdx]) items[soPersonilIdx].scrollIntoView({ block:'nearest' });
     }
     function soPersonilPilih(nama) {
