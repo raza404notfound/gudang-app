@@ -6,9 +6,19 @@ const fs = require('fs');
 const crypto = require('crypto');
 
 const app = express();
+app.disable('x-powered-by');                 // jangan umumkan "Express" ke penyerang
+app.set('trust proxy', 1);                   // Railway di belakang proxy → req.ip = IP asli pengunjung
+app.use((req, res, next) => {                // header keamanan dasar
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+  next();
+});
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ limit: '25mb', extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
 
 // =============================================
@@ -236,7 +246,7 @@ async function backgroundRefresh(type) {
 // /api/dashboard tetap bisa dipanggil manual bila dibutuhkan.
 
 // GET /api/dashboard
-app.get('/api/dashboard', async (req, res) => {
+app.get('/api/dashboard', requireAuth, async (req, res) => {
   try {
     const type = req.query.type;
     const forceRefresh = req.query.force === 'true';
@@ -265,7 +275,7 @@ app.get('/api/dashboard', async (req, res) => {
 });
 
 // POST /api/track-awb-chunk
-app.post('/api/track-awb-chunk', async (req, res) => {
+app.post('/api/track-awb-chunk', requireAuth, async (req, res) => {
   const { batchResi, kurir = 'jnt' } = req.body;
   if (!Array.isArray(batchResi) || batchResi.length === 0) {
     return res.json({ success: false, data: [] });
@@ -376,9 +386,56 @@ app.post('/api/track-awb-chunk', async (req, res) => {
 // =============================================
 const SUPERUSER = 'raza404nf';
 
+// Hash password: scrypt + salt acak (format "scrypt$salt$hash").
+// Hash lama (SHA-256 polos) tetap bisa login, lalu otomatis di-upgrade ke scrypt.
 function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+  return `scrypt$${salt}$${hash}`;
 }
+function samaAman(a, b) {
+  const x = Buffer.from(String(a)), y = Buffer.from(String(b));
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+}
+function cekPassword(password, tersimpan) {
+  tersimpan = String(tersimpan || '');
+  if (tersimpan.startsWith('scrypt$')) {
+    const [, salt, hash] = tersimpan.split('$');
+    return samaAman(crypto.scryptSync(String(password), salt, 64).toString('hex'), hash);
+  }
+  return samaAman(crypto.createHash('sha256').update(String(password)).digest('hex'), tersimpan);
+}
+
+// Batas percobaan login dalam 15 menit: 5x salah per akun, 30x salah per IP
+// (IP dibuat longgar karena satu kantor/gudang biasanya memakai IP yang sama)
+const LOGIN_MAKS = 5, LOGIN_MAKS_IP = 30, LOGIN_JENDELA = 15 * 60 * 1000;
+const loginGagal = new Map();   // kunci → { n, awal }
+function cekKunciLogin(kunci) {
+  const g = loginGagal.get(kunci);
+  if (!g) return 0;
+  if (Date.now() - g.awal > LOGIN_JENDELA) { loginGagal.delete(kunci); return 0; }
+  return g.n >= (kunci.startsWith('ip:') ? LOGIN_MAKS_IP : LOGIN_MAKS) ? Math.ceil((g.awal + LOGIN_JENDELA - Date.now()) / 60000) : 0;
+}
+function catatGagalLogin(kunci) {
+  const g = loginGagal.get(kunci);
+  if (!g || Date.now() - g.awal > LOGIN_JENDELA) loginGagal.set(kunci, { n: 1, awal: Date.now() });
+  else g.n++;
+}
+
+// Sesi habis otomatis setelah 12 jam tidak dipakai
+const SESI_MAKS_DIAM = 12 * 3600 * 1000;
+function sesiAktif(token) {
+  const s = token && activeSessions[token];
+  if (!s) return null;
+  if (Date.now() - (s.terakhir || 0) > SESI_MAKS_DIAM) { delete activeSessions[token]; return null; }
+  s.terakhir = Date.now();
+  return s;
+}
+setInterval(() => {
+  const now = Date.now();
+  Object.keys(activeSessions).forEach(t => { if (now - (activeSessions[t].terakhir || 0) > SESI_MAKS_DIAM) delete activeSessions[t]; });
+  loginGagal.forEach((g, k) => { if (now - g.awal > LOGIN_JENDELA) loginGagal.delete(k); });
+}, 60 * 60 * 1000);
 
 // Cache akun di memory supaya login tidak lambat (refresh tiap 2 menit)
 let usersCache = null;
@@ -422,20 +479,15 @@ function generateToken() {
 }
 
 function requireAuth(req, res, next) {
-  const token = req.headers['x-session-token'];
-  if (!token || !activeSessions[token]) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
-  req.sessionUser = activeSessions[token];
+  const user = sesiAktif(req.headers['x-session-token']);
+  if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+  req.sessionUser = user;
   next();
 }
 
 function requireSuperuser(req, res, next) {
-  const token = req.headers['x-session-token'];
-  if (!token || !activeSessions[token]) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
-  const user = activeSessions[token];
+  const user = sesiAktif(req.headers['x-session-token']);
+  if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
   if (user.role !== 'superuser') {
     return res.status(403).json({ success: false, message: 'Akun Anda tidak bisa mengakses fitur ini.' });
   }
@@ -450,13 +502,24 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Username dan password wajib diisi.' });
   }
 
-  const uname = username.trim().toLowerCase();
+  const uname = String(username).trim().toLowerCase();
+  const kunciIp = 'ip:' + req.ip, kunciAkun = 'akun:' + uname;
+  const sisa = Math.max(cekKunciLogin(kunciIp), cekKunciLogin(kunciAkun));
+  if (sisa) {
+    return res.status(429).json({ success: false, message: `Terlalu banyak percobaan login. Coba lagi dalam ${sisa} menit.` });
+  }
+  const gagal = () => {
+    catatGagalLogin(kunciIp); catatGagalLogin(kunciAkun);
+    console.warn(`🔒 [LOGIN GAGAL] ${uname} dari ${req.ip}`);
+    return res.status(401).json({ success: false, message: 'Username atau Password salah!' });
+  };
 
   // Jalur superuser langsung via SUPERUSER_KEY (tidak perlu ada di sheet)
   // Ini memastikan raza404nf selalu bisa login meski sheet bermasalah
-  if (uname === SUPERUSER && SUPERUSER_KEY && password === SUPERUSER_KEY) {
+  if (uname === SUPERUSER && SUPERUSER_KEY && samaAman(password, SUPERUSER_KEY)) {
+    loginGagal.delete(kunciAkun);
     const token = generateToken();
-    activeSessions[token] = { username: SUPERUSER, role: 'superuser' };
+    activeSessions[token] = { username: SUPERUSER, role: 'superuser', terakhir: Date.now() };
     return res.json({ success: true, token, username: SUPERUSER, role: 'superuser' });
   }
 
@@ -464,11 +527,23 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const users = await getUsers();
     const user  = users[uname];
-    if (!user || user.password !== hashPassword(password)) {
-      return res.status(401).json({ success: false, message: 'Username atau Password salah!' });
+    if (!user || !cekPassword(password, user.password)) return gagal();
+    loginGagal.delete(kunciAkun);
+    // Upgrade hash lama (SHA-256) ke scrypt di belakang layar — password tidak berubah
+    if (!String(user.password || '').startsWith('scrypt$')) {
+      (async () => {
+        try {
+          const segar = await getUsers(true);
+          if (segar[uname] && segar[uname].password === user.password) {
+            segar[uname].password = hashPassword(password);
+            await saveUsers(segar);
+            console.log(`🔐 [HASH] ${uname} di-upgrade ke scrypt`);
+          }
+        } catch (e) { console.error('Upgrade hash gagal:', e.message); }
+      })();
     }
     const token = generateToken();
-    activeSessions[token] = { username: uname, role: user.role || 'user' };
+    activeSessions[token] = { username: uname, role: user.role || 'user', terakhir: Date.now() };
     res.json({ success: true, token, username: uname, role: user.role || 'user' });
   } catch (err) {
     console.error('Login error:', err.message);
@@ -1191,7 +1266,7 @@ app.post('/api/pindah/tandai', requireAuth, (req, res) => {
 // GET /api/pindah/stream?token=... — siaran realtime (EventSource tidak bisa kirim header)
 app.get('/api/pindah/stream', (req, res) => {
   const token = String(req.query.token || '');
-  if (!token || !activeSessions[token]) return res.status(401).end();
+  if (!sesiAktif(token)) return res.status(401).end();
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
@@ -2182,65 +2257,6 @@ function parseOneTeam(buf) {
   team.team_name = `Tim ${team.team_id}`;
   return team;
 }
-
-// DEBUG: endpoint tanpa auth untuk inspect raw response — hapus setelah selesai debug
-app.get('/api/selling/raw-debug', requireSuperuser, async (req, res) => {
-  try {
-    const token = await getSellingToken();
-    if (!token) return res.json({ error: 'Login gagal' });
-
-    // Gunakan tanggal hari ini sebagai test
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm   = String(today.getMonth() + 1).padStart(2, '0');
-    const dd   = String(today.getDate()).padStart(2, '0');
-    const dateStr = `${yyyy}-${mm}-${dd}`;
-
-    const timeStartSec = Math.floor(dateToTimestamp(dateStr, false) / 1000);
-    const timeEndSec   = Math.floor(dateToTimestamp(dateStr, true)  / 1000);
-    const protoBody = encodeTeamStatMetricRequest(timeStartSec, timeEndSec);
-
-    console.log('🔍 [DEBUG] Request hex:', protoBody.toString('hex'));
-
-    const apiRes = await axios.post(
-      `${SELLING_BASE_URL}/selling_iface.v1.SellingStatService/TeamStatMetric`,
-      protoBody,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/proto',
-          'Accept': '*/*',
-          'connect-protocol-version': '1',
-          'x-pdc-source': 'CDQQAQ==',
-          'origin': 'https://sellingteam.pdcoke.com',
-          'referer': 'https://sellingteam.pdcoke.com/'
-        },
-        responseType: 'arraybuffer',
-        timeout: 30000
-      }
-    );
-
-    const rawBuf = Buffer.from(apiRes.data);
-    const hexFull = rawBuf.toString('hex');
-
-    res.json({
-      http_status: apiRes.status,
-      response_headers: apiRes.headers,
-      buffer_length: rawBuf.length,
-      hex_preview: hexFull.slice(0, 500),
-      hex_full: hexFull,
-      request_hex: protoBody.toString('hex'),
-      timeStartSec,
-      timeEndSec
-    });
-  } catch (err) {
-    res.json({
-      error: err.message,
-      status: err.response?.status,
-      body: err.response?.data ? Buffer.from(err.response.data).toString('utf8') : null
-    });
-  }
-});
 
 // GET /api/selling/team-stat?date_from=2026-01-01&date_to=2026-10-16
 app.get('/api/selling/team-stat', requireAuth, async (req, res) => {
