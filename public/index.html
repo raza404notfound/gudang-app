@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PDC Tools</title>
   <!-- Ikon -->
-  <meta name="theme-color" content="#475569">
+  <meta name="theme-color" content="#1f2937">
   <link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
@@ -221,11 +221,6 @@
       </div>
       <div class="nav-section">
         <div class="section-title">ANALITIK</div>
-        <a class="nav-item" href="#gudang-insight" onclick="switchTab('gudang-insight', this); return false;">
-          <span class="material-symbols-outlined">insights</span>
-          <span>Gudang Insight</span>
-          <span style="margin-left:auto;background:#f1f5f9;color:#334155;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;letter-spacing:.3px;flex-shrink:0;">BETA</span>
-        </a>
         <a class="nav-item" href="#statistik-team" onclick="switchTab('statistik-team', this); return false;">
           <span class="material-symbols-outlined">groups</span>
           <span>Statistik Team</span>
@@ -657,7 +652,7 @@
             <div id="awb-banner-jumlah" style="font-size:22px;font-weight:800;color:#334155;line-height:1.1;">
               0 <span style="font-size:13px;font-weight:500;color:#8a6d1f;">resi siap dilacak</span>
             </div>
-            <div id="awb-banner-sub" style="font-size:12px;color:#dc2626;margin-top:3px;"></div>
+            <div id="awb-banner-sub" style="font-size:12px;color:#8a6d1f;margin-top:3px;"></div>
           </div>
           <button onclick="handleTrackAwbBulk()"
             style="background:#475569;color:#1e293b;border:none;border-radius:8px;
@@ -670,7 +665,7 @@
             Lacak Sekarang
           </button>
           <button onclick="awbBannerTutup()"
-            style="background:none;border:none;color:#dc2626;cursor:pointer;
+            style="background:none;border:none;color:#475569;cursor:pointer;
               font-size:18px;line-height:1;opacity:.5;padding:4px;flex-shrink:0;"
             title="Tutup">✕</button>
         </div>
@@ -1019,65 +1014,6 @@
       </section>
 
       <!-- PAGE: KELOLA AKUN (Superuser only) -->
-            <!-- GUDANG INSIGHT -->
-      <section id="page-gudang-insight" class="page-content">
-
-        <!-- STICKY -->
-        <div class="ins-sticky">
-          <!-- Toolbar -->
-          <div class="ins-toolbar">
-            <div style="display:flex;gap:6px;">
-              <button class="ins-type-btn aktif" onclick="insSetType('outbound',this)">
-                <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">outbound</span> Outbound
-              </button>
-              <button class="ins-type-btn" onclick="insSetType('inbound',this)">
-                <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">move_to_inbox</span> Inbound
-              </button>
-            </div>
-            <div style="width:1px;height:22px;background:#e2e8f0;"></div>
-            <div style="display:flex;gap:4px;flex-wrap:wrap;">
-              <button class="ins-preset-btn" onclick="insPreset('hari',this)">Hari ini</button>
-              <button class="ins-preset-btn" onclick="insPreset('3hari',this)">3 Hari</button>
-              <button class="ins-preset-btn" onclick="insPreset('minggu',this)">Seminggu</button>
-              <button class="ins-preset-btn aktif" onclick="insPreset('bulan',this)">Sebulan</button>
-              <button class="ins-preset-btn" onclick="insPreset('3bulan',this)">3 Bulan</button>
-            </div>
-            <div style="display:flex;align-items:center;gap:5px;">
-              <input type="date" id="ins-from" style="border:1px solid #e2e8f0;border-radius:7px;padding:6px 10px;font-size:12px;outline:none;background:#f8fafc;color:#1e293b;">
-              <span style="color:#94a3b8;font-size:12px;">—</span>
-              <input type="date" id="ins-to" style="border:1px solid #e2e8f0;border-radius:7px;padding:6px 10px;font-size:12px;outline:none;background:#f8fafc;color:#1e293b;">
-            </div>
-            <button class="ins-apply-btn" id="ins-apply-btn" onclick="insLoad()">
-              <span class="material-symbols-outlined" style="font-size:15px;">refresh</span> Terapkan
-            </button>
-          </div>
-
-          <!-- Slide navigator -->
-          <div class="ins-slide-nav">
-            <button class="ins-arrow" id="ins-prev" onclick="insNav(-1)">
-              <span class="material-symbols-outlined" style="font-size:18px;">chevron_left</span>
-            </button>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-              <span id="ins-slide-lbl" style="font-size:13px;font-weight:700;color:#1e293b;">— / —</span>
-              <div class="ins-dots" id="ins-dots"></div>
-            </div>
-            <button class="ins-arrow" id="ins-next" onclick="insNav(1)">
-              <span class="material-symbols-outlined" style="font-size:18px;">chevron_right</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- SCROLL: Slides -->
-        <div class="ins-scroll">
-          <div id="ins-container">
-            <div class="ins-empty">
-              <span class="material-symbols-outlined">insights</span>
-              <p style="font-size:13px;font-weight:600;color:#64748b;">Pilih tipe &amp; klik Terapkan</p>
-              <p style="font-size:12px;margin-top:4px;">Data insight 5 gudang siap ditampilkan</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
 <section id="page-pecah-rak" class="page-content">
         <div class="pr-wrap">
