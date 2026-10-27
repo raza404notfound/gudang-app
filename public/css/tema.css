@@ -163,3 +163,71 @@ html.dark .brand-name b { color: #f1f5f9 !important; }
   .lg-gambar { stroke-dashoffset: 0; }
   .lg-kotak { opacity: 1; }
 }
+
+/* =====================================================================
+   STATISTIK TEAM — tampilan seperti tabel Team di web PDC Selling
+   ===================================================================== */
+.ts-ringkas { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+.ts-ringkas div { padding: 10px 18px; border-right: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 2px; }
+.ts-ringkas span { font-size: 11px; color: #6b7280; }
+.ts-ringkas b { font-size: 16px; font-weight: 800; color: var(--arang-tua); font-variant-numeric: tabular-nums; }
+.ts-ringkas div:first-child b { color: var(--emas-tua); }
+.ts-ringkas em { margin-left: auto; align-self: center; padding: 0 16px; font-style: normal; font-size: 11.5px; color: #9ca3af; }
+.ts-wrap { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: auto; max-height: calc(100vh - 230px); }
+.ts-tabel { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12.5px; color: #1f2937; }
+.ts-tabel thead th { position: sticky; background: #f5f5f5; font-weight: 700; font-size: 12px; color: #374151; text-align: left;
+  padding: 9px 12px; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #ececec; white-space: nowrap; text-transform: none; letter-spacing: 0; }
+.ts-tabel thead tr:first-child th { top: 0; z-index: 2; }
+.ts-tabel thead tr:nth-child(2) th { top: 35px; z-index: 2; cursor: pointer; user-select: none; }
+.ts-tabel thead tr:nth-child(2) th:hover { background: #ededed; }
+.ts-tabel th.ts-grup { text-align: center; }
+.ts-tabel th.ts-team { border-left: none; vertical-align: middle; min-width: 200px; }
+.ts-tabel td { padding: 12px; border-bottom: 1px solid #f0f0f0; border-left: 1px solid #f3f3f3; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ts-tabel td.ts-team { border-left: none; }
+.ts-tabel td.ts-team b { display: block; font-size: 13px; font-weight: 700; color: #111827; }
+.ts-badge { display: inline-block; margin-top: 5px; font-size: 11px; color: #4f46e5; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 5px; padding: 1px 7px; }
+.ts-tabel th.urut, .ts-tabel td.urut { background: var(--krem); }
+.ts-tabel thead th.urut { background: #f3ead2; color: var(--emas-tua); }
+.ts-tabel tbody tr:hover td { background: #fafafa; }
+.ts-tabel tbody tr:hover td.urut { background: #f6efdc; }
+.ts-tabel tfoot td { position: sticky; bottom: 0; background: #f9fafb; font-weight: 800; border-top: 2px solid #e5e7eb; }
+@media (max-width: 760px) {
+  .ts-ringkas div { flex: 1 1 45%; padding: 8px 12px; }
+  .ts-ringkas em { width: 100%; padding: 6px 12px 8px; margin: 0; }
+  .ts-tabel th.ts-team, .ts-tabel td.ts-team { position: sticky; left: 0; z-index: 1; background: #fff; min-width: 120px; }
+  .ts-tabel thead th.ts-team { background: #f5f5f5; z-index: 3; }
+  .ts-tabel tfoot td.ts-team { background: #f9fafb; z-index: 2; }
+}
+.ts-alat { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+.ts-cari { flex: 1; min-width: 180px; max-width: 320px; display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e5e7eb; border-radius: 9px; padding: 0 10px; height: 36px; }
+.ts-cari:focus-within { border-color: var(--emas); box-shadow: 0 0 0 3px rgba(176,141,60,.15); }
+.ts-cari .material-symbols-outlined { font-size: 18px; color: #9ca3af; }
+.ts-cari input { border: none; outline: none; flex: 1; font-size: 13px; background: transparent; color: #111827; font-family: inherit; min-width: 0; }
+.ts-ekspor { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid var(--arang); background: #fff; color: var(--arang); font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.ts-ekspor:hover { background: var(--arang); color: var(--emas-terang); }
+.ts-ekspor .material-symbols-outlined { font-size: 17px; }
+.ts-kosong { text-align: center !important; color: #9ca3af; padding: 28px !important; }
+
+/* ---------- Mode gelap untuk komponen baru ---------- */
+html.dark .ts-ringkas, html.dark .ts-wrap, html.dark .ts-cari, html.dark .ts-ekspor { background: var(--bg-card); border-color: var(--border-color); }
+html.dark .ts-ringkas div { border-color: var(--border-color); }
+html.dark .ts-ringkas b, html.dark .ts-tabel td.ts-team b, html.dark .ts-cari input { color: var(--text-primary); }
+html.dark .ts-ringkas div:first-child b { color: var(--emas-terang); }
+html.dark .ts-tabel { color: var(--text-primary); }
+html.dark .ts-tabel thead th { background: var(--tbl-header) !important; color: #e5e7eb !important; border-color: var(--border-color); }
+html.dark .ts-tabel td { border-color: var(--border-color); }
+html.dark .ts-tabel th.urut, html.dark .ts-tabel td.urut { background: rgba(233,196,106,.08) !important; }
+html.dark .ts-tabel thead th.urut { color: var(--emas-terang) !important; }
+html.dark .ts-tabel tbody tr:hover td { background: var(--hover-bg); }
+html.dark .ts-tabel tfoot td { background: var(--bg-page); }
+html.dark .ts-ekspor { color: var(--emas-terang); border-color: var(--emas); }
+html.dark .db-cepat td.nama { color: var(--text-primary); }
+html.dark .db-cepat td { color: #cbd5e1; border-color: var(--border-color); }
+html.dark .db-cepat tr.rata td { background: var(--bg-page); }
+html.dark .db-cepat .pil.n { background: #334155; color: #e5e7eb; }
+html.dark .nav-item:active { background: rgba(233,196,106,.18) !important; color: var(--emas-terang) !important; }
+html.dark .do-tab.aktif { background: rgba(233,196,106,.1) !important; color: var(--emas-terang) !important; }
+html.dark .pg-chip.aktif, html.dark .db-preset.aktif, html.dark .db-chip.aktif, html.dark .ins-preset-btn.aktif,
+html.dark .pi-chip.aktif-Semua, html.dark .pr-chip.aktif { background: var(--emas) !important; border-color: var(--emas) !important; color: #111827 !important; }
+html.dark .btn-lacak-utama, html.dark .awb-btn-lacak, html.dark .do-btn-submit, html.dark .ka-btn-simpan, html.dark .set-simpan,
+html.dark .pg-btn-kuning, html.dark .pg-btn-simpan, html.dark #btn-create-user { background: var(--emas) !important; border-color: var(--emas) !important; color: #111827 !important; }
