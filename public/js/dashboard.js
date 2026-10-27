@@ -266,6 +266,69 @@ function dbRenderRingkasGudang(perGudang) {
   }).join('');
 }
 
+// ---------- Kecepatan Proses Gudang (ranking ringkas) ----------
+// 3 tahap utama + total. Kolom "Diambil→Dikemas" memakai data langsung bila ada, kalau tidak dijumlah dari tahap kecilnya.
+const DB_KOLOM_CEPAT = [
+  { label: 'Menunggu→Diambil', judul: 'Menunggu Diproses → Sedang Diambil', kunci: [['created_to_picking']] },
+  { label: 'Diambil→Dikemas',  judul: 'Sedang Diambil → Selesai Dikemas',
+    kunci: [['picking_to_packing_completed'], ['picking_to_picked', 'picked_to_packing_completed'], ['picking_to_picked', 'picked_to_packing', 'packing_to_packing_completed']] },
+  { label: 'Dikemas→Kurir',    judul: 'Selesai Dikemas → Diserahkan ke Kurir', kunci: [['packing_completed_to_completed']] }
+];
+function dbMenit(detik) {
+  if (!detik || detik <= 0) return '—';
+  const m = Math.max(1, Math.round(detik / 60));
+  if (m < 60) return `${m} mnt`;
+  const j = Math.floor(m / 60), sisa = m % 60;
+  if (j < 24) return sisa ? `${j} jam ${sisa} mnt` : `${j} jam`;
+  return `${Math.floor(j / 24)} hari ${j % 24} jam`;
+}
+function dbRenderKecepatan(el, terpilih, perGudang, nilai, bobot, tombol) {
+  const ambil = (g, kol) => {
+    for (const set of kol.kunci) {
+      const v = set.map(k => nilai(g, k));
+      if (v.every(x => x > 0)) return v.reduce((a, b) => a + b, 0);
+    }
+    return 0;
+  };
+  const baris = terpilih.map(g => ({
+    nama: (DB_GUDANG.find(x => x.id === g.id) || { nama: g.id }).nama.replace(' Warehouse', ''),
+    tahap: DB_KOLOM_CEPAT.map(k => ambil(g, k)),
+    total: nilai(g, DB_TAHAP_TOTAL),
+    bobot: bobot(g)
+  }));
+  if (!baris.some(b => b.total > 0 || b.tahap.some(x => x > 0))) {
+    el.innerHTML = `<div class="db-panel-judul"><span class="db-titik waktu"></span>Kecepatan Proses Gudang ${tombol}</div><div class="db-kosong">Data waktu belum tersedia</div>`;
+    return;
+  }
+  // urut: total tercepat di atas, yang tanpa data di bawah
+  baris.sort((a, b) => (a.total > 0 ? a.total : Infinity) - (b.total > 0 ? b.total : Infinity));
+  const rata = arr => {   // rata-rata ditimbang jumlah order yang sudah diserahkan ke kurir
+    const ada = arr.filter(x => x.v > 0);
+    if (!ada.length) return 0;
+    const tb = ada.reduce((s, x) => s + x.w, 0);
+    return tb ? ada.reduce((s, x) => s + x.v * x.w, 0) / tb : ada.reduce((s, x) => s + x.v, 0) / ada.length;
+  };
+  const rataTotal = rata(baris.map(b => ({ v: b.total, w: b.bobot })));
+  const rataTahap = DB_KOLOM_CEPAT.map((_, i) => rata(baris.map(b => ({ v: b.tahap[i], w: b.bobot }))));
+  const banyak = baris.filter(b => b.total > 0).length > 1;
+  const terlama = DB_KOLOM_CEPAT.map((_, i) => banyak ? Math.max(...baris.map(b => b.tahap[i])) : -1);
+  const warnaTotal = v => !v || !banyak ? 'n' : v <= rataTotal * 0.85 ? 'h' : v >= rataTotal * 1.15 ? 'm' : 'k';
+  const adaTotal = baris.filter(b => b.total > 0);
+  const tercepat = banyak ? adaTotal[0] : null, paling = banyak ? adaTotal[adaTotal.length - 1] : null;
+
+  el.innerHTML = `<div class="db-panel-judul"><span class="db-titik waktu"></span>Kecepatan Proses Gudang ${tombol}</div>
+    <div class="db-cepat-wrap"><table class="db-cepat">
+      <thead><tr><th>Gudang</th>${DB_KOLOM_CEPAT.map(k => `<th title="${dbEsc(k.judul)}">${k.label}</th>`).join('')}<th title="Menunggu Diproses → Diserahkan ke Kurir">Total</th></tr></thead>
+      <tbody>${baris.map((b, i) => `<tr>
+          <td class="nama"><span class="urut">${i + 1}</span>${dbEsc(b.nama)}${b === tercepat ? '<span class="lbl cepat">CEPAT</span>' : b === paling ? '<span class="lbl lambat">LAMBAT</span>' : ''}</td>
+          ${b.tahap.map((v, j) => `<td class="${v > 0 && v === terlama[j] ? 'lama' : ''}">${dbMenit(v)}</td>`).join('')}
+          <td><span class="pil ${warnaTotal(b.total)}">${dbMenit(b.total)}</span></td>
+        </tr>`).join('')}
+        ${banyak ? `<tr class="rata"><td class="nama">Rata-rata</td>${rataTahap.map(v => `<td>${dbMenit(v)}</td>`).join('')}<td><span class="pil n">${dbMenit(rataTotal)}</span></td></tr>` : ''}
+      </tbody></table></div>
+    <div class="db-catatan">Waktu rata-rata per order${banyak ? ' · diurutkan dari gudang tercepat · angka merah = tahap paling lambat' : ''}.</div>`;
+}
+
 function dbRenderWaktu(terpilih, perGudang) {
   const el = document.getElementById('db-panel-waktu');
   const tahap = (dbState.semuaTahap
@@ -285,7 +348,8 @@ function dbRenderWaktu(terpilih, perGudang) {
     return ada.reduce((s, g) => s + nilai(g, k) * bobot(g), 0) / totalBobot;
   };
 
-  const tombol = `<button class="db-link" onclick="dbToggleTahap()">${dbState.semuaTahap ? 'Tampilkan tahap utama' : 'Tampilkan semua tahap'}</button>`;
+  const tombol = `<button class="db-link" onclick="dbToggleTahap()">${dbState.semuaTahap ? 'Ringkas' : 'Semua tahap'}</button>`;
+  if (!dbState.semuaTahap) { dbRenderKecepatan(el, terpilih, perGudang, nilai, bobot, tombol); return; }
   if (dbState.gudang !== 'semua') {
     const g = terpilih[0];
     el.innerHTML = `<div class="db-panel-judul"><span class="db-titik waktu"></span>Rata-rata Waktu Perubahan Status ${tombol}</div>
