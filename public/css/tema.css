@@ -1,0 +1,165 @@
+/* =====================================================================
+   tema.css — TEMA HITAM-EMAS (dimuat paling akhir, menimpa aksen merah lama)
+   Aturan: warna ARTI tetap (merah = kurang/gagal/hapus/lambat, hijau = lebih/cepat).
+   Yang diganti hanya warna AKSEN: menu aktif, chip, tombol utama, link, fokus, grafik.
+   ===================================================================== */
+:root {
+  --emas: #b08d3c;          /* garis, ikon, aksen */
+  --emas-terang: #e9c46a;   /* emas di atas latar gelap */
+  --emas-tua: #8a6d1f;      /* tulisan emas di atas latar terang */
+  --arang: #1f2937;         /* tombol & chip aktif */
+  --arang-tua: #111827;
+  --krem: #faf6ec;          /* latar lembut menu aktif */
+  --krem-garis: #efe4c8;
+  --kn-hover: #b08d3c;
+}
+
+/* ---------- Sidebar & brand ---------- */
+.brand-ikon { color: var(--emas) !important; }
+.brand-name { color: var(--emas) !important; }
+.brand-name b { color: var(--arang) !important; }
+.brand-logo, .avatar, .ins-wh-icon { background: linear-gradient(135deg, var(--arang), var(--emas)) !important; }
+.user-profile .avatar { background: linear-gradient(135deg, #374151, var(--arang)) !important; }
+
+.nav-item.active {
+  background: var(--krem) !important; color: var(--emas-tua) !important;
+  border-color: transparent !important; font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--emas);
+}
+.nav-item.active .material-symbols-outlined { color: var(--emas) !important; }
+.nav-item:hover .material-symbols-outlined { color: var(--emas-tua) !important; }
+.nav-item:active { background: var(--krem-garis) !important; color: var(--emas-tua) !important; border-color: transparent !important; }
+.nav-item:active .material-symbols-outlined { color: var(--emas-tua) !important; }
+.nav-group.punya-aktif > .nav-group-toggle .material-symbols-outlined { color: var(--emas) !important; }
+
+/* ---------- Chip / tombol pilihan aktif ---------- */
+.pg-chip.aktif, .pg-chip-kecil.aktif,
+.db-chip.aktif, .db-preset.aktif,
+.pi-chip.aktif-Semua, .pi-view-btn.aktif,
+.ins-type-btn.aktif, .ins-preset-btn.aktif,
+.pr-chip.aktif {
+  background: var(--arang) !important; border-color: var(--arang) !important; color: var(--emas-terang) !important;
+}
+.pi-view-btn.aktif .material-symbols-outlined { color: var(--emas-terang) !important; }
+.pg-chip.aktif small, .pg-chip-kecil.aktif small, .db-chip.aktif small { color: rgba(233,196,106,.75) !important; }
+.pg-chip:active, .pg-chip-kecil:active, .db-chip:active, .db-preset:active, .pi-chip:active,
+.pi-view-btn:active, .ins-type-btn:active, .ins-preset-btn:active, .pr-chip:active,
+.pg-btn:active, .pg-btn-lipat:active, .pg-btn-scan:active {
+  background: var(--arang) !important; border-color: var(--arang) !important; color: var(--emas-terang) !important;
+}
+.pg-btn:active .material-symbols-outlined, .pg-btn-scan:active .material-symbols-outlined { color: var(--emas-terang) !important; }
+/* chip "salah rak" tetap merah karena artinya peringatan */
+.pg-chip.pg-chip-nyasar.aktif { background: #dc2626 !important; border-color: #dc2626 !important; color: #fff !important; }
+
+.do-tab.aktif { color: var(--arang) !important; border-bottom-color: var(--emas) !important; background: var(--krem) !important; }
+.ins-dot.aktif { background: var(--emas) !important; }
+
+/* ---------- Tombol utama ---------- */
+.btn-lacak-utama, .awb-btn-lacak, .do-btn-submit, .ka-btn-simpan, .set-simpan,
+.pg-btn-kuning, .pg-btn-simpan, .pr-btn.merah, .pr-btn-kecil.merah, #btn-create-user {
+  background: var(--arang) !important; border-color: var(--arang) !important; color: #fff !important;
+}
+.btn-lacak-utama:hover, .awb-btn-lacak:hover, .do-btn-submit:hover:not(:disabled), .ka-btn-simpan:hover,
+.pg-btn-kuning:hover, .pg-btn-simpan:hover, .pr-btn.merah:hover, .pr-btn-kecil.merah:hover, #btn-create-user:hover {
+  background: var(--arang-tua) !important; color: var(--emas-terang) !important;
+}
+.awb-side-btn-lacak:hover { background: var(--arang) !important; border-color: var(--arang) !important; }
+
+/* ---------- Link & teks aksen ---------- */
+.db-link, .set-link, .pr-rak-ft button { color: var(--emas-tua) !important; }
+.db-info b, .txt-kuning { color: var(--emas-tua) !important; }
+.pr-no.top { background: var(--emas) !important; color: #fff !important; }
+.pr-sh-kode { color: var(--emas-tua) !important; }
+.pr-rek { background: var(--krem) !important; color: var(--emas-tua) !important; }
+#pr-rak-baru { border-color: var(--krem-garis) !important; }
+.db-tabel .gab { color: var(--arang) !important; }
+.db-waktu-baris b, .db-waktu-gab b { color: var(--arang) !important; }
+
+/* ---------- Kolom isian saat diketik ---------- */
+.textarea-resi:focus, .awb-date-input:focus, .awb-textarea:focus,
+.do-toolbar select:focus, .do-toolbar input[type=text]:focus,
+.do-form-row input:focus, .do-form-row textarea:focus,
+.awb-top-bar input[type=date]:focus, .awb-top-bar select:focus, .ka-modal input:focus {
+  border-color: var(--emas) !important; box-shadow: 0 0 0 3px rgba(176,141,60,.15) !important;
+}
+
+/* ---------- Lain-lain ---------- */
+#page-loading .page-loading-spinner, .page-loading-spinner { border-top-color: var(--emas) !important; }
+.toast-warning { background: #92400e !important; }
+
+/* ---------- Mode gelap ---------- */
+html.dark .nav-item.active { background: rgba(233,196,106,.12) !important; color: var(--emas-terang) !important; }
+html.dark .nav-item.active .material-symbols-outlined { color: var(--emas-terang) !important; }
+html.dark .brand-name b { color: #f1f5f9 !important; }
+
+/* =====================================================================
+   HALAMAN LOGIN — split: kiri sambutan + animasi gudang, kanan form
+   ===================================================================== */
+.login-overlay.lg-split {
+  background: #fff !important; display: flex; align-items: stretch; justify-content: stretch; padding: 0;
+}
+.lg-split .lg-kiri {
+  width: 52%; position: relative; overflow: hidden; color: #fff; padding: 40px 46px;
+  background: radial-gradient(circle at 15% 10%, #3a3221 0, #111827 55%, #0b0f19 100%);
+  display: flex; flex-direction: column;
+}
+.lg-logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: .3px; color: #fff; }
+.lg-logo-ikon { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: var(--emas-terang); color: var(--arang-tua); }
+.lg-logo-ikon .material-symbols-outlined { font-size: 22px; }
+.lg-judul { font-size: clamp(26px, 2.6vw, 34px); line-height: 1.15; margin: 36px 0 10px; font-weight: 800; color: #fff; }
+.lg-judul span { color: var(--emas-terang); }
+.lg-teks { color: #cbd5e1; font-size: 13.5px; line-height: 1.6; max-width: 340px; margin: 0; }
+.lg-gudang { margin-top: auto; width: 100%; max-height: 58vh; }
+.lg-g { stroke: var(--emas-terang); fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.lg-tipis { stroke: rgba(233,196,106,.35); }
+.lg-gambar { stroke-dasharray: 1400; stroke-dashoffset: 1400; animation: lgGambar 2.4s ease forwards; }
+@keyframes lgGambar { to { stroke-dashoffset: 0; } }
+.lg-kotak { fill: rgba(233,196,106,.16); stroke: var(--emas-terang); stroke-width: 1.2; opacity: 0; animation: lgMasuk 6s ease-in-out infinite; }
+@keyframes lgMasuk { 0%, 8% { opacity: 0; transform: translateY(-10px); } 16%, 80% { opacity: 1; transform: translateY(0); } 92%, 100% { opacity: 0; } }
+.lg-ban { animation: lgJalan 7s linear infinite; }
+@keyframes lgJalan { from { transform: translateX(-80px); } to { transform: translateX(540px); } }
+.lg-roll { stroke: rgba(233,196,106,.5); stroke-dasharray: 4 6; animation: lgRoll .6s linear infinite; }
+@keyframes lgRoll { to { stroke-dashoffset: -10; } }
+.lg-fork { animation: lgFork 9s ease-in-out infinite; }
+@keyframes lgFork { 0%, 10% { transform: translateX(0); } 45%, 55% { transform: translateX(105px); } 90%, 100% { transform: translateX(0); } }
+.lg-angkat { animation: lgAngkat 9s ease-in-out infinite; }
+@keyframes lgAngkat { 0%, 40% { transform: translateY(0); } 48%, 60% { transform: translateY(-16px); } 70%, 100% { transform: translateY(0); } }
+.lg-lampu { animation: lgKedip 3s ease-in-out infinite; }
+@keyframes lgKedip { 50% { opacity: .25; } }
+.lg-debu { fill: var(--emas-terang); opacity: 0; animation: lgNaik 8s linear infinite; }
+@keyframes lgNaik { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: .7; } 100% { opacity: 0; transform: translateY(-160px); } }
+
+.lg-split .lg-kanan { flex: 1; display: flex; align-items: center; justify-content: center; padding: 32px 24px; background: #fff; }
+.lg-split .login-card {
+  width: 100%; max-width: 360px; background: transparent !important; border: none !important;
+  box-shadow: none !important; backdrop-filter: none !important; padding: 0 !important; color: var(--arang);
+}
+.lg-split .login-card .login-logo { display: none; }   /* logo sudah ada di panel kiri */
+.lg-split .login-title { color: var(--arang-tua) !important; font-size: 24px !important; font-weight: 800 !important; text-align: left !important; margin: 0 !important; }
+.lg-split .login-sub { color: #6b7280 !important; font-size: 13.5px !important; text-align: left !important; margin: 4px 0 18px !important; }
+.lg-split .login-card label { color: #374151 !important; font-size: 12px !important; font-weight: 700 !important; letter-spacing: .2px; text-transform: none !important; }
+.lg-split .login-card input {
+  background: #f9fafb !important; border: 1px solid #e5e7eb !important; color: var(--arang-tua) !important;
+  border-radius: 10px !important; height: 46px; box-shadow: none !important;
+}
+.lg-split .login-card input::placeholder { color: #9ca3af !important; }
+.lg-split .login-card input:focus { border-color: var(--emas) !important; box-shadow: 0 0 0 3px rgba(176,141,60,.15) !important; background: #fff !important; }
+.lg-split .btn-auth {
+  background: var(--arang-tua) !important; color: var(--emas-terang) !important; border-radius: 10px !important;
+  height: 48px; font-weight: 800 !important; letter-spacing: .3px; box-shadow: 0 8px 20px rgba(17,24,39,.18) !important;
+}
+.lg-split .btn-auth:hover { background: #000 !important; transform: translateY(-1px); }
+.lg-split .login-bg-art, .login-overlay.lg-split::before, .login-overlay.lg-split::after { display: none !important; }
+.lg-gudang { overflow: hidden; }
+.lg-logo-hp { display: none; }
+
+@media (max-width: 860px) {
+  .lg-split .lg-kiri { display: none; }
+  .lg-split .lg-kanan { background: radial-gradient(circle at 20% 0%, #f6edd6 0, #fff 45%); }
+  .lg-logo-hp { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; color: var(--arang-tua); margin-bottom: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lg-gambar, .lg-kotak, .lg-ban, .lg-roll, .lg-fork, .lg-angkat, .lg-lampu, .lg-debu { animation: none !important; }
+  .lg-gambar { stroke-dashoffset: 0; }
+  .lg-kotak { opacity: 1; }
+}
