@@ -422,18 +422,55 @@ function catatGagalLogin(kunci) {
   else g.n++;
 }
 
-// Sesi habis otomatis setelah 12 jam tidak dipakai
-const SESI_MAKS_DIAM = 12 * 3600 * 1000;
+// =============================================
+// SESI LOGIN — token bertanda tangan (HMAC), tetap berlaku walau server restart / deploy ulang
+// Format: base64url(JSON {u, r, i: waktu login, t: aktivitas terakhir, n: nomor acak}) + "." + tanda tangan
+// =============================================
+const SESI_MAKS_DIAM = 12 * 3600 * 1000;      // habis setelah 12 jam tidak dipakai
+const SESI_PERBARUI  = 15 * 60 * 1000;        // token diperbarui tiap 15 menit selama dipakai
+const SESI_RAHASIA = process.env.SESSION_SECRET ||
+  (SUPERUSER_KEY ? crypto.createHash('sha256').update('pdc-sesi:' + SUPERUSER_KEY).digest('hex')
+                 : crypto.randomBytes(32).toString('hex'));
+const sesiKeluar = new Map();     // nomor sesi yang sudah logout → waktu
+const sesiCabut  = new Map();     // username → waktu (sesi sebelum waktu ini dicabut: ganti sandi / akun dihapus)
+function tandaSesi(isi) { return crypto.createHmac('sha256', SESI_RAHASIA).update(isi).digest('base64url'); }
+function buatToken(username, role, awal, nomor) {
+  const isi = Buffer.from(JSON.stringify({ u: username, r: role, i: awal || Date.now(), t: Date.now(),
+    n: nomor || crypto.randomBytes(9).toString('base64url') })).toString('base64url');
+  return isi + '.' + tandaSesi(isi);
+}
+function bacaToken(token) {
+  const [isi, sig] = String(token || '').split('.');
+  if (!isi || !sig || !samaAman(sig, tandaSesi(isi))) return null;
+  try { return JSON.parse(Buffer.from(isi, 'base64url').toString()); } catch (e) { return null; }
+}
 function sesiAktif(token) {
-  const s = token && activeSessions[token];
-  if (!s) return null;
-  if (Date.now() - (s.terakhir || 0) > SESI_MAKS_DIAM) { delete activeSessions[token]; return null; }
-  s.terakhir = Date.now();
-  return s;
+  const p = bacaToken(token);
+  if (!p || !p.u) return null;
+  const now = Date.now();
+  if (now - (p.t || 0) > SESI_MAKS_DIAM || sesiKeluar.has(p.n)) return null;
+  if ((sesiCabut.get(p.u) || 0) > p.i) return null;
+  let role = p.r;
+  if (p.u !== SUPERUSER) {
+    if (!usersCache || now - usersCacheTime > USERS_CACHE_TTL) getUsers().catch(() => {});   // segarkan di belakang
+    if (usersCache) {
+      const akun = usersCache[p.u];
+      if (!akun) return null;                                                       // akun sudah dihapus
+      const ganti = Date.parse(akun.passwordUpdatedAt || '') || 0;
+      if (ganti > p.i) return null;                                                 // sandi sudah diganti
+      role = akun.role || 'user';
+    }
+  }
+  return { username: p.u, role, _p: p };
+}
+// Pasang token baru di header kalau token sudah > 15 menit (browser menyimpannya otomatis)
+function perbaruiSesi(res, user) {
+  const p = user._p;
+  if (Date.now() - p.t > SESI_PERBARUI) res.setHeader('x-sesi-baru', buatToken(p.u, user.role, p.i, p.n));
 }
 setInterval(() => {
   const now = Date.now();
-  Object.keys(activeSessions).forEach(t => { if (now - (activeSessions[t].terakhir || 0) > SESI_MAKS_DIAM) delete activeSessions[t]; });
+  sesiKeluar.forEach((w, k) => { if (now - w > SESI_MAKS_DIAM) sesiKeluar.delete(k); });
   loginGagal.forEach((g, k) => { if (now - g.awal > LOGIN_JENDELA) loginGagal.delete(k); });
 }, 60 * 60 * 1000);
 
@@ -472,15 +509,10 @@ async function saveUsers(users) {
   return res.data;
 }
 
-const activeSessions = {};
-
-function generateToken() {
-  return crypto.randomBytes(32).toString('hex');
-}
-
 function requireAuth(req, res, next) {
   const user = sesiAktif(req.headers['x-session-token']);
   if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+  perbaruiSesi(res, user);
   req.sessionUser = user;
   next();
 }
@@ -491,6 +523,7 @@ function requireSuperuser(req, res, next) {
   if (user.role !== 'superuser') {
     return res.status(403).json({ success: false, message: 'Akun Anda tidak bisa mengakses fitur ini.' });
   }
+  perbaruiSesi(res, user);
   req.sessionUser = user;
   next();
 }
@@ -518,8 +551,7 @@ app.post('/api/auth/login', async (req, res) => {
   // Ini memastikan raza404nf selalu bisa login meski sheet bermasalah
   if (uname === SUPERUSER && SUPERUSER_KEY && samaAman(password, SUPERUSER_KEY)) {
     loginGagal.delete(kunciAkun);
-    const token = generateToken();
-    activeSessions[token] = { username: SUPERUSER, role: 'superuser', terakhir: Date.now() };
+    const token = buatToken(SUPERUSER, 'superuser');
     return res.json({ success: true, token, username: SUPERUSER, role: 'superuser' });
   }
 
@@ -542,8 +574,7 @@ app.post('/api/auth/login', async (req, res) => {
         } catch (e) { console.error('Upgrade hash gagal:', e.message); }
       })();
     }
-    const token = generateToken();
-    activeSessions[token] = { username: uname, role: user.role || 'user', terakhir: Date.now() };
+    const token = buatToken(uname, user.role || 'user');
     res.json({ success: true, token, username: uname, role: user.role || 'user' });
   } catch (err) {
     console.error('Login error:', err.message);
@@ -553,8 +584,7 @@ app.post('/api/auth/login', async (req, res) => {
 
 // POST /api/auth/logout
 app.post('/api/auth/logout', requireAuth, (req, res) => {
-  const token = req.headers['x-session-token'];
-  delete activeSessions[token];
+  sesiKeluar.set(req.sessionUser._p.n, Date.now());
   res.json({ success: true, message: 'Logout berhasil.' });
 });
 
@@ -621,9 +651,7 @@ app.delete('/api/users/:username', requireSuperuser, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Akun tidak ditemukan.' });
     }
     delete users[target];
-    Object.keys(activeSessions).forEach(token => {
-      if (activeSessions[token].username === target) delete activeSessions[token];
-    });
+    sesiCabut.set(target, Date.now());   // keluarkan semua sesi lama akun ini
     await saveUsers(users);
     res.json({ success: true, message: `Akun '${target}' berhasil dihapus.` });
   } catch (err) {
@@ -644,9 +672,7 @@ app.put('/api/users/:username/password', requireSuperuser, async (req, res) => {
     users[target].passwordUpdatedAt = new Date().toISOString();
     await saveUsers(users);
     // Keluarkan sesi lama akun tsb supaya wajib login pakai sandi baru
-    Object.keys(activeSessions).forEach(token => {
-      if (activeSessions[token].username === target) delete activeSessions[token];
-    });
+    sesiCabut.set(target, Date.now());   // keluarkan semua sesi lama akun ini
     res.json({ success: true, message: `Password akun '${target}' berhasil diubah.` });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
