@@ -206,3 +206,41 @@
   .db-tiga #db-panel-waktu .db-waktu-baris { padding: 10px 14px; font-size: 12.5px; }
   .db-tiga #db-panel-waktu .db-panel-judul { flex-wrap: wrap; row-gap: 4px; }
 }
+
+/* ===== Kecepatan Proses Gudang (ranking ringkas) ===== */
+.db-cepat-wrap { overflow-x: auto; }
+.db-cepat { width: 100%; border-collapse: collapse; }
+.db-cepat th { padding: 8px 4px; font-size: 9.5px; text-transform: none !important; letter-spacing: 0 !important; font-weight: 700; color: var(--text-secondary, #64748b); background: var(--bg-page, #f8fafc); text-align: center; white-space: nowrap; cursor: help; }
+.db-cepat th:first-child { text-align: left; padding-left: 14px; cursor: default; }
+.db-cepat th:last-child { padding-right: 12px; }
+.db-cepat td:last-child { padding-right: 12px; }
+.db-cepat td { padding: 6px 4px; text-align: center; border-top: 1px solid var(--border-color, #f1f5f9); white-space: nowrap;
+  font-family: "JetBrains Mono", "Roboto Mono", ui-monospace, Consolas, monospace; font-size: 11px; color: #475569; letter-spacing: -.2px; }
+.db-cepat td.nama { text-align: left; padding-left: 14px; font-family: inherit; font-size: 13px; font-weight: 800; color: var(--text-primary, #0f172a); letter-spacing: 0; }
+.db-cepat td.lama { color: #b91c1c; font-weight: 800; }
+.db-cepat .urut { display: inline-block; width: 14px; color: #94a3b8; font-size: 11px; font-weight: 600; }
+.db-cepat .lbl { margin-left: 5px; font-size: 8.5px; font-weight: 800; padding: 1px 5px; border-radius: 5px; vertical-align: 2px; letter-spacing: .3px; }
+.db-cepat .lbl.cepat { background: #dcfce7; color: #15803d; }
+.db-cepat .lbl.lambat { background: #fee2e2; color: #b91c1c; }
+.db-cepat .pil { display: inline-block; padding: 3px 6px; border-radius: 7px; font-weight: 800; }
+.db-cepat .pil.h { background: #dcfce7; color: #15803d; }
+.db-cepat .pil.k { background: #fef9c3; color: #a16207; }
+.db-cepat .pil.m { background: #fee2e2; color: #b91c1c; }
+.db-cepat .pil.n { background: #f1f5f9; color: #334155; }
+.db-cepat tr.rata td { background: var(--bg-page, #f8fafc); border-top: 2px solid #e2e8f0; }
+.db-cepat tr.rata td.nama { font-size: 12.5px; color: #334155; }
+/* Laptop 1280–1499px: panel kecepatan turun ke bawah (lebar penuh) supaya tabel tidak terpotong */
+@media (min-width: 1280px) and (max-width: 1499px) {
+  .db-dua.db-tiga { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .db-tiga #db-panel-waktu { grid-column: 1 / -1; }
+}
+/* Layar lebar ≥1500px: tiga panel berdampingan */
+@media (min-width: 1500px) {
+  .db-dua.db-tiga { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(480px, 1.2fr); }
+}
+/* HP: kolom nama gudang tetap terlihat saat tabel digeser */
+@media (max-width: 760px) {
+  .db-cepat th:first-child, .db-cepat td.nama { position: sticky; left: 0; z-index: 1; background: var(--bg-card, #fff); }
+  .db-cepat th:first-child { background: var(--bg-page, #f8fafc); }
+  .db-cepat tr.rata td.nama { background: var(--bg-page, #f8fafc); }
+}
