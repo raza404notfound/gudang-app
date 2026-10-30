@@ -89,7 +89,9 @@
   /* filter: rak, personil, urutan dilipat ke tombol Filter */
   #page-opname-web .pi-toolbar, #page-pusat-inventory .pi-toolbar { flex-wrap: wrap; }
   .op-btn-filter { display: inline-flex; }
-  #ow-personil-wrap, #ow-rak-filter, #ow-sort-select, #so-personil-wrap, #so-rak-filter, #pi-sort-select { display: none !important; }
+  #ow-personil-wrap, #ow-rak-filter, #ow-sort-select, #so-personil-wrap, #so-rak-filter, #pi-sort-select, #ow-tim, #so-tim { display: none !important; }
+  .op-filter-buka #ow-tim, .op-filter-buka #so-tim { display: block !important; flex: 1 1 45%; }
+  .op-filter-buka .op-reset { display: inline-flex !important; }
   .op-filter-buka #ow-personil-wrap, .op-filter-buka #so-personil-wrap { display: block !important; flex: 1 1 45%; }
   .op-filter-buka #ow-rak-filter, .op-filter-buka #so-rak-filter, .op-filter-buka #ow-sort-select, .op-filter-buka #pi-sort-select { display: block !important; flex: 1 1 45%; }
   .op-filter-buka #ow-personil-input, .op-filter-buka #so-personil-input { width: 100%; }
@@ -172,3 +174,70 @@ html.dark .op-hdr { background: var(--tbl-header); color: #cbd5e1; border-color:
 html.dark .op-nm, html.dark .op-web b, html.dark .op-real b, html.dark .op-modal-t1 b, html.dark .op-ringkas b, html.dark .op-fn, html.dark .op-rk b { color: var(--text-primary); }
 html.dark .op-q, html.dark .op-ringkas div, html.dark .op-file, html.dark .op-rk div { background: var(--bg-page); }
 html.dark .op-row:hover, html.dark .op-menu button:hover { background: var(--hover-bg); }
+
+
+/* =====================================================================
+   Panel filter kiri (laptop/PC ≥1100px) — Opname WEB & Opname Sheet
+   HP & tablet tetap ringkas di atas
+   ===================================================================== */
+.op-lbl, .op-pchips, .op-reset { display: none; }
+.op-tim { border: 1px solid #e2e8f0; border-radius: 7px; padding: 7px 10px; font-size: 13px; color: #1e293b; background: #f8fafc; }
+.op-reset { align-items: center; gap: 5px; border: none; background: none; color: #8a6d1f; font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit; padding: 6px 2px; }
+.op-reset .material-symbols-outlined { font-size: 16px; }
+.op-info { flex-shrink: 0; }
+.op-teks-lp { display: none; }
+
+@media (min-width: 1100px) {
+  #page-opname-web.active, #page-pusat-inventory.active {
+    display: grid !important; grid-template-columns: 250px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 16px; align-items: start; }
+  #page-opname-web > .pi-sticky, #page-pusat-inventory > .pi-sticky {
+    grid-column: 1; grid-row: 1 / 3; align-self: stretch; min-height: 0; overflow-y: auto; position: static;
+    padding: 0; background: none; scrollbar-width: thin; }
+  #page-opname-web > .op-info, #page-pusat-inventory > .op-info {
+    grid-column: 2; grid-row: 1; background: #fff; border: 1px solid #eef0f3; border-radius: 10px; padding: 8px 10px 8px 14px; margin-bottom: 10px; }
+  #page-opname-web > .pi-scroll, #page-pusat-inventory > .pi-scroll { grid-column: 2; grid-row: 2; align-self: stretch; min-height: 0; }
+
+  #page-opname-web .pi-toolbar, #page-pusat-inventory .pi-toolbar {
+    flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; padding: 14px; margin: 0; min-height: 100%; box-sizing: border-box; }
+  .pi-toolbar > select, .pi-toolbar > input[type=text], .pi-toolbar > div { min-width: 0 !important; width: 100%; box-sizing: border-box; margin-left: 0 !important; }
+  #ow-personil-input, #so-personil-input { width: 100%; box-sizing: border-box; }
+  .op-lbl { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: #9ca3af; margin-top: 8px; }
+  .op-lbl.op-o1 { margin-top: 0; }
+  .op-o1 { order: 1; } .op-o2 { order: 2; } .op-o3 { order: 3; } .op-o4 { order: 4; } .op-o5 { order: 5; } .op-o6 { order: 6; }
+  .op-o7 { order: 7; } .op-o8 { order: 8; } .op-o9 { order: 9; } .op-o10 { order: 10; } .op-o11 { order: 11; } .op-o12 { order: 12; }
+  .op-o13 { order: 13; } .op-o14 { order: 14; } .op-o15 { order: 15; } .op-o16 { order: 16; } .op-o17 { order: 17; }
+
+  /* status = daftar vertikal + jumlah + titik warna */
+  .op-status { flex-direction: column; flex-wrap: nowrap !important; gap: 2px !important; }
+  .op-status .pi-chip { display: flex; align-items: center; gap: 8px; border: 1px solid transparent !important; border-radius: 8px;
+    padding: 7px 10px; background: transparent !important; color: #374151 !important; font-size: 13px; font-weight: 600; }
+  .op-status .pi-chip::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--op-b-garis); flex-shrink: 0; }
+  .op-status .pi-chip[id$="-Semua"]::before { background: #1f2937; }
+  .op-status .pi-chip[id$="-Balance"]::before { background: var(--op-s); }
+  .op-status .pi-chip[id$="-Plus"]::before { background: var(--op-l); }
+  .op-status .pi-chip[id$="-Minus"]::before { background: var(--op-k); }
+  .op-status .pi-chip[id$="-Belum"]::before { background: #cbd5e1; }
+  .op-status .pi-chip b { margin-left: auto !important; font-size: 12px; color: #6b7280; opacity: 1 !important; }
+  .op-status .pi-chip:hover { background: #f8fafc !important; }
+  .op-status .pi-chip[class*="aktif-"] { background: var(--op-rak-bg) !important; border-color: var(--op-rak-gr) !important; color: #1f2937 !important; font-weight: 800; }
+  .op-status .pi-chip[class*="aktif-"] b { color: var(--op-rak-tx); }
+
+  /* personil = chip kecil */
+  .op-pchips { display: flex !important; flex-wrap: wrap; gap: 4px; max-height: 132px; overflow-y: auto; scrollbar-width: thin; }
+  .op-pchips:empty { display: none !important; }
+  .op-pchip { border: 1px solid #e5e7eb; background: #fff; border-radius: 99px; padding: 3px 9px; font-size: 11.5px; color: #4b5563;
+    cursor: pointer; font-family: inherit; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .op-pchip:hover { border-color: #9ca3af; }
+  .op-pchip.aktif { background: #1f2937; border-color: #1f2937; color: #e9c46a; font-weight: 700; }
+
+  .op-reset { display: inline-flex; justify-content: flex-start; margin-top: 6px; border-top: 1px dashed #eef0f3; padding-top: 10px; }
+  #ow-btn-riwayat-hapus { width: auto; height: 32px; padding: 0 10px; gap: 6px; font-size: 12px; font-weight: 700; font-family: inherit; }
+  #ow-btn-riwayat-hapus .op-teks-lp { display: inline; }
+}
+html.dark #page-opname-web > .op-info, html.dark #page-pusat-inventory > .op-info { background: #1f2430; border-color: #2d3442; }
+html.dark .op-pchip { background: #1f2430; border-color: #374151; color: #cbd5e1; }
+html.dark .op-status .pi-chip { color: #d1d5db !important; }
+html.dark .op-status .pi-chip[class*="aktif-"] { background: #2a2416 !important; border-color: #5c4a22 !important; color: #f3e3b5 !important; }
+html.dark .op-tim { background: #111827; border-color: #374151; color: #e5e7eb; }
