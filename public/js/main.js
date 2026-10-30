@@ -2247,6 +2247,7 @@ let allTrackedData = [];
         document.getElementById('so-cari').value = '';
         document.getElementById('so-rak-filter').value = '';
         document.getElementById('so-tim').value = '';
+        document.getElementById('so-personil').value = '';
         document.getElementById('so-personil-input').value = '';
         document.getElementById('so-personil-input').style.borderColor = '';
         document.getElementById('so-personil-dropdown').style.display = 'none';
@@ -2273,6 +2274,11 @@ let allTrackedData = [];
     }
 
     function soFilter() {
+      // Pilihan Rak & Personil ikut Tim yang dipilih
+      const lolosTim = soSemuaData.filter(r => opCocokTim('so-tim', r));
+      opIsiRak('so-rak-filter', lolosTim);
+      opIsiPersonil('so-personil', soPersonilList, lolosTim, soPersonilAktif);
+      if (soPersonilAktif && document.getElementById('so-personil').value !== soPersonilAktif) soPersonilAktif = '';
       const cari       = (document.getElementById('so-cari').value || '').toLowerCase();
       const rak        = (document.getElementById('so-rak-filter').value || '').toLowerCase();
       const personilKw = (soPersonilAktif || '').toLowerCase();
@@ -2281,7 +2287,7 @@ let allTrackedData = [];
       soDataFilter = soSemuaData.filter(r => {
         const normSt = soNormStatus(r.status);
         if (soStatusAkt !== 'Semua' && normSt !== soStatusAkt) return false;
-        if (rak       && !String(r.rak).toLowerCase().includes(rak)) return false;
+        if (rak       && String(r.rak).toLowerCase() !== rak) return false;
         if (personilKw && !String(r.personil||'').toLowerCase().includes(personilKw)) return false;
         if (!opCocokTim('so-tim', r)) return false;
         if (cari      && !(r.sku+' '+r.namaProduk).toLowerCase().includes(cari)) return false;
@@ -2307,14 +2313,18 @@ let allTrackedData = [];
       soHalamanAkt = 1;
       soRenderTabel();
       soUpdateInfoBar();
-      opIsiPersonilChip('so-personil-chips', soPersonilList, soPersonilAktif, 'soPersonilChip');
+    }
+    function soPilihPersonil(nama) {
+      soPersonilAktif = nama || '';
+      document.getElementById('so-personil-input').value = soPersonilAktif;
+      soFilter();
     }
     function soPersonilChip(nama) {
       if (nama === soPersonilAktif) { document.getElementById('so-personil-input').value = ''; soPersonilInput(); }
       else soPersonilPilih(nama);
     }
     function soResetFilter() {
-      ['so-cari', 'so-rak-filter', 'so-personil-input', 'so-tim'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      ['so-cari', 'so-rak-filter', 'so-personil-input', 'so-personil', 'so-tim'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       document.getElementById('so-personil-input').style.borderColor = '';
       document.getElementById('pi-sort-select').value = 'rak';
       soPersonilAktif = '';
