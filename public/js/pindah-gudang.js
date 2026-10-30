@@ -704,21 +704,31 @@ function pgRenderChipFilter() {
   const blokList = pgState.rakInduk ? lolosTim.filter(g => pgRakInduk(g.kode) === pgState.rakInduk).map(g => g.kode).sort() : [];
   if (pgState.blok && !blokList.includes(pgState.blok)) pgState.blok = '';
 
-  const chip = (fn, nilai, label, n, aktif) =>
-    `<button class="pg-chip-kecil ${aktif ? 'aktif' : ''}" onclick="${fn}('${pgEsc(nilai)}')">${pgEsc(label)}${n != null ? `<small>${n}</small>` : ''}</button>`;
-  const baris = (id, label, isi) => {
+  // Dropdown Tim / Rak / Blok (gaya sama dengan Opname WEB)
+  const skuRak = {};
+  lolosTim.forEach(g => { const r = pgRakInduk(g.kode); skuRak[r] = (skuRak[r] || 0) + (g.items ? g.items.length : 0); });
+  const opsi = (v, label, meta) => `<option value="${pgEsc(v)}"${meta ? ` data-meta="${pgEsc(meta)}"` : ''}>${pgEsc(label)}</option>`;
+  const pilih = (id, label, fn, judul, cari, isi, nilai, mati) => {
     const el = document.getElementById(id);
-    if (el) { el.innerHTML = isi ? `<span class="pg-chip-label">${label}</span><div class="pg-chip-geser">${isi}</div>` : ''; el.style.display = isi ? '' : 'none'; }
+    if (!el) return;
+    const html = `<span class="pg-chip-label">${label}</span><select class="op-pilih pg-pilih" data-hapus data-judul="${judul}"${cari ? ' data-cari data-cari-teks="Cari nama rak…"' : ''}${mati ? ' disabled' : ''} onchange="${fn}(this.value)">${isi}</select>`;
+    el.style.display = '';
+    const sel = el.querySelector('select');
+    if (el._html === html && sel) { if (sel.value !== nilai) sel.value = nilai; return; }
+    el._html = html;
+    el.innerHTML = html;
+    const baru = el.querySelector('select');
+    baru.value = nilai;
+    if (typeof opDD === "function") opDD(baru);
   };
-  baris('pg-chip-tim', 'Tim', chip('pgSetTim', '', 'Semua', null, !pgState.tim) +
-    Object.keys(timHit).sort(pgUrutAngka).map(t => chip('pgSetTim', t, 'Tim ' + t, timHit[t], pgState.tim === t)).join(''));
-  baris('pg-chip-rak', 'Rak', chip('pgSetRak', '', 'Semua', null, !pgState.rakInduk) +
-    Object.keys(rakHit).sort(pgUrutAngka).map(r => chip('pgSetRak', r, r, rakHit[r], pgState.rakInduk === r)).join(''));
-  baris('pg-chip-blok', 'Blok', blokList.length ? chip('pgSetBlok', '', 'Semua', null, !pgState.blok) +
-    blokList.map(k => chip('pgSetBlok', k, k, null, pgState.blok === k)).join('') : '');
+  pilih('pg-chip-tim', 'Tim', 'pgSetTim', 'Pilih tim', false,
+    opsi('', 'Semua tim', semuaRak.length + ' rak') + Object.keys(timHit).sort(pgUrutAngka).map(t => opsi(t, 'Tim ' + t, timHit[t] + ' rak')).join(''), pgState.tim);
+  pilih('pg-chip-rak', 'Rak', 'pgSetRak', 'Pilih rak', true,
+    opsi('', 'Semua rak', lolosTim.length + ' blok') + Object.keys(rakHit).sort(pgUrutAngka).map(r => opsi(r, r, `${rakHit[r]} blok · ${skuRak[r] || 0} SKU`)).join(''), pgState.rakInduk);
+  pilih('pg-chip-blok', 'Blok', 'pgSetBlok', 'Pilih blok', false,
+    blokList.length ? opsi('', 'Semua blok', blokList.length + ' blok') + blokList.map(k => { const g = pgState.rak[k]; return opsi(k, k, (g && g.items ? g.items.length : 0) + ' SKU'); }).join('')
+                    : opsi('', 'Pilih rak dulu'), pgState.blok, !blokList.length);
   pgRenderRingkasAtas();
-  const kt = document.getElementById('pg-kirim-tim');
-  if (kt) kt.style.display = pgState.tim === PG_TIM_KHUSUS && pgSuperuser() ? '' : 'none';
 }
 function pgSetTim(t)  { pgState.tim = t; pgState.rakInduk = ''; pgState.blok = ''; pgRenderChipFilter(); pgRender(); }
 function pgSetRak(r)  { pgState.rakInduk = r; pgState.blok = ''; pgRenderChipFilter(); pgRender(); }
@@ -749,74 +759,6 @@ function pgIsiJumlahStatus(semua) {
     if (!el) { el = document.createElement('small'); el.className = 'pg-n'; c.appendChild(el); }
     el.textContent = pgAngka(n[f]);
   });
-}
-// ============================================================
-// KIRIM HASIL TIM 00 KE SHEET KEDUA (akun Google lain) — khusus superuser
-// Format & grup kolom sama persis dengan file Ekspor. Tiap kirim = halaman (tab) baru.
-// ============================================================
-const PG_TIM_KHUSUS = '00';
-let pgKtData = null;
-function pgTutupKirimTim() { const el = document.getElementById('pg-kt'); if (el) el.remove(); }
-function pgNamaHalamanAwal() {
-  const w = new Date(Date.now() + 7 * 3600 * 1000), p = n => String(n).padStart(2, '0');
-  return `Opname Tim ${PG_TIM_KHUSUS} - ${w.getUTCDate()} ${OP_BULAN[w.getUTCMonth()].slice(0, 3)} ${w.getUTCFullYear()} ${p(w.getUTCHours())}.${p(w.getUTCMinutes())}`;
-}
-async function pgBukaKirimTim() {
-  if (!pgSuperuser()) { pgToast('Kirim ke sheet Tim 00 khusus superuser.', 'error'); return; }
-  pgTutupKirimTim();
-  pgKtData = null;
-  const el = document.createElement('div');
-  el.id = 'pg-kt'; el.className = 'pg-kt-latar';
-  el.onclick = e => { if (e.target === el) pgTutupKirimTim(); };
-  el.innerHTML = `<div class="rk-kotak"><div class="rk-head"><b>Kirim hasil Tim ${PG_TIM_KHUSUS}</b><button type="button" onclick="pgTutupKirimTim()">✕</button></div>
-    <div class="rk-isi"><div id="pg-kt-info" class="rk-info"><span class="rk-muat">Menyiapkan data…</span></div>
-      <label class="pg-kt-lbl" for="pg-kt-nama">Nama halaman baru di sheet</label>
-      <input type="text" id="pg-kt-nama" maxlength="90" value="${pgEsc(pgNamaHalamanAwal())}">
-      <div class="pg-kt-dua"><span>✓ <b>LAPORAN BARANG</b><small>otomatis tiap simpan</small></span><span>⇪ <b>Sheet kedua</b><small>lewat tombol ini</small></span></div>
-      <div id="pg-kt-msg" class="rusak-form-msg"></div>
-      <div class="pg-kt-aksi"><button type="button" class="pg-kt-batal" onclick="pgTutupKirimTim()">Batal</button>
-        <button type="button" class="rk-simpan" id="pg-kt-kirim" disabled onclick="pgKirimTim()">Kirim sekarang</button></div>
-    </div></div>`;
-  document.body.appendChild(el);
-  const info = document.getElementById('pg-kt-info');
-  try {
-    const [cfg, op] = await Promise.all([pgApi('/api/pindah/kirim-tim/info').catch(e => ({ siap: false, pesan: e.message })),
-                                        pgApi('/api/pindah/opname?bulan=')]);
-    const rows = (op.rows || []).filter(r => String(r.tim || '').trim() === PG_TIM_KHUSUS);
-    const d = opDataEkspor({ sumber: 'Opname WEB', sesi: op.bulan || '', bulanLabel: (typeof owNamaBulan === 'function' && owNamaBulan(op.bulan)) || op.bulan || '',
-      rows, status: r => r.status || 'Belum', filterStatus: 'Semua' });
-    pgKtData = d;
-    const kv = (l, v) => `<div class="rk-kv"><span>${l}</span><b>${v}</b></div>`;
-    info.innerHTML = kv('Bulan SO', pgEsc(d.meta[1][1])) +
-      kv('SKU Tim ' + PG_TIM_KHUSUS, pgAngka(rows.length)) +
-      kv('Sudah dihitung', pgAngka(rows.length - d.hit.Belum)) +
-      kv('Kurang · Lebih · Sesuai', `<span class="pg-t-k">${pgAngka(d.hit.Minus)}</span> · <span class="pg-t-l">${pgAngka(d.hit.Plus)}</span> · <span class="pg-t-s">${pgAngka(d.hit.Balance)}</span>`) +
-      kv('Terakhir dikirim', cfg.terakhir ? pgEsc(cfg.terakhir.nama + ' · ' + cfg.terakhir.waktu) : '—');
-    const msg = document.getElementById('pg-kt-msg');
-    if (!cfg.siap) { msg.style.color = '#d1646c'; msg.textContent = cfg.pesan || 'Sheet kedua belum disambungkan (SHEET_TIM00_URL di Railway).'; return; }
-    if (!rows.length) { msg.style.color = '#d1646c'; msg.textContent = `Belum ada data Tim ${PG_TIM_KHUSUS} di bulan ini.`; return; }
-    document.getElementById('pg-kt-kirim').disabled = false;
-  } catch (e) {
-    info.innerHTML = `<span class="rk-muat">${pgEsc(e.message || 'Gagal menyiapkan data.')}</span>`;
-  }
-}
-async function pgKirimTim() {
-  const d = pgKtData, btn = document.getElementById('pg-kt-kirim'), msg = document.getElementById('pg-kt-msg');
-  const nama = (document.getElementById('pg-kt-nama').value || '').trim();
-  if (!d) return;
-  if (!nama) { msg.style.color = '#d1646c'; msg.textContent = 'Nama halaman wajib diisi.'; return; }
-  btn.disabled = true; btn.textContent = 'Mengirim…'; msg.textContent = '';
-  try {
-    const r = await pgApi('/api/pindah/kirim-tim', { method: 'POST', body: JSON.stringify({
-      namaHalaman: nama, meta: d.meta, header: d.header, lebar: d.lebar, baris: d.baris.map(b => b.isi), status: d.baris.map(b => b.n) }) });
-    msg.style.color = '#2e8b57';
-    msg.innerHTML = `Terkirim ke halaman <b>${pgEsc(r.namaHalaman)}</b>${r.url ? ` · <a href="${pgEsc(r.url)}" target="_blank" rel="noopener">Buka sheet</a>` : ''}`;
-    btn.textContent = 'Terkirim ✓';
-    pgToast('Hasil Tim ' + PG_TIM_KHUSUS + ' terkirim ke sheet kedua.', 'success');
-  } catch (e) {
-    msg.style.color = '#d1646c'; msg.textContent = e.message || 'Gagal mengirim.';
-    btn.disabled = false; btn.textContent = 'Kirim sekarang';
-  }
 }
 function pgResetFilter() {
   pgState.tim = ''; pgState.rakInduk = ''; pgState.blok = '';
