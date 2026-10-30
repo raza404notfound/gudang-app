@@ -188,7 +188,7 @@ function owReset() {
   owSemuaData = []; owDataFilter = []; owHalamanAkt = 1; owStatusAkt = 'Semua'; owPersonilAktif = '';
   document.querySelectorAll('#page-opname-web .pi-chip').forEach(c => c.className = 'pi-chip');
   document.getElementById('ow-chip-Semua').classList.add('aktif-Semua');
-  ['ow-cari', 'ow-rak-filter', 'ow-personil-input', 'ow-tim'].forEach(id => { document.getElementById(id).value = ''; });
+  ['ow-cari', 'ow-rak-filter', 'ow-personil-input', 'ow-personil', 'ow-tim'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('ow-personil-input').style.borderColor = '';
   document.getElementById('ow-personil-dropdown').style.display = 'none';
   document.getElementById('ow-stats').style.display    = 'none';
@@ -199,6 +199,11 @@ function owReset() {
 
 // ---------- Filter & urutan ----------
 function owFilter() {
+  // Pilihan Rak & Personil ikut Tim yang dipilih
+  const lolosTim = owSemuaData.filter(r => opCocokTim('ow-tim', r));
+  opIsiRak('ow-rak-filter', lolosTim);
+  opIsiPersonil('ow-personil', owPersonilList, lolosTim, owPersonilAktif);
+  if (owPersonilAktif && document.getElementById('ow-personil').value !== owPersonilAktif) owPersonilAktif = '';
   const cari       = (document.getElementById('ow-cari').value || '').toLowerCase();
   const rak        = (document.getElementById('ow-rak-filter').value || '').toLowerCase();
   const personilKw = (owPersonilAktif || '').toLowerCase();
@@ -206,7 +211,7 @@ function owFilter() {
 
   owDataFilter = owSemuaData.filter(r => {
     if (owStatusAkt !== 'Semua' && r.status !== owStatusAkt) return false;
-    if (rak && !(String(r.rak) + ' ' + String(r.lokasi)).toLowerCase().includes(rak)) return false;
+    if (rak && String(r.rak).toLowerCase() !== rak) return false;
     if (personilKw && !String(r.personil || '').toLowerCase().includes(personilKw)) return false;
     if (!opCocokTim('ow-tim', r)) return false;
     if (cari && !(r.sku + ' ' + r.namaProduk).toLowerCase().includes(cari)) return false;
@@ -227,14 +232,19 @@ function owFilter() {
   owHalamanAkt = 1;
   owRenderTabel();
   owUpdateInfoBar();
-  opIsiPersonilChip('ow-personil-chips', owPersonilList, owPersonilAktif, 'owPersonilChip');
+  owTampilKirimTim();
+}
+function owPilihPersonil(nama) {
+  owPersonilAktif = nama || '';
+  document.getElementById('ow-personil-input').value = owPersonilAktif;
+  owFilter();
 }
 function owPersonilChip(nama) {
   if (nama === owPersonilAktif) { document.getElementById('ow-personil-input').value = ''; owPersonilInput(); }
   else owPersonilPilih(nama);
 }
 function owResetFilter() {
-  ['ow-cari', 'ow-rak-filter', 'ow-personil-input', 'ow-tim'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['ow-cari', 'ow-rak-filter', 'ow-personil-input', 'ow-personil', 'ow-tim'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('ow-personil-input').style.borderColor = '';
   document.getElementById('ow-sort-select').value = 'rak';
   owPersonilAktif = '';
@@ -664,4 +674,80 @@ function owRenderRiwayatHapus() {
     return `<div class="rh-item"><div class="rh-1"><div>${tag}${judul}${kali}</div><span>${owEsc(owWaktuPendek(g.waktu))}</span></div>
       <div class="rh-2">${sub}</div>${g.alasan ? `<div class="rh-2">Alasan: ${owEsc(g.alasan)}</div>` : ''}${daftar}</div>`;
   }).join('');
+}
+
+// ============================================================
+// KIRIM HASIL TIM 00 KE SHEET KEDUA (akun Google lain) — khusus superuser
+// Data = semua produk Tim 00 pada Bulan SO yang dipilih (status/rak/cari tidak ikut).
+// Format & grup kolom sama persis dengan file Ekspor. Tiap kirim = halaman (tab) baru.
+// ============================================================
+const OW_TIM_KHUSUS = '00';
+let owKtData = null;
+function owSuperuser() {
+  return ((typeof currentUserRole !== 'undefined' && currentUserRole) || sessionStorage.getItem('sessionRole') || '') === 'superuser';
+}
+function owTampilKirimTim() {
+  const b = document.getElementById('ow-kirim-tim');
+  if (!b) return;
+  const tampil = document.getElementById('ow-tim').value === OW_TIM_KHUSUS && owSuperuser();
+  b.style.display = tampil ? '' : 'none';
+  if (tampil) document.getElementById('ow-kirim-tim-info').textContent = `bulan ${owNamaBulan(owSesiAktif) || owSesiAktif} · halaman baru`;
+}
+function owTutupKirimTim() { const el = document.getElementById('pg-kt'); if (el) el.remove(); }
+function owNamaHalamanAwal() {
+  const w = new Date(Date.now() + 7 * 3600 * 1000), p = n => String(n).padStart(2, '0');
+  return `Opname Tim ${OW_TIM_KHUSUS} - ${w.getUTCDate()} ${OP_BULAN[w.getUTCMonth()].slice(0, 3)} ${w.getUTCFullYear()} ${p(w.getUTCHours())}.${p(w.getUTCMinutes())}`;
+}
+async function owBukaKirimTim() {
+  if (!owSuperuser()) { if (typeof showToast === 'function') showToast('Kirim ke sheet Tim 00 khusus superuser.', 'error'); return; }
+  owTutupKirimTim();
+  const rows = owSemuaData.filter(r => String(r.tim || '').trim() === OW_TIM_KHUSUS);
+  const d = owKtData = opDataEkspor({ sumber: 'Opname WEB', sesi: owSesiAktif, bulanLabel: owNamaBulan(owSesiAktif) || owSesiAktif,
+    rows, status: r => r.status || 'Belum', filterStatus: 'Semua' });
+  const angka = v => Number(v || 0).toLocaleString('id-ID');
+  const kv = (l, v) => `<div class="rk-kv"><span>${l}</span><b>${v}</b></div>`;
+  const el = document.createElement('div');
+  el.id = 'pg-kt'; el.className = 'pg-kt-latar';
+  el.onclick = e => { if (e.target === el) owTutupKirimTim(); };
+  el.innerHTML = `<div class="rk-kotak"><div class="rk-head"><b>Kirim hasil Tim ${OW_TIM_KHUSUS}</b><button type="button" onclick="owTutupKirimTim()">✕</button></div>
+    <div class="rk-isi"><div class="rk-info">
+      ${kv('Bulan SO', owEsc(d.meta[1][1]))}
+      ${kv('SKU Tim ' + OW_TIM_KHUSUS, angka(rows.length))}
+      ${kv('Sudah dihitung', angka(rows.length - d.hit.Belum))}
+      ${kv('Kurang · Lebih · Sesuai', `<span class="pg-t-k">${angka(d.hit.Minus)}</span> · <span class="pg-t-l">${angka(d.hit.Plus)}</span> · <span class="pg-t-s">${angka(d.hit.Balance)}</span>`)}
+      <div id="pg-kt-terakhir">${kv('Terakhir dikirim', '<span class="rk-muat">memeriksa…</span>')}</div></div>
+      <label class="pg-kt-lbl" for="pg-kt-nama">Nama halaman baru di sheet</label>
+      <input type="text" id="pg-kt-nama" maxlength="90" value="${owEsc(owNamaHalamanAwal())}">
+      <div class="pg-kt-dua"><span>✓ <b>LAPORAN BARANG</b><small>otomatis tiap simpan</small></span><span>⇪ <b>Sheet kedua</b><small>lewat tombol ini</small></span></div>
+      <div id="pg-kt-msg" class="rusak-form-msg"></div>
+      <div class="pg-kt-aksi"><button type="button" class="pg-kt-batal" onclick="owTutupKirimTim()">Batal</button>
+        <button type="button" class="rk-simpan" id="pg-kt-kirim" disabled onclick="owKirimTim()">Kirim sekarang</button></div>
+    </div></div>`;
+  document.body.appendChild(el);
+  const msg = document.getElementById('pg-kt-msg');
+  let cfg;
+  try { cfg = await owApi('/api/pindah/kirim-tim/info'); } catch (e) { cfg = { siap: false, pesan: e.message }; }
+  if (!document.getElementById('pg-kt')) return;
+  document.getElementById('pg-kt-terakhir').innerHTML = kv('Terakhir dikirim', cfg.terakhir ? owEsc(cfg.terakhir.nama + ' · ' + cfg.terakhir.waktu) : '—');
+  if (!cfg.siap) { msg.style.color = '#d1646c'; msg.textContent = cfg.pesan || 'Sheet kedua belum disambungkan.'; return; }
+  if (!rows.length) { msg.style.color = '#d1646c'; msg.textContent = `Belum ada data Tim ${OW_TIM_KHUSUS} di bulan ini.`; return; }
+  document.getElementById('pg-kt-kirim').disabled = false;
+}
+async function owKirimTim() {
+  const d = owKtData, btn = document.getElementById('pg-kt-kirim'), msg = document.getElementById('pg-kt-msg');
+  const nama = (document.getElementById('pg-kt-nama').value || '').trim();
+  if (!d) return;
+  if (!nama) { msg.style.color = '#d1646c'; msg.textContent = 'Nama halaman wajib diisi.'; return; }
+  btn.disabled = true; btn.textContent = 'Mengirim…'; msg.textContent = '';
+  try {
+    const r = await owApi('/api/pindah/kirim-tim', { method: 'POST', body: JSON.stringify({
+      namaHalaman: nama, meta: d.meta, header: d.header, lebar: d.lebar, baris: d.baris.map(b => b.isi), status: d.baris.map(b => b.n) }) });
+    msg.style.color = '#2e8b57';
+    msg.innerHTML = `Terkirim ke halaman <b>${owEsc(r.namaHalaman)}</b>${r.url ? ` · <a href="${owEsc(r.url)}" target="_blank" rel="noopener">Buka sheet</a>` : ''}`;
+    btn.textContent = 'Terkirim ✓';
+    if (typeof showToast === 'function') showToast(`Hasil Tim ${OW_TIM_KHUSUS} terkirim ke sheet kedua.`, 'success');
+  } catch (e) {
+    msg.style.color = '#d1646c'; msg.textContent = e.message || 'Gagal mengirim.';
+    btn.disabled = false; btn.textContent = 'Kirim sekarang';
+  }
 }
