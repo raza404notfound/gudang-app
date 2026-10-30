@@ -1140,6 +1140,51 @@ app.post('/api/pindah/hapus', requireAuth, async (req, res) => {
 });
 
 // =============================================
+// BARANG TAMBAHAN (tidak ada di web) — edit: semua akun, hapus: superuser
+// =============================================
+function setelahUbahTambahan(saya, kodeRak, data, jenis) {
+  pgSetStatusMem(kodeRak, data.kembaliBelum ? null : (data.status || null));
+  owTandaiBerubah();
+  siarkanPindah('hapusHitung', { oleh: saya, jenis, kodeRak, id: 'TAMBAHAN', status: data.status || null, kembaliBelum: !!data.kembaliBelum });
+}
+app.post('/api/pindah/tambahan/ubah', requireAuth, async (req, res) => {
+  const saya = req.sessionUser.username;
+  const kodeRak = String(req.body.kodeRak || '').trim().toUpperCase();
+  const namaLama = String(req.body.namaLama || '').trim(), nama = String(req.body.nama || '').trim();
+  const qty = Number(req.body.qty);
+  if (!kodeRak || !namaLama || !nama) return res.status(400).json({ success: false, message: 'Rak dan nama barang wajib diisi.' });
+  if (!Number.isInteger(qty) || qty < 0 || qty > 1000000) return res.status(400).json({ success: false, message: 'Qty harus angka bulat (0 atau lebih).' });
+  try {
+    const data = await pindahPost({ action: 'pgTambahanUbah', kodeRak, namaLama, nama: nama.slice(0, 200), sku: String(req.body.sku || '').trim().slice(0, 60),
+      qty, oleh: saya, namaOleh: await namaTampil(saya), waktu: waktuWIB() }, 60000);
+    if (data.success) {
+      console.log(`✏️ [EDIT TAMBAHAN] ${saya}: ${kodeRak} "${namaLama}" → "${nama}" qty ${qty}`);
+      setelahUbahTambahan(saya, kodeRak, data, 'tambahanUbah');
+    }
+    res.json(data.success ? { success: true, message: data.message } : { success: false, message: data.message || 'Gagal menyimpan perubahan.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: pesanErrorPindah(err) });
+  }
+});
+app.post('/api/pindah/tambahan/hapus', requireSuperuser, async (req, res) => {
+  const saya = req.sessionUser.username;
+  const kodeRak = String(req.body.kodeRak || '').trim().toUpperCase();
+  const nama = String(req.body.nama || '').trim();
+  if (!kodeRak || !nama) return res.status(400).json({ success: false, message: 'Data hapus tidak lengkap.' });
+  try {
+    const data = await pindahPost({ action: 'pgTambahanHapus', kodeRak, nama, oleh: saya, namaOleh: await namaTampil(saya), waktu: waktuWIB(),
+      alasan: String(req.body.alasan || '').slice(0, 300) }, 60000);
+    if (data.success) {
+      console.log(`🗑️ [HAPUS TAMBAHAN] ${saya}: ${kodeRak} "${nama}"`);
+      setelahUbahTambahan(saya, kodeRak, data, 'tambahanHapus');
+    }
+    res.json(data.success ? { success: true, message: data.message } : { success: false, message: data.message || 'Gagal menghapus.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: pesanErrorPindah(err) });
+  }
+});
+
+// =============================================
 // KIRIM HASIL TIM 00 KE SHEET KEDUA (akun Google lain) — khusus superuser
 // Railway Variables: SHEET_TIM00_URL (Web App Apps Script di akun kedua) & SHEET_TIM00_TOKEN (kata sandi bersama)
 // =============================================
