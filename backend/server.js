@@ -1139,6 +1139,44 @@ app.post('/api/pindah/hapus', requireAuth, async (req, res) => {
   }
 });
 
+// =============================================
+// KIRIM HASIL TIM 00 KE SHEET KEDUA (akun Google lain) — khusus superuser
+// Railway Variables: SHEET_TIM00_URL (Web App Apps Script di akun kedua) & SHEET_TIM00_TOKEN (kata sandi bersama)
+// =============================================
+const SHEET_TIM00_URL = process.env.SHEET_TIM00_URL || '';
+const SHEET_TIM00_TOKEN = process.env.SHEET_TIM00_TOKEN || '';
+function tim00Siap() { return !!(SHEET_TIM00_URL && SHEET_TIM00_TOKEN); }
+app.get('/api/pindah/kirim-tim/info', requireSuperuser, async (req, res) => {
+  if (!tim00Siap()) return res.json({ success: true, siap: false, pesan: 'Sheet kedua belum disambungkan. Isi SHEET_TIM00_URL dan SHEET_TIM00_TOKEN di Railway Variables.' });
+  try {
+    const r = await axios.post(SHEET_TIM00_URL, { action: 'info', token: SHEET_TIM00_TOKEN }, { headers: { 'Content-Type': 'application/json' }, timeout: 20000 });
+    const d = r.data && typeof r.data === 'object' ? r.data : {};
+    if (!d.success) return res.json({ success: true, siap: false, pesan: d.message || 'Apps Script sheet kedua tidak merespons dengan benar (cek deploy: akses Siapa saja).' });
+    res.json({ success: true, siap: true, terakhir: d.terakhir || null });
+  } catch (err) {
+    res.json({ success: true, siap: false, pesan: 'Gagal terhubung ke Apps Script sheet kedua.' });
+  }
+});
+app.post('/api/pindah/kirim-tim', requireSuperuser, async (req, res) => {
+  if (!tim00Siap()) return res.status(400).json({ success: false, message: 'Sheet kedua belum disambungkan (Railway Variables).' });
+  const { namaHalaman, meta, header, lebar, baris, status } = req.body || {};
+  const nama = String(namaHalaman || '').replace(/[\[\]*?:\/\\]/g, '-').trim().slice(0, 90);
+  if (!nama) return res.status(400).json({ success: false, message: 'Nama halaman wajib diisi.' });
+  if (!Array.isArray(meta) || !Array.isArray(header) || !Array.isArray(baris) || !baris.length || baris.length > 20000) {
+    return res.status(400).json({ success: false, message: 'Data kirim tidak valid.' });
+  }
+  try {
+    const oleh = await namaTampil(req.sessionUser.username);
+    const r = await axios.post(SHEET_TIM00_URL, { action: 'buatHalaman', token: SHEET_TIM00_TOKEN, namaHalaman: nama, meta, header, lebar, baris, status, oleh, waktu: waktuWIB() },
+      { headers: { 'Content-Type': 'application/json' }, timeout: 120000, maxBodyLength: Infinity, maxContentLength: Infinity });
+    const d = r.data && typeof r.data === 'object' ? r.data : {};
+    console.log(`📤 [KIRIM TIM 00] ${req.sessionUser.username}: ${baris.length} baris → "${d.namaHalaman || nama}" ${d.success ? 'OK' : 'GAGAL'}`);
+    res.json(d.success ? { success: true, namaHalaman: d.namaHalaman, url: d.url || '' } : { success: false, message: d.message || 'Gagal menulis ke sheet kedua.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Gagal terhubung ke Apps Script sheet kedua.' });
+  }
+});
+
 // GET /api/pindah/hapus-riwayat — laporan siapa menghapus hitungan (khusus superuser)
 app.get('/api/pindah/hapus-riwayat', requireSuperuser, async (req, res) => {
   try {
