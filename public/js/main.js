@@ -2288,6 +2288,7 @@ let allTrackedData = [];
       // Sort
       const statusOrder = { 'Minus':0, 'Plus':1, 'Balance':2, 'Belum':3 };
       soDataFilter.sort((a, b) => {
+        if (sort === 'rak')          return opBandingRak(a, b);
         if (sort === 'qty-desc')     return (b.qtySistem||0) - (a.qtySistem||0);
         if (sort === 'qty-asc')      return (a.qtySistem||0) - (b.qtySistem||0);
         if (sort === 'nama')         return a.namaProduk.localeCompare(b.namaProduk);
