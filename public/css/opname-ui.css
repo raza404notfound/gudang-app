@@ -1,0 +1,174 @@
+/* =====================================================================
+   opname-ui.css — tampilan baru Opname WEB & Opname Sheet
+   Laptop: tabel · HP: kartu · menu ⋮ · riwayat · panel ekspor
+   Warna: rak pasir/krem, SKU abu gelap, merah selalu versi soft
+   ===================================================================== */
+:root {
+  --op-rak-bg: #f6f0e1; --op-rak-tx: #7a5a1c; --op-rak-gr: #ecdfc0;
+  --op-sku-bg: #4b5563;
+  --op-k: #d1646c; --op-k-garis: #f2b8bc;   /* kurang (merah soft) */
+  --op-l: #2f6fd6; --op-l-garis: #93b8f0;   /* lebih */
+  --op-s: #2e8b57; --op-s-garis: #9fd8b4;   /* sesuai */
+  --op-b: #64748b; --op-b-garis: #d5dbe3;   /* belum */
+}
+
+/* Kotak angka besar & tombol grid/list lama tidak dipakai lagi */
+#ow-stats, #so-stats, #ow-btn-grid, #ow-btn-list, #pi-btn-grid, #pi-btn-list { display: none !important; }
+
+/* Chip status dengan jumlah */
+#page-opname-web .pi-chip b, #page-pusat-inventory .pi-chip b { margin-left: 4px; font-weight: 800; opacity: .75; }
+#page-opname-web .pi-chip.aktif-Minus, #page-pusat-inventory .pi-chip.aktif-Minus { background: #fdf0f1 !important; border-color: var(--op-k-garis) !important; color: var(--op-k) !important; }
+
+/* Tombol Ekspor & Filter */
+.op-btn-ekspor { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 13px; border-radius: 99px; border: none;
+  background: #1f2937; color: #e9c46a; font-size: 12px; font-weight: 800; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.op-btn-ekspor .material-symbols-outlined { font-size: 16px; }
+.op-btn-ekspor:hover { background: #111827; }
+.op-btn-filter { display: none; align-items: center; gap: 4px; height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid #1f2937;
+  background: #fff; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; color: #1f2937; }
+.op-btn-filter .material-symbols-outlined { font-size: 17px; }
+
+/* ---------- Daftar (laptop = tabel) ---------- */
+.op-wrap { display: block; }
+.op-daftar { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+.op-hdr, .op-row {
+  display: grid; align-items: center; gap: 12px; padding: 0 14px;
+  grid-template-columns: 74px minmax(0, 1fr) 200px 64px 64px 118px 96px 32px;
+}
+.op-hdr { height: 36px; background: #f5f5f5; border-bottom: 1px solid #e5e7eb; font-size: 10.5px; font-weight: 800; color: #6b7280; letter-spacing: .3px; text-transform: uppercase; }
+.op-hdr .n { text-align: right; }
+.op-row { min-height: 46px; border-bottom: 1px solid #f1f2f4; cursor: pointer; position: relative; background: #fff; }
+.op-row:last-child { border-bottom: none; }
+.op-row:hover { background: #fcfbf7; }
+.op-row::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 0 3px 3px 0; }
+.op-k::before { background: var(--op-k-garis); } .op-l::before { background: var(--op-l-garis); }
+.op-s::before { background: var(--op-s-garis); } .op-b::before { background: var(--op-b-garis); }
+.op-rak { font: 800 12px ui-monospace, Consolas, monospace; background: var(--op-rak-bg); color: var(--op-rak-tx); border: 1px solid var(--op-rak-gr);
+  border-radius: 5px; padding: 2px 6px; justify-self: start; white-space: nowrap; }
+.op-nm { font-weight: 700; font-size: 13.5px; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.op-sku { font: 600 10px ui-monospace, Consolas, monospace; background: var(--op-sku-bg); color: #fff; border-radius: 4px; padding: 1px 6px;
+  justify-self: start; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .2px; }
+.op-per { font-size: 11px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: lowercase; }
+.op-q { display: contents; }
+.op-q i { display: none; }
+.op-web, .op-real { text-align: right; }
+.op-web b, .op-real b { font: 800 14px ui-monospace, Consolas, monospace; color: #111827; }
+.op-st { text-align: right; font-weight: 800; font-size: 12.5px; white-space: nowrap; }
+.op-t-k { color: var(--op-k) !important; } .op-t-l { color: var(--op-l) !important; } .op-t-s { color: var(--op-s) !important; } .op-t-b { color: var(--op-b) !important; }
+.op-dot { width: 30px; height: 30px; border: none; background: none; border-radius: 7px; font-size: 18px; font-weight: 900; color: #64748b; cursor: pointer; line-height: 1; }
+.op-dot:hover { background: #f1f5f9; color: #111827; }
+/* urutan kolom di laptop */
+.op-row > .op-rak { grid-column: 1; } .op-row > .op-nm { grid-column: 2; } .op-row > .op-sku { grid-column: 3; }
+.op-row .op-web { grid-column: 4; } .op-row .op-real { grid-column: 5; } .op-row .op-st { grid-column: 6; }
+.op-row > .op-per { grid-column: 7; } .op-row > .op-dot { grid-column: 8; }
+.op-row > * { grid-row: 1; }
+
+/* ---------- HP: kartu ---------- */
+@media (max-width: 760px) {
+  .op-daftar { background: transparent; border: none; border-radius: 0; overflow: visible; }
+  .op-hdr { display: none; }
+  .op-row {
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    grid-template-areas: "rak nm dot" "sku sku per" "q q q";
+    gap: 5px 7px; padding: 8px 10px 9px 12px; margin: 0 0 7px; border: none; border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.06); min-height: 0;
+  }
+  .op-row::before { top: 0; bottom: 0; width: 4px; border-radius: 10px 0 0 10px; }
+  .op-row > * { grid-row: auto; }
+  .op-row .op-web, .op-row .op-real, .op-row .op-st { grid-column: auto; grid-row: auto; }
+  .op-row > .op-rak { grid-area: rak; } .op-row > .op-nm { grid-area: nm; font-size: 14.5px; }
+  .op-row > .op-dot { grid-area: dot; width: 26px; height: 26px; }
+  .op-row > .op-sku { grid-area: sku; font-size: 9.5px; }
+  .op-row > .op-per { grid-area: per; font-size: 9.5px; color: #b0b7c3; text-align: right; }
+  .op-q { grid-area: q; display: grid; grid-template-columns: 1fr 1fr 1.4fr; align-items: end; background: #f8fafc; border-radius: 8px; padding: 5px 10px; }
+  .op-q i { display: block; font-style: normal; font-size: 9px; font-weight: 800; color: #9ca3af; letter-spacing: .4px; }
+  .op-web, .op-real { text-align: left; }
+  .op-web b, .op-real b { font-size: 16px; }
+  .op-st { font-size: 13px; }
+
+  /* filter: rak, personil, urutan dilipat ke tombol Filter */
+  #page-opname-web .pi-toolbar, #page-pusat-inventory .pi-toolbar { flex-wrap: wrap; }
+  .op-btn-filter { display: inline-flex; }
+  #ow-personil-wrap, #ow-rak-filter, #ow-sort-select, #so-personil-wrap, #so-rak-filter, #pi-sort-select { display: none !important; }
+  .op-filter-buka #ow-personil-wrap, .op-filter-buka #so-personil-wrap { display: block !important; flex: 1 1 45%; }
+  .op-filter-buka #ow-rak-filter, .op-filter-buka #so-rak-filter, .op-filter-buka #ow-sort-select, .op-filter-buka #pi-sort-select { display: block !important; flex: 1 1 45%; }
+  .op-filter-buka #ow-personil-input, .op-filter-buka #so-personil-input { width: 100%; }
+  #ow-sesi-select, #so-sesi-select { min-width: 0 !important; flex: 0 0 auto; max-width: 42%; }
+  #ow-cari, #so-cari { min-width: 0 !important; flex: 1 1 0; }
+  .op-filter-buka .op-btn-filter { background: #1f2937; color: #e9c46a; }
+}
+
+/* ---------- Menu ⋮ ---------- */
+.op-menu { position: fixed; z-index: 10050; width: 210px; background: #fff; border-radius: 10px; border: 1px solid #eef0f3;
+  box-shadow: 0 12px 32px rgba(15,23,42,.18); overflow: hidden; }
+.op-menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 14px; border: none; background: #fff; font-size: 13px;
+  color: #1f2937; cursor: pointer; font-family: inherit; text-align: left; }
+.op-menu button + button { border-top: 1px solid #f3f4f6; }
+.op-menu button:hover { background: #faf6ec; }
+.op-menu .material-symbols-outlined { font-size: 18px; color: #6b7280; }
+.op-menu .bahaya, .op-menu .bahaya .material-symbols-outlined { color: var(--op-k); }
+
+/* ---------- Jendela riwayat & panel ekspor ---------- */
+.op-modal { position: fixed; inset: 0; z-index: 10040; background: rgba(15,23,42,.45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.op-modal-kotak { background: #fff; border-radius: 16px; width: 640px; max-width: 100%; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+.op-modal-hd { padding: 14px 16px 12px; border-bottom: 1px solid #eef0f3; }
+.op-modal-t1 { display: flex; align-items: center; gap: 8px; }
+.op-modal-t1 b { flex: 1; font-size: 15.5px; color: #111827; min-width: 0; }
+.op-modal-t1 button { border: none; background: none; font-size: 18px; color: #9ca3af; cursor: pointer; }
+.op-modal-hd .op-sku { display: inline-block; margin-top: 6px; }
+.op-ringkas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.op-ringkas div { background: #f8fafc; border-radius: 8px; padding: 6px 8px; }
+.op-ringkas span { display: block; font-size: 9px; font-weight: 800; color: #9ca3af; letter-spacing: .3px; }
+.op-ringkas b { font: 800 15px ui-monospace, Consolas, monospace; color: #111827; }
+.op-modal-judul { font-size: 11px; font-weight: 800; color: #6b7280; letter-spacing: .4px; text-transform: uppercase; padding: 12px 16px 4px; }
+.op-modal-isi { overflow: auto; padding: 0 8px; }
+.op-riw { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.op-riw th { text-align: left; font-size: 10px; color: #9ca3af; font-weight: 800; letter-spacing: .3px; padding: 6px 8px; border-bottom: 1px solid #eef0f3; white-space: nowrap; text-transform: uppercase; }
+.op-riw td { padding: 9px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+.op-riw .no { color: #9ca3af; font-size: 11px; width: 22px; }
+.op-riw .w small { display: block; color: #9ca3af; font-size: 11px; margin-top: 2px; }
+.op-riw .ch { font: 800 13px ui-monospace, Consolas, monospace; white-space: nowrap; }
+.op-riw .ch i { font-style: normal; color: #9ca3af; margin: 0 5px; font-weight: 600; }
+.op-riw .st { font-weight: 800; white-space: nowrap; text-align: right; }
+.op-riw tr.kini td { background: #fbf8ef; }
+.op-riw tr.hapus td { color: #a3a9b3; }
+.op-riw tr.hapus .ch { text-decoration: line-through; }
+.op-tag { font: 800 9px Arial, sans-serif; background: #1f2937; color: #e9c46a; border-radius: 4px; padding: 1px 5px; margin-left: 4px; vertical-align: 1px; }
+.op-dtag { font-size: 10.5px; font-weight: 700; color: #9ca3af; background: #f3f4f6; border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+.op-kosong { text-align: center; color: #9ca3af; padding: 26px 0; font-size: 13px; }
+.op-modal-ft { padding: 10px 16px 14px; font-size: 11px; color: #9ca3af; border-top: 1px solid #f3f4f6; }
+
+/* panel ekspor (laptop: kotak tengah, HP: dari bawah) */
+.op-sheet .op-modal-kotak { width: 440px; padding: 14px 18px 18px; }
+.op-grab { display: none; width: 40px; height: 4px; border-radius: 4px; background: #d1d5db; margin: 0 auto 12px; }
+.op-sheet h4 { margin: 0 0 10px; font-size: 15px; color: #111827; }
+.op-file { display: flex; gap: 10px; align-items: center; background: #f8fafc; border: 1px solid #eef0f3; border-radius: 10px; padding: 10px; }
+.op-xl { width: 36px; height: 42px; border-radius: 6px; background: #1d6f42; color: #fff; font: 800 10px Arial, sans-serif; display: grid; place-items: center; flex: none; }
+.op-fn { font-size: 12.5px; font-weight: 700; color: #111827; word-break: break-word; }
+.op-fs { font-size: 11px; color: #6b7280; margin-top: 2px; }
+.op-rk { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0 12px; }
+.op-rk div { text-align: center; background: #f8fafc; border-radius: 8px; padding: 6px 0; font-size: 10.5px; color: #6b7280; }
+.op-rk b { display: block; font-size: 16px; color: #111827; }
+.op-aksi { display: grid; grid-template-columns: 1fr 1.3fr; gap: 8px; }
+.op-aksi.satu { grid-template-columns: 1fr; }
+.op-a1, .op-a2 { height: 44px; border-radius: 10px; font-weight: 800; font-size: 13.5px; cursor: pointer; font-family: inherit; }
+.op-a1 { border: 1px solid #1f2937; background: #fff; color: #1f2937; }
+.op-a2 { border: none; background: #1f2937; color: #e9c46a; }
+.op-a1:disabled, .op-a2:disabled { opacity: .5; cursor: wait; }
+.op-msg { min-height: 14px; margin-top: 8px; font-size: 12px; color: var(--op-k); text-align: center; }
+@media (max-width: 760px) {
+  .op-modal { align-items: flex-end; padding: 0; }
+  .op-modal-kotak { width: 100% !important; border-radius: 18px 18px 0 0; max-height: 90vh; }
+  .op-grab { display: block; }
+  .op-riw thead { display: none; }
+  .op-riw td { padding: 9px 6px; }
+  .op-riw .st { font-size: 11.5px; }
+}
+
+/* mode gelap */
+html.dark .op-daftar, html.dark .op-row, html.dark .op-menu, html.dark .op-menu button, html.dark .op-modal-kotak { background: var(--bg-card); border-color: var(--border-color); }
+html.dark .op-hdr { background: var(--tbl-header); color: #cbd5e1; border-color: var(--border-color); }
+html.dark .op-nm, html.dark .op-web b, html.dark .op-real b, html.dark .op-modal-t1 b, html.dark .op-ringkas b, html.dark .op-fn, html.dark .op-rk b { color: var(--text-primary); }
+html.dark .op-q, html.dark .op-ringkas div, html.dark .op-file, html.dark .op-rk div { background: var(--bg-page); }
+html.dark .op-row:hover, html.dark .op-menu button:hover { background: var(--hover-bg); }
