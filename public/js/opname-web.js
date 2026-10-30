@@ -417,37 +417,12 @@ async function owOpenActions(kunciEnc) {
   const row = owCari(decodeURIComponent(kunciEnc));
   if (!row) return;
   owRusakAktif = row;
-  const modal = document.getElementById('ow-rusak-modal');
-  const body  = document.getElementById('ow-rusak-modal-body');
-  document.getElementById('ow-rusak-modal-judul').textContent = row.namaProduk || row.sku;
-  document.getElementById('ow-rusak-qty').value = '';
-  document.getElementById('ow-rusak-ket').value = '';
-  document.getElementById('ow-rusak-msg').textContent = '';
-  body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px 0;"><span class="material-symbols-outlined" style="font-size:32px;animation:spin 1s linear infinite;display:block;margin-bottom:8px;">sync</span>Memuat data...</div>';
-  modal.style.display = 'flex';
-
-  const fotoHtml = row.kodeGambar
-    ? `<img src="${OW_ASSET_BASE}?id=${encodeURIComponent(row.kodeGambar)}&thumbnail=true" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0;background:#f1f5f9;" onerror="this.style.display='none'">`
-    : `<div style="width:60px;height:60px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span class="material-symbols-outlined" style="color:#cbd5e1;font-size:24px;">image_not_supported</span></div>`;
-  const kepala = `<div style="display:flex;gap:12px;align-items:center;padding:0 0 14px;border-bottom:1px solid #f1f5f9;margin-bottom:14px;">${fotoHtml}<div style="min-width:0;"><div style="font-size:12px;font-weight:700;color:#1e293b;line-height:1.3;">${owEsc(row.namaProduk)}</div><div style="font-size:11px;color:#94a3b8;margin-top:2px;font-family:monospace;">${owEsc(row.sku)} · ${owEsc(row.rak)}</div></div></div>`;
+  opRusakSiapkan('ow', { nama: row.namaProduk, sku: row.sku, rak: row.lokasi || row.rak, qty: row.qtySistem });
   try {
     const data = await owApi(`/api/pindah/rusak?id=${encodeURIComponent(row.sku)}&bulan=${encodeURIComponent(owSesiAktif)}`);
-    const rows = data.rows || [];
-    if (!rows.length) {
-      body.innerHTML = kepala + `<div style="text-align:center;padding:20px 0;"><span class="material-symbols-outlined" style="font-size:40px;color:#d1d5db;display:block;margin-bottom:10px;">check_circle</span><p style="color:#64748b;font-size:13px;font-weight:600;">Belum pernah dilaporkan rusak</p></div>`;
-      return;
-    }
-    const latest = rows[0], history = rows.slice(1);
-    body.innerHTML = kepala + `
-      <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:10px;padding:14px;margin-bottom:14px;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;"><span style="font-size:11px;font-weight:700;color:#e11d48;text-transform:uppercase;letter-spacing:.4px;">Laporan Terbaru</span><span style="font-size:11px;color:#94a3b8;">${owEsc(latest.dicatatPada || '-')}</span></div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:26px;font-weight:800;color:#be123c;">${latest.jumlahRusak}</span><span style="font-size:12px;color:#64748b;">pcs rusak</span></div>
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span class="material-symbols-outlined" style="font-size:14px;color:#64748b;">person</span><span style="font-size:12px;font-weight:600;color:#334155;">${owEsc(latest.oleh || '—')}</span><span style="font-size:11px;color:#94a3b8;">· ${owEsc(latest.sesi || '')}</span></div>
-        ${latest.keterangan ? `<div style="font-size:12px;color:#64748b;background:#fff;border-radius:6px;padding:8px 10px;border:1px solid #f1f5f9;">${owEsc(latest.keterangan)}</div>` : ''}
-      </div>
-      ${history.length ? `<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Riwayat Sebelumnya</div><div style="max-height:140px;overflow-y:auto;">${history.map(r => `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border:1px solid #f1f5f9;border-radius:7px;margin-bottom:5px;background:#fafafa;"><div><span style="font-weight:700;color:#be123c;">${r.jumlahRusak} pcs</span><span style="font-size:11px;color:#64748b;margin-left:6px;">· ${owEsc(r.oleh || '—')} · ${owEsc(r.sesi || '')}</span>${r.keterangan ? `<div style="font-size:11px;color:#94a3b8;">${owEsc(r.keterangan)}</div>` : ''}</div><span style="font-size:10px;color:#94a3b8;">${owEsc(r.dicatatPada || '')}</span></div>`).join('')}</div>` : ''}`;
+    if (owRusakAktif === row) opRusakRiwayat('ow', data.rows || []);
   } catch (e) {
-    body.innerHTML = kepala + '<div style="text-align:center;color:#ef4444;padding:20px;">Gagal memuat data.</div>';
+    if (owRusakAktif === row) opRusakRiwayat('ow', null, true);
   }
 }
 
@@ -458,26 +433,25 @@ function owTutupRusakModal(e) {
 
 async function owSimpanRusak() {
   const row = owRusakAktif;
-  const qty = parseInt(document.getElementById('ow-rusak-qty').value);
-  const ket = document.getElementById('ow-rusak-ket').value.trim();
   const msg = document.getElementById('ow-rusak-msg');
   const btn = document.getElementById('ow-rusak-btn');
   if (!row) return;
-  if (!qty || qty < 1) { msg.style.color = '#ef4444'; msg.textContent = 'Jumlah rusak wajib diisi (min. 1 pcs).'; return; }
+  const f = opRusakAmbil('ow');
+  if (!f) return;
   const ok = typeof showConfirm === 'function'
-    ? await showConfirm('Laporkan Barang Rusak', `${row.namaProduk || row.sku}: ${qty} pcs rusak. Simpan laporan?`, 'Ya, Simpan')
-    : confirm('Simpan laporan barang rusak?');
+    ? await showConfirm('Tambahkan Kerusakan', `${row.namaProduk || row.sku}: ${f.qty} pcs (${f.jenis}). Simpan?`, 'Ya, Simpan')
+    : confirm('Simpan laporan kerusakan?');
   if (!ok) return;
   btn.disabled = true; btn.textContent = 'Menyimpan...'; msg.textContent = '';
   try {
     await owApi('/api/pindah/rusak', { method: 'POST', body: JSON.stringify({
-      id: row.sku, nama: row.namaProduk, kodeRak: row.rak, bulan: owSesiAktif, jumlah: qty, keterangan: ket }) });
-    if (typeof showToast === 'function') showToast('Laporan barang rusak tersimpan.', 'success');
+      id: row.sku, nama: row.namaProduk, kodeRak: row.rak, bulan: owSesiAktif, jumlah: f.qty, keterangan: f.keterangan }) });
+    if (typeof showToast === 'function') showToast('Laporan kerusakan tersimpan.', 'success');
     owOpenActions(owKunciEnc(row));
   } catch (e) {
-    msg.style.color = '#ef4444'; msg.textContent = e.message || 'Gagal menyimpan.';
+    msg.style.color = '#d1646c'; msg.textContent = e.message || 'Gagal menyimpan.';
   } finally {
-    btn.disabled = false; btn.textContent = 'Simpan Laporan Rusak';
+    btn.disabled = false; btn.textContent = 'Simpan';
   }
 }
 
@@ -614,7 +588,7 @@ async function owBukaRiwayatHapus() {
   box.innerHTML = `<div class="ow-rh">
       <div class="ow-rh-head"><b>Riwayat Hapus Hitungan</b>
         <button type="button" onclick="owTutupRiwayatHapus()" aria-label="Tutup"><span class="material-symbols-outlined">close</span></button></div>
-      <input type="text" id="ow-rh-cari" placeholder="Cari penghapus, petugas, rak, SKU..." oninput="owRenderRiwayatHapus()">
+      <input type="text" id="ow-rh-cari" placeholder="Cari nama, rak, SKU, produk..." oninput="owRenderRiwayatHapus()">
       <div id="ow-rh-isi" class="ow-rh-isi"><p class="ow-rh-kosong">Memuat...</p></div>
     </div>`;
   box.addEventListener('click', e => { if (e.target === box) owTutupRiwayatHapus(); });
@@ -629,16 +603,65 @@ async function owBukaRiwayatHapus() {
 }
 function owNama(u) { return typeof namaTampil === 'function' ? namaTampil(u) : u; }
 function owTutupRiwayatHapus() { const el = document.getElementById('ow-rh'); if (el) el.remove(); }
+// Kelompokkan: satu kali hapus (orang + jenis + rak + waktu yang sama) = satu kartu.
+// Catatan ganda (hapus tertekan 2×, data sama persis) cukup tampil sekali dengan tanda "2×".
+function owKelompokHapus(rows) {
+  const grup = [], peta = {};
+  rows.forEach(r => {
+    const k = [r.oleh, r.jenis, r.kodeRak, String(r.waktu).slice(0, 16)].join('|');
+    let g = peta[k];
+    if (!g) { g = peta[k] = { oleh: r.oleh, jenis: r.jenis, kodeRak: r.kodeRak, waktu: r.waktu, alasan: r.alasan, item: [], tanda: {}, kali: 1 }; grup.push(g); }
+    const ki = [r.lokasi, r.id, r.qtyReal, r.qtyWeb].join('|');
+    if (g.tanda[ki]) { g.tanda[ki].n++; g.kali = Math.max(g.kali, g.tanda[ki].n); return; }
+    const it = { ...r, n: 1 };
+    g.tanda[ki] = it; g.item.push(it);
+    if (!g.alasan && r.alasan) g.alasan = r.alasan;
+  });
+  // Kartu yang isinya sama persis & berdekatan (≤10 menit) = hapus dobel → digabung
+  const menit = w => { const m = String(w).match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/); return m ? Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5]) / 60000 : 0; };
+  const sidik = g => [g.oleh, g.jenis, g.kodeRak, g.item.map(i => [i.lokasi, i.id, i.qtyReal].join(':')).sort().join(',')].join('|');
+  const hasil = [];
+  grup.forEach(g => {
+    const lalu = hasil[hasil.length - 1];
+    if (lalu && sidik(lalu) === sidik(g) && Math.abs(menit(lalu.waktu) - menit(g.waktu)) <= 10) { lalu.kali += g.kali; return; }
+    hasil.push(g);
+  });
+  return hasil;
+}
+function owWaktuPendek(w) {
+  const m = String(w || '').match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}:\d{2})/);
+  return m ? `${+m[3]} ${OP_BULAN[+m[2] - 1].slice(0, 3)} · ${m[4]}` : String(w || '');
+}
 function owRenderRiwayatHapus() {
   const el = document.getElementById('ow-rh-isi');
   if (!el) return;
   const q = (document.getElementById('ow-rh-cari')?.value || '').trim().toUpperCase();
-  const rows = owRhData.filter(r => !q || [r.oleh, r.petugas, r.kodeRak, r.id, r.nama, r.lokasi].join(' ').toUpperCase().includes(q));
-  if (!rows.length) { el.innerHTML = '<p class="ow-rh-kosong">Belum ada hitungan yang dihapus.</p>'; return; }
-  el.innerHTML = rows.map(r => `<div class="ow-rh-item">
-      <div class="ow-rh-a"><span class="ow-rh-jenis ${r.jenis === 'Hitungan Rak' ? 'rak' : ''}">${owEsc(r.jenis)}</span><span>${owEsc(r.waktu)}</span></div>
-      <div class="ow-rh-b"><b>${owEsc(r.kodeRak)}</b> ${r.lokasi ? '· ' + owEsc(r.lokasi) : ''} · <code>${owEsc(r.id)}</code></div>
-      <div class="ow-rh-c">${owEsc(r.nama)}</div>
-      <div class="ow-rh-d">Dihapus oleh <b>${owEsc(owNama(r.oleh))}</b> · dihitung oleh <b>${owEsc(r.petugas ? owNama(r.petugas) : '-')}</b> · Web ${r.qtyWeb} · Real dihapus <b>${r.qtyReal === '' ? '-' : r.qtyReal}</b>${r.alasan ? ' · ' + owEsc(r.alasan) : ''}</div>
-    </div>`).join('');
+  const grup = owKelompokHapus(owRhData).filter(g => !q || [owNama(g.oleh), g.oleh, g.kodeRak, g.jenis,
+    ...g.item.map(i => [i.id, i.nama, i.lokasi, i.petugas, owNama(i.petugas)].join(' '))].join(' ').toUpperCase().includes(q));
+  if (!grup.length) { el.innerHTML = `<p class="ow-rh-kosong">${q ? 'Tidak ada yang cocok.' : 'Belum ada hitungan yang dihapus.'}</p>`; return; }
+  const pcs = v => v === '' || v == null ? '—' : `${Number(v).toLocaleString('id-ID')} pcs`;
+  el.innerHTML = grup.map(g => {
+    const siapa = `<b>${owEsc(owNama(g.oleh) || '—')}</b>`;
+    const kali = g.kali > 1 ? `<span class="rh-kali" title="Tercatat ${g.kali} kali (data sama)">${g.kali}×</span>` : '';
+    const petugas = [...new Set(g.item.map(i => i.petugas).filter(Boolean).map(owNama))].join(', ') || '—';
+    const satu = g.item.length === 1 && !/Rak|Tim/.test(g.jenis);
+    let tag, judul, sub, daftar = '';
+    if (satu) {
+      const i = g.item[0];
+      tag = '<span class="rh-tag sku">1 SKU</span>';
+      judul = `${siapa} menghapus hitungan <b>${owEsc(i.nama || i.id)}</b>`;
+      sub = `Rak ${owEsc(i.lokasi || g.kodeRak)} · Real ${pcs(i.qtyReal)} (Web ${owEsc(i.qtyWeb)}) · yang menghitung: ${owEsc(petugas)}`;
+    } else {
+      const tim = (g.jenis.match(/Tim\s+(\S+)/) || [])[1];
+      const rak = /Rak/.test(g.jenis);
+      tag = tim ? `<span class="rh-tag">TIM ${owEsc(tim)}</span>` : rak ? '<span class="rh-tag">SATU RAK</span>' : `<span class="rh-tag sku">${g.item.length} SKU</span>`;
+      judul = tim ? `${siapa} menghapus hitungan Tim ${owEsc(tim)} di rak <b>${owEsc(g.kodeRak)}</b>`
+            : rak ? `${siapa} menghapus hitungan rak <b>${owEsc(g.kodeRak)}</b>`
+            : `${siapa} menghapus hitungan ${g.item.length} SKU di rak <b>${owEsc(g.kodeRak)}</b>`;
+      sub = `${g.item.length} SKU · yang menghitung: ${owEsc(petugas)}`;
+      daftar = `<div class="rh-list">${g.item.map(i => `<div><span>${owEsc(i.nama || i.id)} <code>· ${owEsc(i.lokasi || '')}</code></span><span>${pcs(i.qtyReal)}</span></div>`).join('')}</div>`;
+    }
+    return `<div class="rh-item"><div class="rh-1"><div>${tag}${judul}${kali}</div><span>${owEsc(owWaktuPendek(g.waktu))}</span></div>
+      <div class="rh-2">${sub}</div>${g.alasan ? `<div class="rh-2">Alasan: ${owEsc(g.alasan)}</div>` : ''}${daftar}</div>`;
+  }).join('');
 }
