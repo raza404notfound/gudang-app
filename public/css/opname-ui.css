@@ -343,3 +343,15 @@ html.dark .op-dd-cari input { background-color: #111827; border-color: #374151; 
 .op-tambahan.aktif .op-tb-ikon, .op-tambahan.aktif b { background: #e9c46a; color: #1f2937; }
 .op-tambahan.aktif small { color: #cbd5e1; }
 html.dark .op-tambahan:not(.aktif) { background: #1f2430; border-color: #5c4a22; color: #e5e7eb; }
+
+/* Barang tambahan: label SKU & jendela edit */
+.op-row .op-sku.op-sku-tb { background: #f6f0e1; color: #7a5a1c; border: 1px dashed #d8c79c; }
+#ow-tb input[type=text], #ow-tb input[type=number] { width: 100%; box-sizing: border-box; border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 10px;
+  font-size: 13px; font-family: inherit; color: #1f2937; outline: none; }
+#ow-tb input:focus { border-color: #8a6d1f; box-shadow: 0 0 0 3px rgba(233,196,106,.25); }
+#ow-tb-sku { font-family: ui-monospace, Consolas, monospace !important; }
+.ow-tb-lama { font-size: 11.5px; color: #6b7280; background: #f8fafc; border-radius: 8px; padding: 8px 10px; margin: 10px 0 4px; }
+.ow-tb-hapus { display: block; width: 100%; margin-top: 10px; border: none; border-top: 1px dashed #eef0f3; background: none; padding: 10px 0 0;
+  color: #d1646c; font-weight: 700; font-size: 12.5px; cursor: pointer; font-family: inherit; }
+html.dark #ow-tb input { background: #111827; border-color: #374151; color: #e5e7eb; }
+html.dark .ow-tb-lama { background: #111827; color: #9ca3af; }
