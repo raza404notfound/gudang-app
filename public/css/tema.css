@@ -231,3 +231,7 @@ html.dark .pg-chip.aktif, html.dark .db-preset.aktif, html.dark .db-chip.aktif, 
 html.dark .pi-chip.aktif-Semua, html.dark .pr-chip.aktif { background: var(--emas) !important; border-color: var(--emas) !important; color: #111827 !important; }
 html.dark .btn-lacak-utama, html.dark .awb-btn-lacak, html.dark .do-btn-submit, html.dark .ka-btn-simpan, html.dark .set-simpan,
 html.dark .pg-btn-kuning, html.dark .pg-btn-simpan, html.dark #btn-create-user { background: var(--emas) !important; border-color: var(--emas) !important; color: #111827 !important; }
+
+/* Alasan sesi berakhir (kecil, abu-abu) di bawah tombol Masuk */
+.lg-alasan { margin-top: 12px; font-size: 12px; color: #9ca3af; text-align: center; line-height: 1.4; }
+html.dark .lg-alasan { color: #6b7280; }
