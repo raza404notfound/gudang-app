@@ -4,7 +4,7 @@ let setFotoBaru = '';   // '' = tidak berubah, 'HAPUS' = hapus foto, dataURL = f
 async function setInit() {
   const msg = document.getElementById('set-msg');
   if (msg) msg.textContent = '';
-  document.getElementById('set-username').value = sessionStorage.getItem('sessionUser') || '';
+  document.getElementById('set-username').value = localStorage.getItem('sessionUser') || '';
   setFotoBaru = '';
   const d = await muatProfilSaya();
   if (!d) { if (msg) { msg.style.color = '#dc2626'; msg.textContent = 'Gagal memuat profil.'; } return; }
@@ -55,7 +55,7 @@ async function setSimpan() {
   btn.disabled = true; btn.textContent = 'Menyimpan...'; msg.textContent = '';
   try {
     const r = await fetch('/api/profil', { method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-session-token': sessionStorage.getItem('sessionToken') || '' },
+      headers: { 'Content-Type': 'application/json', 'x-session-token': localStorage.getItem('sessionToken') || '' },
       body: JSON.stringify({ nama, hp: document.getElementById('set-hp').value.trim(), foto: setFotoBaru }) });
     const d = await r.json();
     if (!d.success) throw new Error(d.message || 'Gagal menyimpan.');
