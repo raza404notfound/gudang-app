@@ -241,3 +241,36 @@ html.dark .op-pchip { background: #1f2430; border-color: #374151; color: #cbd5e1
 html.dark .op-status .pi-chip { color: #d1d5db !important; }
 html.dark .op-status .pi-chip[class*="aktif-"] { background: #2a2416 !important; border-color: #5c4a22 !important; color: #f3e3b5 !important; }
 html.dark .op-tim { background: #111827; border-color: #374151; color: #e5e7eb; }
+
+/* ---------- Modal Tambahkan Kerusakan (tanpa foto) ---------- */
+.rk-kotak { background: #fff; border-radius: 14px; width: 440px; max-width: 94vw; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.18); }
+.rk-head { background: #1f2937; color: #fff; padding: 13px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; position: sticky; top: 0; z-index: 1; }
+.rk-head button { background: none; border: none; color: #fff; font-size: 19px; cursor: pointer; line-height: 1; }
+.rk-isi { padding: 14px 16px 16px; }
+.rk-info { margin-bottom: 12px; }
+.rk-kv { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: #4b5563; padding: 3px 0; }
+.rk-kv b { color: #111827; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.rk-kv b.rk-mono { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+.rk-baris { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rk-isi select, .rk-isi input, .rk-isi textarea { width: 100%; box-sizing: border-box; border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 10px;
+  font-size: 13px; font-family: inherit; color: #1f2937; background: #fff; outline: none; }
+.rk-isi select:focus, .rk-isi input:focus, .rk-isi textarea:focus { border-color: #8a6d1f; box-shadow: 0 0 0 3px rgba(233,196,106,.25); }
+.rk-isi textarea { margin-top: 8px; resize: vertical; min-height: 58px; }
+.rk-wajib { font-size: 11.5px; color: #d1646c; margin: 5px 0 4px; }
+.rk-simpan { width: 100%; border: none; border-radius: 9px; padding: 11px; background: #1f2937; color: #e9c46a; font-weight: 800; font-size: 13px; cursor: pointer; font-family: inherit; }
+.rk-simpan:disabled { opacity: .6; cursor: wait; }
+.rk-riw { margin-top: 12px; border-top: 1px dashed #e5e7eb; padding-top: 10px; font-size: 12px; color: #6b7280; }
+.rk-riw-atas { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.rk-riw-atas b { color: #d1646c; }
+.rk-riw-atas button { border: none; background: none; color: #8a6d1f; font-weight: 700; font-size: 12px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.rk-riw .rk-t2, .rk-riw.buka .rk-t1 { display: none; } .rk-riw.buka .rk-t2 { display: inline; }
+.rk-riw-list { display: none; margin-top: 8px; max-height: 150px; overflow-y: auto; }
+.rk-riw.buka .rk-riw-list { display: block; }
+.rk-riw-list div { display: flex; justify-content: space-between; gap: 8px; padding: 6px 8px; border: 1px solid #f1f5f9; border-radius: 7px; margin-bottom: 4px; background: #fafafa; }
+.rk-riw-list b { color: #d1646c; }
+.rk-riw-list i { font-style: normal; font-size: 10.5px; color: #9ca3af; white-space: nowrap; }
+.rk-muat { color: #9ca3af; }
+html.dark .rk-kotak { background: #1f2430; }
+html.dark .rk-kv b { color: #f3f4f6; }
+html.dark .rk-isi select, html.dark .rk-isi input, html.dark .rk-isi textarea { background: #111827; border-color: #374151; color: #e5e7eb; }
+html.dark .rk-riw-list div { background: #111827; border-color: #2d3442; }
