@@ -247,13 +247,9 @@ function owRenderTabel() {
   const mulai  = (owHalamanAkt - 1) * OW_PER_HALAMAN;
   const slice  = owDataFilter.slice(mulai, mulai + OW_PER_HALAMAN);
 
-  if (owViewMode === 'grid') {
-    container.className = 'pi-grid';
-    container.innerHTML = slice.map(owRenderCard).join('');
-  } else {
-    container.className = 'pi-list';
-    container.innerHTML = slice.map(owRenderListItem).join('');
-  }
+  // Satu tampilan: tabel di laptop, kartu di HP (lihat opname-ui.js)
+  container.className = 'op-wrap';
+  container.innerHTML = opDaftarHtml(slice, { id: 'ow', status: r => r.status || 'Belum' });
 
   if (maxHal > 1) {
     pager.style.display = '';
@@ -483,12 +479,12 @@ function owHitungStats() {
   document.getElementById('ow-n-plus').textContent    = h.Plus;
   document.getElementById('ow-n-minus').textContent   = h.Minus;
   document.getElementById('ow-n-belum').textContent   = h.Belum;
-  document.getElementById('ow-stats').style.display   = '';
+  opIsiChip('ow', h);
 }
 function owUpdateInfoBar() {
   document.getElementById('ow-info-total').textContent  = owSemuaData.length;
   document.getElementById('ow-info-tampil').textContent = owDataFilter.length;
-  document.getElementById('ow-info-sesi').textContent   = owSesiAktif;
+  document.getElementById('ow-info-sesi').textContent   = owSesiAktif + ' · ' + opTimLabel(owDataFilter).pendek;
   document.getElementById('ow-info-bar').style.display  = '';
 }
 function owTampilLoading(pesan) {
@@ -510,7 +506,21 @@ function owCloseLightbox() {
   document.getElementById('ow-lightbox-img').src = '';
 }
 
-// ---------- Export (sama seperti Opname Sheet: kirim ke sheet + unduh CSV) ----------
+// ---------- Ekspor .xlsx (panel Unduh / Bagikan ke WA) ----------
+function owEkspor() {
+  const filterRak = document.getElementById('ow-rak-filter').value || '';
+  const cari = document.getElementById('ow-cari').value || '';
+  const label = { Semua: 'Semua', Minus: 'Kurang', Plus: 'Lebih', Balance: 'Sesuai', Belum: 'Belum' };
+  opBukaEkspor({
+    sumber: 'Opname WEB', sesi: owSesiAktif, bulanLabel: owNamaBulan(owSesiAktif) || owSesiAktif,
+    rows: owDataFilter.slice(), status: r => r.status || 'Belum',
+    filterStatus: label[owStatusAkt] || owStatusAkt, filterRak, filterPersonil: owPersonilAktif ? opNama(owPersonilAktif) : '', cari,
+    sesudah: () => opKirimSheet('WEB ' + (owSesiAktif || ''), `Ekspor Opname WEB | Sesi: ${owSesiAktif || '-'} | Filter: ${owStatusAkt}`,
+      owDataFilter.map(r => [r.sku || '', r.namaProduk || '', r.totalReal === '' ? '' : Number(r.totalReal), r.selisih === '' ? '' : Number(r.selisih)]))
+  });
+}
+
+// ---------- Export lama (CSV) — tidak dipakai lagi oleh tombol, disimpan untuk cadangan ----------
 async function owExportCSV() {
   if (!owDataFilter.length) return showToast('Tidak ada data untuk diekspor.', 'error');
   const now = new Date();
