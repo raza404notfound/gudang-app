@@ -427,23 +427,26 @@
 
         <!-- MODAL URAIAN RUSAK -->
         <div id="so-rusak-modal" onclick="soTutupRusakModal(event)" style="align-items:center;justify-content:center;">
-          <div style="background:#fff;border-radius:14px;width:420px;max-width:94vw;box-shadow:0 20px 60px rgba(0,0,0,.18);overflow:hidden;" onclick="event.stopPropagation()">
-            <div style="background:#1e293b;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;">
-              <span id="so-rusak-modal-judul" style="font-size:13px;font-weight:700;">Barang Rusak</span>
-              <button onclick="document.getElementById('so-rusak-modal').style.display='none'" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;">✕</button>
-            </div>
-            <div id="so-rusak-modal-body" style="padding:18px;min-height:80px;max-height:45vh;overflow-y:auto;">
-              <div style="text-align:center;color:#94a3b8;padding:20px 0;">Memuat...</div>
-            </div>
-            <!-- Form input barang rusak (dipindah dari menu Data Opname) -->
-            <div class="rusak-form">
-              <div class="rusak-form-judul">Laporkan Barang Rusak</div>
-              <div class="rusak-form-baris">
+          <div class="rk-kotak" onclick="event.stopPropagation()">
+            <div class="rk-head"><b>Tambahkan Kerusakan</b>
+              <button type="button" onclick="document.getElementById('so-rusak-modal').style.display='none'" aria-label="Tutup">✕</button></div>
+            <div class="rk-isi">
+              <div id="so-rusak-modal-body" class="rk-info"></div>
+              <div class="rk-baris">
+                <select id="so-rusak-jenis">
+                  <option value="">Jenis kerusakan</option>
+                  <option>Rusak di Gudang</option>
+                  <option>Hilang di Gudang</option>
+                  <option>Rusak Karena Bencana</option>
+                  <option>Rusak Sampel</option>
+                </select>
                 <input type="number" id="so-rusak-qty" min="1" inputmode="numeric" placeholder="Jumlah (pcs)">
-                <input type="text" id="so-rusak-ket" placeholder="Keterangan, contoh: sobek, kena air">
               </div>
+              <textarea id="so-rusak-ket" rows="2" placeholder="Catatan..."></textarea>
+              <div class="rk-wajib">* Catatan wajib diisi</div>
               <div id="so-rusak-msg" class="rusak-form-msg"></div>
-              <button class="do-btn-submit" id="so-rusak-btn" onclick="soSimpanRusak()">Simpan Laporan Rusak</button>
+              <button type="button" class="rk-simpan" id="so-rusak-btn" onclick="soSimpanRusak()">Simpan</button>
+              <div class="rk-riw" id="so-rusak-riw"></div>
             </div>
           </div>
         </div>
@@ -577,23 +580,26 @@
 
         <!-- MODAL URAIAN RUSAK -->
         <div id="ow-rusak-modal" onclick="owTutupRusakModal(event)" style="align-items:center;justify-content:center;">
-          <div style="background:#fff;border-radius:14px;width:420px;max-width:94vw;box-shadow:0 20px 60px rgba(0,0,0,.18);overflow:hidden;" onclick="event.stopPropagation()">
-            <div style="background:#1e293b;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;">
-              <span id="ow-rusak-modal-judul" style="font-size:13px;font-weight:700;">Barang Rusak</span>
-              <button onclick="document.getElementById('ow-rusak-modal').style.display='none'" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;">✕</button>
-            </div>
-            <div id="ow-rusak-modal-body" style="padding:18px;min-height:80px;max-height:45vh;overflow-y:auto;">
-              <div style="text-align:center;color:#94a3b8;padding:20px 0;">Memuat...</div>
-            </div>
-            <!-- Form input barang rusak (dipindah dari menu Data Opname) -->
-            <div class="rusak-form">
-              <div class="rusak-form-judul">Laporkan Barang Rusak</div>
-              <div class="rusak-form-baris">
+          <div class="rk-kotak" onclick="event.stopPropagation()">
+            <div class="rk-head"><b>Tambahkan Kerusakan</b>
+              <button type="button" onclick="document.getElementById('ow-rusak-modal').style.display='none'" aria-label="Tutup">✕</button></div>
+            <div class="rk-isi">
+              <div id="ow-rusak-modal-body" class="rk-info"></div>
+              <div class="rk-baris">
+                <select id="ow-rusak-jenis">
+                  <option value="">Jenis kerusakan</option>
+                  <option>Rusak di Gudang</option>
+                  <option>Hilang di Gudang</option>
+                  <option>Rusak Karena Bencana</option>
+                  <option>Rusak Sampel</option>
+                </select>
                 <input type="number" id="ow-rusak-qty" min="1" inputmode="numeric" placeholder="Jumlah (pcs)">
-                <input type="text" id="ow-rusak-ket" placeholder="Keterangan, contoh: sobek, kena air">
               </div>
+              <textarea id="ow-rusak-ket" rows="2" placeholder="Catatan..."></textarea>
+              <div class="rk-wajib">* Catatan wajib diisi</div>
               <div id="ow-rusak-msg" class="rusak-form-msg"></div>
-              <button class="do-btn-submit" id="ow-rusak-btn" onclick="owSimpanRusak()">Simpan Laporan Rusak</button>
+              <button type="button" class="rk-simpan" id="ow-rusak-btn" onclick="owSimpanRusak()">Simpan</button>
+              <div class="rk-riw" id="ow-rusak-riw"></div>
             </div>
           </div>
         </div>
@@ -899,6 +905,10 @@
             <div class="pg-filter-baris pg-lipat-filter" id="pg-chip-tim"></div>
             <div class="pg-filter-baris pg-lipat-filter" id="pg-chip-rak"></div>
             <div class="pg-filter-baris pg-lipat-filter" id="pg-chip-blok" style="display:none;"></div>
+            <button type="button" class="pg-kirim-tim" id="pg-kirim-tim" style="display:none;" onclick="pgBukaKirimTim()">
+              <span class="pg-kt-1"><span class="material-symbols-outlined">upload</span> Kirim ke Sheet Tim 00</span>
+              <small id="pg-kirim-tim-info">ke sheet kedua · halaman baru</small>
+            </button>
             <button type="button" class="op-reset pg-reset" onclick="pgResetFilter()"><span class="material-symbols-outlined">restart_alt</span> Reset filter</button>
           </div>
           <div class="pg-mini pg-ringkas-hp" id="pg-mini">
