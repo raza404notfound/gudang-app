@@ -37,8 +37,8 @@ let allTrackedData = [];
     // =============================================
     // AUTH — Server-based (Railway), bukan localStorage
     // =============================================
-    let currentSessionToken = sessionStorage.getItem('sessionToken') || null;
-    let currentUserRole = sessionStorage.getItem('sessionRole') || null;
+    let currentSessionToken = localStorage.getItem('sessionToken') || null;
+    let currentUserRole = localStorage.getItem('sessionRole') || null;
 
     async function handleAuth(event) {
       event.preventDefault();
@@ -59,10 +59,11 @@ let allTrackedData = [];
         const data = await res.json();
 
         if (data.success) {
-          sessionStorage.setItem('sessionToken', data.token);
-          sessionStorage.setItem('aktifTerakhir', String(Date.now()));
-          sessionStorage.setItem('sessionUser', data.username);
-          sessionStorage.setItem('sessionRole', data.role);
+          localStorage.removeItem('alasanKeluar');
+          localStorage.setItem('sessionToken', data.token);
+          localStorage.setItem('aktifTerakhir', String(Date.now()));
+          localStorage.setItem('sessionUser', data.username);
+          localStorage.setItem('sessionRole', data.role);
           currentSessionToken = data.token;
           currentUserRole = data.role;
           location.reload();
@@ -111,7 +112,7 @@ let allTrackedData = [];
     }
     async function muatNamaPeta() {
       try {
-        const r = await fetch('/api/profil/peta', { headers: { 'x-session-token': sessionStorage.getItem('sessionToken') || '' } });
+        const r = await fetch('/api/profil/peta', { headers: { 'x-session-token': localStorage.getItem('sessionToken') || '' } });
         const d = await r.json();
         if (d.success) setNamaPeta(d.peta);
       } catch (e) {}
@@ -125,7 +126,7 @@ let allTrackedData = [];
       const a = document.getElementById('user-avatar');
       if (n) n.innerText = nama;
       const sub = document.getElementById('user-sub-display');
-      if (sub) sub.innerText = '@' + (sessionStorage.getItem('sessionUser') || '');
+      if (sub) sub.innerText = '@' + (localStorage.getItem('sessionUser') || '');
       if (a) {
         if (foto) { a.innerHTML = ''; const img = document.createElement('img'); img.src = foto; img.alt = ''; img.className = 'avatar-foto'; a.appendChild(img); }
         else a.innerText = inisial(nama);
@@ -134,10 +135,10 @@ let allTrackedData = [];
     async function muatProfilSaya() {
       try {
         const c = JSON.parse(localStorage.getItem('profil_saya_v1') || 'null');
-        if (c && c.username === sessionStorage.getItem('sessionUser')) tampilProfilSidebar(c.nama || c.username, c.foto);
+        if (c && c.username === localStorage.getItem('sessionUser')) tampilProfilSidebar(c.nama || c.username, c.foto);
       } catch (e) {}
       try {
-        const r = await fetch('/api/profil/saya', { headers: { 'x-session-token': sessionStorage.getItem('sessionToken') || '' } });
+        const r = await fetch('/api/profil/saya', { headers: { 'x-session-token': localStorage.getItem('sessionToken') || '' } });
         const d = await r.json();
         if (!d.success) return null;
         tampilProfilSidebar(d.nama || d.username, d.foto);
@@ -156,8 +157,8 @@ let allTrackedData = [];
         const res = await fetchAsli(...arg);
         try {
           const baru = res.headers.get('x-sesi-baru');
-          if (baru && sessionStorage.getItem('sessionToken')) {
-            sessionStorage.setItem('sessionToken', baru);
+          if (baru && localStorage.getItem('sessionToken')) {
+            localStorage.setItem('sessionToken', baru);
             if (typeof currentSessionToken !== 'undefined') currentSessionToken = baru;
           }
           const versi = res.headers.get('x-versi-web');
@@ -166,8 +167,8 @@ let allTrackedData = [];
             else if (versi !== versiWebAwal) perluMuatUlang = true;
           }
           const url = String(arg[0] && arg[0].url ? arg[0].url : arg[0] || '');
-          if (res.status === 401 && url.startsWith('/api/') && !url.startsWith('/api/auth/login') && sessionStorage.getItem('sessionToken')) {
-            tampilLogin();
+          if (res.status === 401 && url.startsWith('/api/') && !url.startsWith('/api/auth/') && localStorage.getItem('sessionToken')) {
+            tampilLogin('Sesi berakhir (masa berlaku habis atau akun diubah). Silakan masuk lagi.');
           }
         } catch (e) {}
         return res;
@@ -179,53 +180,87 @@ let allTrackedData = [];
     }
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') muatUlangBilaPerlu(); });
 
-    // Logout otomatis bila 1,5 jam tidak ada sentuhan sama sekali — dicek saat halaman di-refresh / dibuka ulang
+    // SESI DI PERANGKAT — disimpan di localStorage: tetap ada walau tab ditutup, buka tab baru, atau browser di-restart.
+    // Logout otomatis bila 1,5 jam tidak dipakai — dihitung bersama untuk semua tab.
+    //   "Dipakai" = ada klik/ketik/gulir, ATAU tab PDC TOOLS sedang terlihat di layar.
     const BATAS_DIAM = 90 * 60 * 1000;
+    const KUNCI_SESI = ['sessionToken', 'sessionUser', 'sessionRole', 'aktifTerakhir'];
+    function hapusSesiLokal() { try { KUNCI_SESI.forEach(k => localStorage.removeItem(k)); } catch (e) {} }
     let catatAktifTerakhir = 0;
     function catatAktif() {
       const now = Date.now();
       if (now - catatAktifTerakhir < 15000) return;   // cukup dicatat tiap 15 detik
       catatAktifTerakhir = now;
-      try { if (sessionStorage.getItem('sessionToken')) sessionStorage.setItem('aktifTerakhir', String(now)); } catch (e) {}
+      try { if (localStorage.getItem('sessionToken')) localStorage.setItem('aktifTerakhir', String(now)); } catch (e) {}
     }
     ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach(ev => window.addEventListener(ev, catatAktif, { passive: true, capture: true }));
+    // Tab sedang terlihat di layar = dianggap aktif (misal sedang memantau Stok Opname tanpa klik)
+    setInterval(() => { if (document.visibilityState === 'visible') catatAktif(); }, 60000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') cekDiamSaatKembali(); });
+    // Kembali ke tab yang lama ditinggal (tanpa refresh): terapkan aturan 1,5 jam juga
+    function cekDiamSaatKembali() {
+      try {
+        const aktif = Number(localStorage.getItem('aktifTerakhir') || 0);
+        if (localStorage.getItem('sessionToken') && aktif && Date.now() - aktif > BATAS_DIAM) {
+          fetch('/api/auth/logout', { method: 'POST', headers: { 'x-session-token': localStorage.getItem('sessionToken') } }).catch(() => {});
+          tampilLogin('Sesi berakhir karena tidak aktif lebih dari 1,5 jam.');
+          return;
+        }
+      } catch (e) {}
+      catatAktif();
+    }
+    // Sinkron antar tab: logout di satu tab = semua tab keluar; login di satu tab = tab lain ikut masuk
+    window.addEventListener('storage', e => {
+      if (e.key !== 'sessionToken') return;
+      const loginTampil = document.getElementById('auth-modal').style.display === 'flex';
+      if (!e.newValue && !loginTampil) tampilLogin(localStorage.getItem('alasanKeluar') || 'Kamu sudah keluar dari tab lain.', true);
+      else if (e.newValue && !e.oldValue && loginTampil) location.reload();
+    });
 
-    function tampilLogin() {
-      sessionStorage.clear();
+    // alasan: teks kecil di halaman login (kosong = tanpa keterangan, mis. belum pernah login / logout sendiri)
+    function tampilLogin(alasan, dariTabLain) {
+      if (!dariTabLain) {
+        hapusSesiLokal();
+        try { if (alasan) localStorage.setItem('alasanKeluar', alasan); else localStorage.removeItem('alasanKeluar'); } catch (e) {}
+      }
       document.documentElement.classList.remove('ada-sesi');
       showPageLoading(false);
+      const el = document.getElementById('auth-alasan');
+      let teks = alasan || '';
+      if (!teks) { try { teks = localStorage.getItem('alasanKeluar') || ''; } catch (e) {} }
+      if (el) { el.textContent = teks; el.style.display = teks ? '' : 'none'; }
       document.getElementById('auth-modal').style.display = 'flex';
     }
 
     function terapkanSesi(username, role) {
       currentUserRole = role;
-      sessionStorage.setItem('sessionRole', role);
-      sessionStorage.setItem('sessionUser', username);
+      localStorage.setItem('sessionRole', role);
+      localStorage.setItem('sessionUser', username);
       document.getElementById('user-name-display').innerText = username.toUpperCase();
       document.getElementById('user-avatar').innerText       = username.charAt(0).toUpperCase();
       document.getElementById('nav-kelola-akun').style.display = role === 'superuser' ? 'flex' : 'none';
     }
 
     async function checkAuthStatus() {
-      const token     = sessionStorage.getItem('sessionToken');
-      const savedUser = sessionStorage.getItem('sessionUser');
+      const token     = localStorage.getItem('sessionToken');
+      const savedUser = localStorage.getItem('sessionUser');
 
       // Tidak ada sesi sama sekali → tampil login langsung
       if (!token || !savedUser) { tampilLogin(); return; }
 
       // 1,5 jam tanpa sentuhan → sesi diakhiri saat refresh (tanpa pesan)
-      const aktif = Number(sessionStorage.getItem('aktifTerakhir') || 0);
+      const aktif = Number(localStorage.getItem('aktifTerakhir') || 0);
       if (aktif && Date.now() - aktif > BATAS_DIAM) {
         fetch('/api/auth/logout', { method: 'POST', headers: { 'x-session-token': token } }).catch(() => {});
-        tampilLogin();
+        tampilLogin('Sesi berakhir karena tidak aktif lebih dari 1,5 jam.');
         return;
       }
-      sessionStorage.setItem('aktifTerakhir', String(Date.now()));
+      localStorage.setItem('aktifTerakhir', String(Date.now()));
 
       // Ada sesi → langsung buka halaman terakhir (tanpa menunggu server), verifikasi di belakang
       currentSessionToken = token;
       document.getElementById('auth-modal').style.display = 'none';
-      terapkanSesi(savedUser, sessionStorage.getItem('sessionRole') || 'user');
+      terapkanSesi(savedUser, localStorage.getItem('sessionRole') || 'user');
       showPageLoading(false);
       initRouterFromHash();
       startRealtimeTimer();
@@ -235,11 +270,11 @@ let allTrackedData = [];
       // Verifikasi token ke server. Kalau internet/server sedang putus, coba lagi — JANGAN langsung logout.
       for (let coba = 1; coba <= 5; coba++) {
         try {
-          const res = await fetch('/api/auth/me', { headers: { 'x-session-token': sessionStorage.getItem('sessionToken') || token } });
-          if (res.status === 401) { tampilLogin(); return; }       // sesi memang habis / dicabut
+          const res = await fetch('/api/auth/me', { headers: { 'x-session-token': localStorage.getItem('sessionToken') || token } });
+          if (res.status === 401) { tampilLogin('Sesi berakhir (masa berlaku habis atau akun diubah). Silakan masuk lagi.'); return; }       // sesi memang habis / dicabut
           const data = await res.json();
           if (data.success) {
-            if (data.role !== sessionStorage.getItem('sessionRole') || data.username !== savedUser) terapkanSesi(data.username, data.role);
+            if (data.role !== localStorage.getItem('sessionRole') || data.username !== savedUser) terapkanSesi(data.username, data.role);
             return;
           }
         } catch (err) {
@@ -250,7 +285,7 @@ let allTrackedData = [];
     }
 
     async function logout() {
-      const token = sessionStorage.getItem('sessionToken');
+      const token = localStorage.getItem('sessionToken');
       if (token) {
         try {
           await fetch('/api/auth/logout', {
@@ -259,7 +294,8 @@ let allTrackedData = [];
           });
         } catch (e) {}
       }
-      sessionStorage.clear();
+      hapusSesiLokal();
+      try { localStorage.removeItem('alasanKeluar'); } catch (e) {}
       location.reload();
     }
 
@@ -267,7 +303,7 @@ let allTrackedData = [];
     // KELOLA AKUN — Hanya superuser
     // =============================================
     async function loadUserList() {
-      const token = sessionStorage.getItem('sessionToken');
+      const token = localStorage.getItem('sessionToken');
       const tbody = document.getElementById('user-list-body');
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:20px;">Memuat data...</td></tr>';
 
@@ -299,7 +335,7 @@ let allTrackedData = [];
 
     async function handleCreateUser(event) {
       event.preventDefault();
-      const token = sessionStorage.getItem('sessionToken');
+      const token = localStorage.getItem('sessionToken');
       const username = document.getElementById('new-username').value.trim();
       const password = document.getElementById('new-password').value.trim();
       const role = document.getElementById('new-role').value;
@@ -412,7 +448,7 @@ let allTrackedData = [];
         btn.disabled = true; btn.textContent = 'Menyimpan...';
         try {
           const r = await fetch(`/api/profil/${encodeURIComponent(username)}`, { method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-session-token': sessionStorage.getItem('sessionToken') },
+            headers: { 'Content-Type': 'application/json', 'x-session-token': localStorage.getItem('sessionToken') },
             body: JSON.stringify({ nama: inp.value.trim() }) });
           const d = await r.json();
           if (!d.success) throw new Error(d.message);
@@ -442,7 +478,7 @@ let allTrackedData = [];
       try {
         const res = await fetch(`/api/users/${encodeURIComponent(username)}/password`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'x-session-token': sessionStorage.getItem('sessionToken') },
+          headers: { 'Content-Type': 'application/json', 'x-session-token': localStorage.getItem('sessionToken') },
           body: JSON.stringify({ password: sandi })
         });
         const data = await res.json();
@@ -470,7 +506,7 @@ let allTrackedData = [];
 
     async function deleteUser(username) {
       if (!confirm(`Hapus akun "${username}"? Tindakan ini tidak bisa dibatalkan.`)) return;
-      const token = sessionStorage.getItem('sessionToken');
+      const token = localStorage.getItem('sessionToken');
       try {
         const res = await fetch(`/api/users/${username}`, {
           method: 'DELETE',
@@ -1254,7 +1290,7 @@ let allTrackedData = [];
       btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;">sync</span> Menyimpan...`;
       msg.innerText = 'Mengirim ke Sheet...'; msg.style.color = '#0284c7';
       try {
-        const token = sessionStorage.getItem('sessionToken');
+        const token = localStorage.getItem('sessionToken');
         const res = await fetch('/api/sheet/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-session-token': token },
@@ -1370,7 +1406,7 @@ let allTrackedData = [];
         try {
           const res = await fetch('/api/track-awb-chunk', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-session-token': sessionStorage.getItem('sessionToken') || '' },
+            headers: { 'Content-Type': 'application/json', 'x-session-token': localStorage.getItem('sessionToken') || '' },
             body: JSON.stringify({ batchResi: chunk })
           });
           const result = await res.json();
@@ -1415,7 +1451,7 @@ let allTrackedData = [];
       // ============================================================
       try {
         // auto-simpan — tidak perlu toggle disabled
-        const token = sessionStorage.getItem('sessionToken');
+        const token = localStorage.getItem('sessionToken');
         const resSave = await fetch('/api/sheet/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-session-token': token },
@@ -1640,7 +1676,7 @@ let allTrackedData = [];
         '<div class="ins-empty"><span class="material-symbols-outlined" style="animation:spin 1s linear infinite;font-size:48px;">sync</span><p style="font-size:13px;font-weight:600;color:#64748b;margin-top:10px;">Mengambil data dari PDC...</p></div>';
 
       try {
-        const token = sessionStorage.getItem('sessionToken');
+        const token = localStorage.getItem('sessionToken');
         const res   = await fetch(`/api/insight?type=${insType}&date_from=${from}&date_to=${to}`, {
           headers: { 'x-session-token': token }
         });
@@ -1902,7 +1938,7 @@ let allTrackedData = [];
       }
       putar(true);
       try {
-        const res  = await fetch(`/api/selling/team-stat?date_from=${from}&date_to=${to}`, { headers: { 'x-session-token': sessionStorage.getItem('sessionToken') || '' } });
+        const res  = await fetch(`/api/selling/team-stat?date_from=${from}&date_to=${to}`, { headers: { 'x-session-token': localStorage.getItem('sessionToken') || '' } });
         const data = await res.json();
         if (ke !== tsMuatKe) return;
         if (!data.success) {
@@ -2730,7 +2766,7 @@ let allTrackedData = [];
       try {
         const res = await fetch('/api/so/rusak', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-session-token': sessionStorage.getItem('sessionToken') },
+          headers: { 'Content-Type': 'application/json', 'x-session-token': localStorage.getItem('sessionToken') },
           body: JSON.stringify({ sku: d.sku, namaProduk: d.nama || '', sesi: d.sesi || soSesiAktif, jumlahRusak: f.qty, keterangan: f.keterangan })
         });
         const data = await res.json();
