@@ -42,7 +42,7 @@ function opDaftarHtml(rows, cfg) {
     return `<div class="op-row op-${st.kls}" onclick="opKlik('${cfg.id}',${i})">
       <span class="op-rak">${opEsc(r.rak || '—')}</span>
       <span class="op-nm" title="${opEsc(r.namaProduk)}">${opEsc(r.namaProduk)}</span>
-      <span class="op-sku">${opEsc(r.sku)}</span>
+      <span class="op-sku${r.sku === 'TAMBAHAN' && !r.skuTambahan ? ' op-sku-tb' : ''}">${opEsc(r.sku === 'TAMBAHAN' ? (r.skuTambahan || 'TAMBAHAN') : r.sku)}</span>
       <span class="op-per">${opEsc(per)}</span>
       <div class="op-q">
         <div class="op-web"><i>WEB</i><b>${r.qtySistem ?? ''}</b></div>
@@ -73,7 +73,12 @@ function opMenu(e, id, i) {
   const r = opBaris[id][i];
   if (!r) return;
   const item = (ikon, teks, aksi, kls = '') => `<button class="${kls}" onclick="opTutupMenu();${aksi}"><span class="material-symbols-outlined">${ikon}</span>${teks}</button>`;
-  const isi = id === 'ow'
+  const su = ((typeof currentUserRole !== 'undefined' && currentUserRole) || sessionStorage.getItem('sessionRole') || '') === 'superuser';
+  const isi = id === 'ow' && r.sku === 'TAMBAHAN'
+    ? item('history', 'Lihat riwayat', `opRiwayatOw(opBaris.ow[${i}])`) +
+      item('edit', 'Edit barang tambahan', `owEditTambahan(opBaris.ow[${i}])`) +
+      (su ? item('delete', 'Hapus barang tambahan', `owHapusTambahan(opBaris.ow[${i}])`, 'bahaya') : '')
+    : id === 'ow'
     ? item('history', 'Lihat riwayat', `opRiwayatOw(opBaris.ow[${i}])`) +
       item('report', 'Input barang rusak', `owOpenActions(encodeURIComponent(opBaris.ow[${i}].kunci))`, 'bahaya') +
       item('info', 'Detail produk', `owOpenDetail(encodeURIComponent(opBaris.ow[${i}].kunci))`)
