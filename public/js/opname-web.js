@@ -151,6 +151,7 @@ function owTerapkan(data, pertahankanFilter) {
   owSesiAktif = data.bulan || '';
   owSemuaData = data.rows || [];
   owPersonilList = data.personil || [];
+  opIsiTim('ow-tim', owSemuaData);
   owHitungStats();
   owFilter();   // filter/cari yang sedang diketik tetap dipakai
 }
@@ -187,7 +188,7 @@ function owReset() {
   owSemuaData = []; owDataFilter = []; owHalamanAkt = 1; owStatusAkt = 'Semua'; owPersonilAktif = '';
   document.querySelectorAll('#page-opname-web .pi-chip').forEach(c => c.className = 'pi-chip');
   document.getElementById('ow-chip-Semua').classList.add('aktif-Semua');
-  ['ow-cari', 'ow-rak-filter', 'ow-personil-input'].forEach(id => { document.getElementById(id).value = ''; });
+  ['ow-cari', 'ow-rak-filter', 'ow-personil-input', 'ow-tim'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('ow-personil-input').style.borderColor = '';
   document.getElementById('ow-personil-dropdown').style.display = 'none';
   document.getElementById('ow-stats').style.display    = 'none';
@@ -207,6 +208,7 @@ function owFilter() {
     if (owStatusAkt !== 'Semua' && r.status !== owStatusAkt) return false;
     if (rak && !(String(r.rak) + ' ' + String(r.lokasi)).toLowerCase().includes(rak)) return false;
     if (personilKw && !String(r.personil || '').toLowerCase().includes(personilKw)) return false;
+    if (!opCocokTim('ow-tim', r)) return false;
     if (cari && !(r.sku + ' ' + r.namaProduk).toLowerCase().includes(cari)) return false;
     return true;
   });
@@ -225,6 +227,18 @@ function owFilter() {
   owHalamanAkt = 1;
   owRenderTabel();
   owUpdateInfoBar();
+  opIsiPersonilChip('ow-personil-chips', owPersonilList, owPersonilAktif, 'owPersonilChip');
+}
+function owPersonilChip(nama) {
+  if (nama === owPersonilAktif) { document.getElementById('ow-personil-input').value = ''; owPersonilInput(); }
+  else owPersonilPilih(nama);
+}
+function owResetFilter() {
+  ['ow-cari', 'ow-rak-filter', 'ow-personil-input', 'ow-tim'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('ow-personil-input').style.borderColor = '';
+  document.getElementById('ow-sort-select').value = 'rak';
+  owPersonilAktif = '';
+  owSetStatus('Semua', document.getElementById('ow-chip-Semua'));
 }
 
 // ---------- Render ----------
