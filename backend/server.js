@@ -19,7 +19,27 @@ app.use((req, res, next) => {                // header keamanan dasar
 app.use(cors());
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ limit: '25mb', extended: true }));
-app.use(express.static(path.join(__dirname, '../public')));
+// Versi web: berubah setiap deploy. Dipakai untuk memaksa browser mengambil JS/CSS terbaru
+// tanpa perlu hapus cache (index.html selalu segar, file JS/CSS diberi ?v=versi).
+const VERSI_WEB = (process.env.RAILWAY_DEPLOYMENT_ID || process.env.RAILWAY_GIT_COMMIT_SHA || Date.now().toString(36)).slice(0, 12);
+let indexHtmlCache = null;
+function kirimIndex(req, res) {
+  if (!indexHtmlCache) {
+    indexHtmlCache = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8')
+      .replace(/(src|href)="(\/(?:js|css)\/[^"?]+\.(?:js|css))"/g, `$1="$2?v=${VERSI_WEB}"`);
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  res.type('html').send(indexHtmlCache);
+}
+app.use((req, res, next) => { res.setHeader('x-versi-web', VERSI_WEB); next(); });
+app.get(['/', '/index.html'], kirimIndex);
+app.use(express.static(path.join(__dirname, '../public'), {
+  index: false,
+  setHeaders: (res, file) => {
+    // file bervers (?v=) boleh disimpan lama; tanpa versi wajib dicek ulang ke server (murah: 304)
+    res.setHeader('Cache-Control', res.req && res.req.query && res.req.query.v ? 'public, max-age=31536000, immutable' : 'no-cache');
+  }
+}));
 
 // =============================================
 // ENVIRONMENT VARIABLES (semua dari Railway)
@@ -2398,9 +2418,7 @@ async function tsHandler(req, res) {
 }
 
 // Fallback route
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
-});
+app.get(/.*/, kirimIndex);
 
 // =============================================
 // PORT — selalu baca dari process.env.PORT
