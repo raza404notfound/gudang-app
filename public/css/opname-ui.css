@@ -91,6 +91,8 @@
   .op-btn-filter { display: inline-flex; }
   .pi-toolbar .op-dd.op-lipat { display: none !important; }
   .pi-toolbar .op-kirim-tim { display: none !important; }
+  .pi-toolbar .op-tambahan { display: none !important; }
+  .op-filter-buka .op-tambahan { display: flex !important; flex: 1 1 100%; }
   .op-filter-buka .op-dd.op-lipat { display: block !important; flex: 1 1 45%; min-width: 0; }
   .op-filter-buka .op-reset { display: inline-flex !important; }
   .op-filter-buka .op-kirim-tim:not([style*="none"]) { display: flex !important; flex: 1 1 100%; }
@@ -327,3 +329,17 @@ html.dark .op-dd-btn, html.dark .op-dd-pop, html.dark .op-dd-it { background: #1
 html.dark .op-dd-it:hover { background: #111827; }
 html.dark .op-dd.terisi .op-dd-btn, html.dark .op-dd-it.aktif { background: #2a2416; border-color: #5c4a22; color: #f3e3b5; }
 html.dark .op-dd-cari input { background-color: #111827; border-color: #374151; color: #e5e7eb; }
+
+/* Menu khusus: Barang tambahan (Opname WEB) */
+.op-tambahan { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; border: 1px dashed #d8c79c; border-radius: 9px;
+  background: #fffdf7; cursor: pointer; font-family: inherit; text-align: left; color: #1f2937; }
+.op-tambahan:hover { background: #f6f0e1; }
+.op-tb-ikon { flex: 0 0 26px; height: 26px; border-radius: 7px; background: #f6f0e1; color: #8a6d1f; display: flex; align-items: center; justify-content: center; font-weight: 800; }
+.op-tb-teks { flex: 1 1 auto; font-size: 13px; font-weight: 700; line-height: 1.2; }
+.op-tb-teks small { display: block; font-size: 10.5px; font-weight: 500; color: #9ca3af; }
+.op-tambahan b { font-size: 12.5px; color: #7a5a1c; background: #f6f0e1; border-radius: 99px; padding: 1px 9px; }
+.op-tambahan.nol b { color: #9ca3af; background: #f1f5f9; }
+.op-tambahan.aktif { background: #1f2937; border: 1px solid #1f2937; color: #fff; }
+.op-tambahan.aktif .op-tb-ikon, .op-tambahan.aktif b { background: #e9c46a; color: #1f2937; }
+.op-tambahan.aktif small { color: #cbd5e1; }
+html.dark .op-tambahan:not(.aktif) { background: #1f2430; border-color: #5c4a22; color: #e5e7eb; }
