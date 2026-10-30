@@ -2692,36 +2692,13 @@ let allTrackedData = [];
     async function soOpenActions(encodedData) {
       const d = JSON.parse(decodeURIComponent(encodedData));
       soRusakAktif = d;
-      document.getElementById('so-rusak-qty').value = '';
-      document.getElementById('so-rusak-ket').value = '';
-      document.getElementById('so-rusak-msg').textContent = '';
-      const modal = document.getElementById('so-rusak-modal');
-      const body  = document.getElementById('so-rusak-modal-body');
-      const judul = document.getElementById('so-rusak-modal-judul');
-      judul.textContent = d.nama || d.sku;
-      body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px 0;"><span class="material-symbols-outlined" style="font-size:32px;animation:spin 1s linear infinite;display:block;margin-bottom:8px;">sync</span>Memuat data...</div>';
-      modal.style.display = 'flex';
+      const rowData = soSemuaData.find(r => r.sku === d.sku) || {};
+      opRusakSiapkan('so', { nama: d.nama || rowData.namaProduk, sku: d.sku, rak: rowData.rak || '', qty: rowData.qtySistem });
       try {
         const data = await gasGetDirect({ action: 'soGetRiwayat', sku: d.sku, sesi: d.sesi });
-        const rowData  = soSemuaData.find(r => r.sku === d.sku);
-        const fotoHtml = (rowData && rowData.kodeGambar)
-          ? `<img src="${SO_ASSET_BASE}?id=${encodeURIComponent(rowData.kodeGambar)}&thumbnail=true" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0;background:#f1f5f9;" onerror="this.style.display='none'">`
-          : `<div style="width:60px;height:60px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span class="material-symbols-outlined" style="color:#cbd5e1;font-size:24px;">image_not_supported</span></div>`;
-        if (!data.success || !data.rows || !data.rows.length) {
-          body.innerHTML = `<div style="display:flex;gap:12px;align-items:center;padding:0 0 14px;border-bottom:1px solid #f1f5f9;margin-bottom:14px;">${fotoHtml}<div><div style="font-size:12px;font-weight:700;color:#1e293b;">${d.nama}</div><div style="font-size:11px;color:#94a3b8;margin-top:2px;font-family:monospace;">${d.sku}</div></div></div>
-            <div style="text-align:center;padding:20px 0;"><span class="material-symbols-outlined" style="font-size:40px;color:#d1d5db;display:block;margin-bottom:10px;">check_circle</span><p style="color:#64748b;font-size:13px;font-weight:600;">Belum pernah dirusak</p></div>`; return;
-        }
-        const latest = data.rows[0]; const history = data.rows.slice(1);
-        body.innerHTML = `<div style="display:flex;gap:12px;align-items:center;padding:0 0 14px;border-bottom:1px solid #f1f5f9;margin-bottom:14px;">${fotoHtml}<div style="min-width:0;"><div style="font-size:12px;font-weight:700;color:#1e293b;line-height:1.3;">${d.nama}</div><div style="font-size:11px;color:#94a3b8;margin-top:2px;font-family:monospace;">${d.sku}</div></div></div>
-          <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:10px;padding:14px;margin-bottom:14px;">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;"><span style="font-size:11px;font-weight:700;color:#e11d48;text-transform:uppercase;letter-spacing:.4px;">Laporan Terbaru</span><span style="font-size:11px;color:#94a3b8;">${latest.dicatatPada||'-'}</span></div>
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:26px;font-weight:800;color:#be123c;">${latest.jumlahRusak}</span><span style="font-size:12px;color:#64748b;">pcs rusak</span></div>
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span class="material-symbols-outlined" style="font-size:14px;color:#64748b;">person</span><span style="font-size:12px;font-weight:600;color:#334155;">${latest.oleh||'—'}</span><span style="font-size:11px;color:#94a3b8;">· ${latest.sesi||''}</span></div>
-            ${latest.keterangan?`<div style="font-size:12px;color:#64748b;background:#fff;border-radius:6px;padding:8px 10px;border:1px solid #f1f5f9;">${latest.keterangan}</div>`:''}
-          </div>
-          ${history.length?`<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Riwayat Sebelumnya</div><div style="max-height:140px;overflow-y:auto;">${history.map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border:1px solid #f1f5f9;border-radius:7px;margin-bottom:5px;background:#fafafa;"><div><span style="font-weight:700;color:#be123c;">${r.jumlahRusak} pcs</span><span style="font-size:11px;color:#64748b;margin-left:6px;">· ${r.oleh||'—'} · ${r.sesi||''}</span></div><span style="font-size:10px;color:#94a3b8;">${r.dicatatPada||''}</span></div>`).join('')}</div>`:''}`;
+        if (soRusakAktif === d) opRusakRiwayat('so', data.success ? (data.rows || []) : null, !data.success);
       } catch(e) {
-        body.innerHTML = '<div style="text-align:center;color:#ef4444;padding:20px;">Gagal memuat data.</div>';
+        if (soRusakAktif === d) opRusakRiwayat('so', null, true);
       }
     }
     function soTutupRusakModal(e) {
@@ -2732,28 +2709,27 @@ let allTrackedData = [];
     // Simpan laporan barang rusak dari Opname Sheet (dulu ada di menu Data Opname)
     async function soSimpanRusak() {
       const d   = soRusakAktif;
-      const qty = parseInt(document.getElementById('so-rusak-qty').value);
-      const ket = document.getElementById('so-rusak-ket').value.trim();
       const msg = document.getElementById('so-rusak-msg');
       const btn = document.getElementById('so-rusak-btn');
       if (!d) return;
-      if (!qty || qty < 1) { msg.style.color = '#ef4444'; msg.textContent = 'Jumlah rusak wajib diisi (min. 1 pcs).'; return; }
-      const ok = await showConfirm('Laporkan Barang Rusak', `${d.nama || d.sku}: ${qty} pcs rusak. Simpan laporan?`, 'Ya, Simpan');
+      const f = opRusakAmbil('so');
+      if (!f) return;
+      const ok = await showConfirm('Tambahkan Kerusakan', `${d.nama || d.sku}: ${f.qty} pcs (${f.jenis}). Simpan?`, 'Ya, Simpan');
       if (!ok) return;
       btn.disabled = true; btn.textContent = 'Menyimpan...'; msg.textContent = '';
       try {
         const res = await fetch('/api/so/rusak', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-session-token': sessionStorage.getItem('sessionToken') },
-          body: JSON.stringify({ sku: d.sku, namaProduk: d.nama || '', sesi: d.sesi || soSesiAktif, jumlahRusak: qty, keterangan: ket })
+          body: JSON.stringify({ sku: d.sku, namaProduk: d.nama || '', sesi: d.sesi || soSesiAktif, jumlahRusak: f.qty, keterangan: f.keterangan })
         });
         const data = await res.json();
         if (data.success) {
-          showToast('Laporan barang rusak tersimpan.', 'success');
+          showToast('Laporan kerusakan tersimpan.', 'success');
           soOpenActions(encodeURIComponent(JSON.stringify(d)));   // muat ulang riwayat
         } else {
-          msg.style.color = '#ef4444'; msg.textContent = data.message || 'Gagal menyimpan.';
+          msg.style.color = '#d1646c'; msg.textContent = data.message || 'Gagal menyimpan.';
         }
-      } catch (e) { msg.style.color = '#ef4444'; msg.textContent = 'Gagal terhubung ke server.'; }
-      finally { btn.disabled = false; btn.textContent = 'Simpan Laporan Rusak'; }
+      } catch (e) { msg.style.color = '#d1646c'; msg.textContent = 'Gagal terhubung ke server.'; }
+      finally { btn.disabled = false; btn.textContent = 'Simpan'; }
     }
