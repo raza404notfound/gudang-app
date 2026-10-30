@@ -768,3 +768,83 @@ async function owKirimTim() {
     btn.disabled = false; btn.textContent = 'Kirim sekarang';
   }
 }
+
+// ============================================================
+// BARANG TAMBAHAN — edit SKU / nama / qty (semua akun), hapus (superuser)
+// ============================================================
+async function owSegarkanSekarang() {
+  const bulan = owSesiAktif;
+  try {
+    const data = await owApi('/api/pindah/opname?bulan=' + encodeURIComponent(bulan || '') + '&segar=1');
+    if (bulan !== owSesiAktif) return;
+    owCacheTulis(bulan, data);
+    owTerapkan(data, true);
+  } catch (e) {}
+}
+function owTutupTambahan() { const el = document.getElementById('ow-tb'); if (el) el.remove(); }
+function owEditTambahan(r) {
+  if (!r) return;
+  owTutupTambahan();
+  const el = document.createElement('div');
+  el.id = 'ow-tb'; el.className = 'pg-kt-latar';
+  el.onclick = e => { if (e.target === el) owTutupTambahan(); };
+  const real = r.totalReal === '' || r.totalReal == null ? '' : r.totalReal;
+  el.innerHTML = `<div class="rk-kotak"><div class="rk-head"><b>Edit Barang Tambahan</b><button type="button" onclick="owTutupTambahan()">✕</button></div>
+    <div class="rk-isi">
+      <div class="rk-info"><div class="rk-kv"><span>Rak</span><b class="rk-mono">${owEsc(r.rak)}</b></div>
+        <div class="rk-kv"><span>Dicatat oleh</span><b>${owEsc((r.personil ? owNama(r.personil) : '—') + (r.waktu ? ' · ' + r.waktu : ''))}</b></div></div>
+      <label class="pg-kt-lbl" for="ow-tb-sku">SKU (opsional)</label>
+      <input type="text" id="ow-tb-sku" maxlength="60" value="${owEsc(r.skuTambahan || '')}" placeholder="Kosongkan kalau SKU belum diketahui" autocomplete="off">
+      <label class="pg-kt-lbl" for="ow-tb-nama" style="margin-top:10px">Nama barang</label>
+      <input type="text" id="ow-tb-nama" maxlength="200" value="${owEsc(r.namaProduk)}" autocomplete="off">
+      <label class="pg-kt-lbl" for="ow-tb-qty" style="margin-top:10px">Qty real (pcs)</label>
+      <input type="number" id="ow-tb-qty" min="0" step="1" inputmode="numeric" value="${owEsc(real)}">
+      <div class="ow-tb-lama">Sebelumnya: <b>${owEsc(r.namaProduk)}</b>${r.skuTambahan ? ' · ' + owEsc(r.skuTambahan) : ''} · ${owEsc(real === '' ? '–' : real)} pcs</div>
+      <div id="ow-tb-msg" class="rusak-form-msg"></div>
+      <button type="button" class="rk-simpan" id="ow-tb-simpan" onclick="owSimpanTambahan()">Simpan perubahan</button>
+      ${owSuperuser() ? '<button type="button" class="ow-tb-hapus" onclick="owHapusTambahan(owTbAktif)">🗑 Hapus barang tambahan ini</button>' : ''}
+    </div></div>`;
+  owTbAktif = r;
+  document.body.appendChild(el);
+  setTimeout(() => { const n = document.getElementById('ow-tb-nama'); if (n && window.innerWidth > 760) n.focus(); }, 0);
+}
+let owTbAktif = null;
+async function owSimpanTambahan() {
+  const r = owTbAktif, msg = document.getElementById('ow-tb-msg'), btn = document.getElementById('ow-tb-simpan');
+  if (!r) return;
+  const sku = document.getElementById('ow-tb-sku').value.trim();
+  const nama = document.getElementById('ow-tb-nama').value.trim();
+  const qtyTeks = document.getElementById('ow-tb-qty').value.trim();
+  const qty = Number(qtyTeks);
+  msg.style.color = '#d1646c';
+  if (!nama) { msg.textContent = 'Nama barang wajib diisi.'; return; }
+  if (qtyTeks === '' || !Number.isInteger(qty) || qty < 0) { msg.textContent = 'Qty harus angka bulat (0 atau lebih).'; return; }
+  const realLama = r.totalReal === '' || r.totalReal == null ? '' : Number(r.totalReal);
+  if (nama === r.namaProduk && sku === (r.skuTambahan || '') && qty === realLama) { msg.textContent = 'Belum ada yang diubah.'; return; }
+  btn.disabled = true; btn.textContent = 'Menyimpan…'; msg.textContent = '';
+  try {
+    await owApi('/api/pindah/tambahan/ubah', { method: 'POST', body: JSON.stringify({ kodeRak: r.rak, namaLama: r.namaProduk, sku, nama, qty }) });
+    owTutupTambahan();
+    if (typeof showToast === 'function') showToast('Barang tambahan diperbarui.', 'success');
+    owSegarkanSekarang();
+  } catch (e) {
+    msg.textContent = e.message || 'Gagal menyimpan.';
+    btn.disabled = false; btn.textContent = 'Simpan perubahan';
+  }
+}
+async function owHapusTambahan(r) {
+  if (!r) return;
+  if (!owSuperuser()) { if (typeof showToast === 'function') showToast('Hapus barang tambahan khusus superuser.', 'error'); return; }
+  const real = r.totalReal === '' || r.totalReal == null ? '–' : r.totalReal;
+  const teks = `${r.namaProduk} · rak ${r.rak} · ${real} pcs\nAkan dihapus dari LAPORAN BARANG (Hitung Kirim & Barang Diterima). Tetap tercatat di Riwayat Hapus Hitungan.`;
+  const ok = typeof showConfirm === 'function' ? await showConfirm('Hapus barang tambahan?', teks, 'Ya, hapus') : confirm(teks);
+  if (!ok) return;
+  try {
+    const d = await owApi('/api/pindah/tambahan/hapus', { method: 'POST', body: JSON.stringify({ kodeRak: r.rak, nama: r.namaProduk }) });
+    owTutupTambahan();
+    if (typeof showToast === 'function') showToast(d.message || 'Barang tambahan dihapus.', 'success');
+    owSegarkanSekarang();
+  } catch (e) {
+    if (typeof showToast === 'function') showToast(e.message || 'Gagal menghapus.', 'error');
+  }
+}
