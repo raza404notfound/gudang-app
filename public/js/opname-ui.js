@@ -246,21 +246,14 @@ function opDataEkspor(info) {
   const tgl = `${sekarang.getUTCDate()} ${OP_BULAN[sekarang.getUTCMonth()].slice(0, 3)} ${sekarang.getUTCFullYear()}`;
   const tim = opTimLabel(rows);
   const oleh = (typeof namaTampil === 'function' ? namaTampil(localStorage.getItem('sessionUser') || '') : '') || localStorage.getItem('sessionUser') || '';
+  // Susunan ringkas (6 baris): info di A:B, RINGKASAN di C:E (label C:D digabung, angka di E). Tabel mulai baris 7.
   const meta = [
-    [`EKSPOR STOK OPNAME — ${info.sumber.toUpperCase()}`],
-    ['Bulan / Sesi SO', info.bulanLabel + (info.sesi && info.sesi !== info.bulanLabel ? `  (${info.sesi})` : '')],
-    ['Filter Tim', tim.panjang],
-    ['Filter Status', info.filterStatus || 'Semua'],
-    ['Filter Rak / Personil / Cari', [info.filterRak, info.filterPersonil, info.cari].filter(x => x && x !== '-').join(' · ') || '—'],
-    ['Diekspor', `${tglJam}${oleh ? ' · ' + oleh : ''}`],
-    [],
-    ['RINGKASAN'],
-    ['Total produk', rows.length],
-    ['Kurang (minus)', hit.Minus],
-    ['Lebih (plus)', hit.Plus],
-    ['Sesuai (balance)', hit.Balance],
-    ['Belum dihitung', hit.Belum],
-    []
+    [`EKSPOR STOK OPNAME — ${info.sumber.toUpperCase()}`, '', 'RINGKASAN', '', ''],
+    ['Bulan / Sesi SO', info.bulanLabel + (info.sesi && info.sesi !== info.bulanLabel ? `  (${info.sesi})` : ''), 'Total produk', '', rows.length],
+    ['Filter Tim', tim.panjang, 'Kurang (minus)', '', hit.Minus],
+    ['Filter Status', info.filterStatus || 'Semua', 'Lebih (plus)', '', hit.Plus],
+    ['Filter Rak / Personil / Cari', [info.filterRak, info.filterPersonil, info.cari].filter(x => x && x !== '-').join(' · ') || '—', 'Sesuai (balance)', '', hit.Balance],
+    ['Diekspor', `${tglJam}${oleh ? ' · ' + oleh : ''}`, 'Belum dihitung', '', hit.Belum]
   ];
   const header = ['SKU (ID Produk)', 'Nama Produk', 'Qty Web', 'Qty Real', 'Selisih', 'Status', 'Kode Rak', 'Lokasi', 'Tim', 'Personil', 'Waktu Hitung', 'Export CSV'];
   const baris = rows.map(r => {
@@ -274,21 +267,34 @@ function opDataEkspor(info) {
   return { meta, header, baris, hit, tim, tgl, lebar: [26, 38, 10, 10, 9, 13, 11, 22, 8, 16, 17, 30] };
 }
 const OP_WARNA = { Minus: 'FFD1646C', Plus: 'FF2F6FD6', Balance: 'FF2E8B57', Belum: 'FF64748B' };
+const OP_BARIS_KEPALA = 7;   // baris judul kolom (6 baris info + ringkasan di atasnya)
 
 async function opBuatXlsx(info) {
   const ExcelJS = await opMuatExcelJs();
   const wb = new ExcelJS.Workbook();
   wb.creator = 'PDC TOOLS';
-  const ws = wb.addWorksheet('Opname', { views: [{ state: 'frozen', ySplit: 15 }], properties: { outlineLevelCol: 1 } });
+  const ws = wb.addWorksheet('Opname', { views: [{ state: 'frozen', ySplit: OP_BARIS_KEPALA }], properties: { outlineLevelCol: 1 } });
   const d = opDataEkspor(info);
   const rows = info.rows, hit = d.hit, tim = d.tim;
   ws.columns = d.lebar.map((w, i) => ({ width: w, outlineLevel: i >= 6 ? 1 : 0, hidden: i >= 6 }));
   d.meta.forEach(m => ws.addRow(m));
+  const isi = argb => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+  ws.mergeCells('A1:B1');
   ws.getCell('A1').font = { bold: true, size: 13 };
-  ws.getCell('A8').font = { bold: true };
+  ws.getCell('A1').fill = isi('FFE5E7EB');
+  ws.getCell('C1').font = { bold: true, color: { argb: 'FF4B5563' } };
   ws.getCell('B3').font = { bold: true };
-  ws.getCell('B3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF7D6' } };
-  for (let i = 2; i <= 13; i++) ws.getCell('A' + i).font = { color: { argb: 'FF4B5563' } };
+  ws.getCell('B3').fill = isi('FFFFF7D6');
+  const warnaRingkas = [null, 'Minus', 'Plus', 'Balance', 'Belum'];
+  for (let i = 2; i <= 6; i++) {
+    ws.getCell('A' + i).font = { color: { argb: 'FF4B5563' } };
+    ws.mergeCells(`C${i}:D${i}`);
+    ws.getCell('C' + i).font = { color: { argb: 'FF4B5563' } };
+    const k = warnaRingkas[i - 2];
+    ws.getCell('E' + i).font = { bold: true, color: { argb: k ? OP_WARNA[k] : 'FF111827' } };
+    ws.getCell('E' + i).alignment = { horizontal: 'left' };
+  }
+  for (let i = 1; i <= 6; i++) for (let c = 1; c <= 6; c++) ws.getRow(i).getCell(c).border = { bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } } };
 
   const kepala = ws.addRow(d.header);
   kepala.eachCell(c => {
@@ -304,7 +310,8 @@ async function opBuatXlsx(info) {
     baris.getCell(6).font = { bold: true, color: { argb: warna[n] || warna.Belum } };
     if (sel !== '' && sel !== 0) baris.getCell(5).font = { color: { argb: sel < 0 ? warna.Minus : warna.Plus } };
   });
-  ws.autoFilter = { from: { row: 15, column: 1 }, to: { row: 15 + rows.length, column: 12 } };
+  ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: `${OP_BARIS_KEPALA}:${OP_BARIS_KEPALA}` };
+  ws.autoFilter = { from: { row: OP_BARIS_KEPALA, column: 1 }, to: { row: OP_BARIS_KEPALA + rows.length, column: 12 } };
 
   const buf = await wb.xlsx.writeBuffer();
   const tgl = d.tgl;
