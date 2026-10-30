@@ -127,7 +127,7 @@ async function pgApi(url, opsi = {}) {
     ...opsi,
     headers: {
       'Content-Type': 'application/json',
-      'x-session-token': sessionStorage.getItem('sessionToken') || ''
+      'x-session-token': localStorage.getItem('sessionToken') || ''
     }
   });
   if (res.status === 401) { const e = new Error('Sesi habis. Silakan login ulang.'); e.status = 401; throw e; }
@@ -147,7 +147,7 @@ function pgHalamanAktif() {
 // ============================================================
 function pgInit() {
   pgTampilkanTombolUpload();
-  pgState.saya = pgState.saya || sessionStorage.getItem('sessionUser') || '';
+  pgState.saya = pgState.saya || localStorage.getItem('sessionUser') || '';
   pgSiapkan();
 }
 
@@ -165,7 +165,7 @@ async function pgSiapkan() {
 }
 
 function pgTampilkanTombolUpload() {
-  const role = (typeof currentUserRole !== 'undefined' && currentUserRole) || sessionStorage.getItem('sessionRole') || '';
+  const role = (typeof currentUserRole !== 'undefined' && currentUserRole) || localStorage.getItem('sessionRole') || '';
   const btn = document.getElementById('pg-btn-upload');
   if (btn) btn.style.display = role === 'superuser' ? 'inline-flex' : 'none';
 }
@@ -276,7 +276,7 @@ async function pgMuat(segar) {
 // ============================================================
 function pgMulaiRealtime() {
   if (pgState.es || typeof EventSource === 'undefined') return;
-  const token = sessionStorage.getItem('sessionToken');
+  const token = localStorage.getItem('sessionToken');
   if (!token) return;
   const es = new EventSource('/api/pindah/stream?token=' + encodeURIComponent(token));
   pgState.es = es;
@@ -1090,7 +1090,7 @@ function pgTutupModal(e) {
 function pgTandai(kode, aksi) {
   fetch('/api/pindah/tandai', {
     method: 'POST', keepalive: true,
-    headers: { 'Content-Type': 'application/json', 'x-session-token': sessionStorage.getItem('sessionToken') || '' },
+    headers: { 'Content-Type': 'application/json', 'x-session-token': localStorage.getItem('sessionToken') || '' },
     body: JSON.stringify({ kodeRak: kode, aksi, perangkat: PG_PERANGKAT, jenis: PG_JENIS })
   }).catch(() => {});
 }
@@ -1499,7 +1499,7 @@ document.addEventListener('keydown', e => {
 });
 
 // Lanjutkan antrean yang tertinggal (misal HP sempat ter-refresh) walau belum membuka menu ini
-if (pgState.antrean.length) setTimeout(() => { if (sessionStorage.getItem('sessionToken')) pgProsesAntrean(); }, 3000);
+if (pgState.antrean.length) setTimeout(() => { if (localStorage.getItem('sessionToken')) pgProsesAntrean(); }, 3000);
 
 
 // ============================================================
@@ -1680,9 +1680,9 @@ function pgMuatLibQr() {
 // Flash: default nyala. Bila dimatikan, tetap mati selama sesi login ini (token sama).
 const PG_KUNCI_FLASH = 'pg_flash_off_v1';
 const PG_KUNCI_KAMERA = 'pg_kamera_v1';   // ID lensa utama yang sudah dipilih di HP ini
-function pgFlashMati() { try { return localStorage.getItem(PG_KUNCI_FLASH) === (sessionStorage.getItem('sessionToken') || '-'); } catch (e) { return false; } }
+function pgFlashMati() { try { return localStorage.getItem(PG_KUNCI_FLASH) === (localStorage.getItem('sessionToken') || '-'); } catch (e) { return false; } }
 function pgSetFlashMati(mati) {
-  try { if (mati) localStorage.setItem(PG_KUNCI_FLASH, sessionStorage.getItem('sessionToken') || '-'); else localStorage.removeItem(PG_KUNCI_FLASH); } catch (e) {}
+  try { if (mati) localStorage.setItem(PG_KUNCI_FLASH, localStorage.getItem('sessionToken') || '-'); else localStorage.removeItem(PG_KUNCI_FLASH); } catch (e) {}
 }
 
 // Pilih lensa belakang UTAMA (hindari ultra-wide / tele / macro)
