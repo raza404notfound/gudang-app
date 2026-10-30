@@ -495,6 +495,10 @@
               <div class="pi-chip" onclick="owSetStatus('Minus',this)"   id="ow-chip-Minus">Kurang</div>
               <div class="pi-chip" onclick="owSetStatus('Belum',this)"   id="ow-chip-Belum">Belum</div>
             </div>
+            <span class="op-lbl op-o16">Menu khusus</span>
+            <button type="button" class="op-tambahan op-o16" id="ow-btn-tambahan" onclick="owToggleTambahan()" title="Barang yang ditemukan di rak tapi tidak ada di web">
+              <span class="op-tb-ikon">＋</span><span class="op-tb-teks">Barang tambahan<small>tidak ada di web</small></span><b id="ow-n-tambahan">0</b>
+            </button>
             <button type="button" class="pg-kirim-tim op-kirim-tim op-o16" id="ow-kirim-tim" style="display:none;" onclick="owBukaKirimTim()">
               <span class="pg-kt-1"><span class="material-symbols-outlined">upload</span> Kirim ke Sheet Tim 00</span>
               <small id="ow-kirim-tim-info">halaman baru di sheet kedua</small>
