@@ -60,6 +60,7 @@ let allTrackedData = [];
 
         if (data.success) {
           sessionStorage.setItem('sessionToken', data.token);
+          sessionStorage.setItem('aktifTerakhir', String(Date.now()));
           sessionStorage.setItem('sessionUser', data.username);
           sessionStorage.setItem('sessionRole', data.role);
           currentSessionToken = data.token;
@@ -146,6 +147,9 @@ let allTrackedData = [];
     }
 
     // Simpan token baru yang dikirim server (diperbarui otomatis tiap 15 menit selama dipakai)
+    // + versi web: kalau server sudah di-deploy ulang, halaman dimuat ulang diam-diam saat pindah menu
+    // + sesi ditolak server (401): langsung ke halaman login, tidak tertahan dengan data lama
+    let versiWebAwal = null, perluMuatUlang = false;
     (function () {
       const fetchAsli = window.fetch.bind(window);
       window.fetch = async function (...arg) {
@@ -156,10 +160,35 @@ let allTrackedData = [];
             sessionStorage.setItem('sessionToken', baru);
             if (typeof currentSessionToken !== 'undefined') currentSessionToken = baru;
           }
+          const versi = res.headers.get('x-versi-web');
+          if (versi) {
+            if (!versiWebAwal) versiWebAwal = versi;
+            else if (versi !== versiWebAwal) perluMuatUlang = true;
+          }
+          const url = String(arg[0] && arg[0].url ? arg[0].url : arg[0] || '');
+          if (res.status === 401 && url.startsWith('/api/') && !url.startsWith('/api/auth/login') && sessionStorage.getItem('sessionToken')) {
+            tampilLogin();
+          }
         } catch (e) {}
         return res;
       };
     })();
+    function muatUlangBilaPerlu() {
+      if (perluMuatUlang) { perluMuatUlang = false; location.reload(); return true; }
+      return false;
+    }
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') muatUlangBilaPerlu(); });
+
+    // Logout otomatis bila 1,5 jam tidak ada sentuhan sama sekali — dicek saat halaman di-refresh / dibuka ulang
+    const BATAS_DIAM = 90 * 60 * 1000;
+    let catatAktifTerakhir = 0;
+    function catatAktif() {
+      const now = Date.now();
+      if (now - catatAktifTerakhir < 15000) return;   // cukup dicatat tiap 15 detik
+      catatAktifTerakhir = now;
+      try { if (sessionStorage.getItem('sessionToken')) sessionStorage.setItem('aktifTerakhir', String(now)); } catch (e) {}
+    }
+    ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach(ev => window.addEventListener(ev, catatAktif, { passive: true, capture: true }));
 
     function tampilLogin() {
       sessionStorage.clear();
@@ -183,6 +212,15 @@ let allTrackedData = [];
 
       // Tidak ada sesi sama sekali → tampil login langsung
       if (!token || !savedUser) { tampilLogin(); return; }
+
+      // 1,5 jam tanpa sentuhan → sesi diakhiri saat refresh (tanpa pesan)
+      const aktif = Number(sessionStorage.getItem('aktifTerakhir') || 0);
+      if (aktif && Date.now() - aktif > BATAS_DIAM) {
+        fetch('/api/auth/logout', { method: 'POST', headers: { 'x-session-token': token } }).catch(() => {});
+        tampilLogin();
+        return;
+      }
+      sessionStorage.setItem('aktifTerakhir', String(Date.now()));
 
       // Ada sesi → langsung buka halaman terakhir (tanpa menunggu server), verifikasi di belakang
       currentSessionToken = token;
@@ -483,6 +521,7 @@ let allTrackedData = [];
     };
 
     function switchTab(pageId, element, pushState = true) {
+      if (pushState && perluMuatUlang) { history.pushState({ page: pageId }, '', `#${pageId}`); if (muatUlangBilaPerlu()) return; }
       document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
       if (element) element.classList.add('active');
       else {
