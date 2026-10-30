@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="/css/tema.css">
   <!-- Kalau masih ada sesi, jangan tampilkan halaman login saat refresh -->
   <style>html.ada-sesi #auth-modal{display:none}</style>
-  <script>try{if(sessionStorage.getItem('sessionToken'))document.documentElement.classList.add('ada-sesi')}catch(e){}</script>
+  <script>try{['sessionToken','sessionUser','sessionRole','aktifTerakhir'].forEach(function(k){var v=sessionStorage.getItem(k);if(v&&!localStorage.getItem(k))localStorage.setItem(k,v);sessionStorage.removeItem(k)});if(localStorage.getItem('sessionToken'))document.documentElement.classList.add('ada-sesi')}catch(e){}</script>
 </head>
 <body>
   <!-- TOAST CONTAINER -->
@@ -106,6 +106,7 @@
             </div>
           </div>
           <button type="submit" class="btn-auth" id="auth-submit-btn">Masuk →</button>
+          <div class="lg-alasan" id="auth-alasan" style="display:none;"></div>
         </form>
       </div>
     </div>
