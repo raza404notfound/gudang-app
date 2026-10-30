@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="/css/pindah-gudang.css">
   <link rel="stylesheet" href="/css/opname-web.css">
   <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/opname-ui.css">
   <link rel="stylesheet" href="/css/tema.css">
   <!-- Kalau masih ada sesi, jangan tampilkan halaman login saat refresh -->
   <style>html.ada-sesi #auth-modal{display:none}</style>
@@ -312,6 +313,7 @@
               <option value="">— Pilih Bulan SO —</option>
             </select>
             <input type="text" id="so-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:180px;" oninput="soFilter()">
+            <button class="op-btn-filter" onclick="opToggleFilter(this)"><span class="material-symbols-outlined">tune</span> Filter</button>
             <div style="position:relative;" id="so-personil-wrap">
               <input type="text" id="so-personil-input" placeholder="Cari personil..." style="min-width:130px;"
                 oninput="soPersonilInput()" onkeydown="soPersonilKeydown(event)" autocomplete="off">
@@ -328,9 +330,9 @@
             <!-- Status chips -->
             <div style="display:flex;gap:5px;flex-wrap:wrap;">
               <div class="pi-chip aktif-Semua" onclick="piSetStatus('Semua',this)" id="pi-chip-Semua">Semua</div>
-              <div class="pi-chip" onclick="piSetStatus('Balance',this)" id="pi-chip-Balance">Balance</div>
-              <div class="pi-chip" onclick="piSetStatus('Plus',this)"    id="pi-chip-Plus">Plus</div>
-              <div class="pi-chip" onclick="piSetStatus('Minus',this)"   id="pi-chip-Minus">Minus</div>
+              <div class="pi-chip" onclick="piSetStatus('Balance',this)" id="pi-chip-Balance">Sesuai</div>
+              <div class="pi-chip" onclick="piSetStatus('Plus',this)"    id="pi-chip-Plus">Lebih</div>
+              <div class="pi-chip" onclick="piSetStatus('Minus',this)"   id="pi-chip-Minus">Kurang</div>
               <div class="pi-chip" onclick="piSetStatus('Belum',this)"   id="pi-chip-Belum">Belum</div>
             </div>
             <!-- Toggle view + Export -->
@@ -353,11 +355,7 @@
               <span>·</span>
               <span style="color:#8a6d1f;font-weight:600;" id="so-info-sesi"></span>
             </div>
-            <button onclick="soExportCSV()"
-              style="display:flex;align-items:center;gap:5px;padding:4px 12px;background:#f0fdf4;color:#15803d;border:1.5px solid #86efac;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;"
-              onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
-              <span class="material-symbols-outlined" style="font-size:13px;">download</span> Export CSV
-            </button>
+            <button class="op-btn-ekspor" onclick="soEkspor()"><span class="material-symbols-outlined">download</span> Ekspor</button>
           </div>
 
           <!-- Stats -->
@@ -450,6 +448,7 @@
               <option value="">— Pilih Bulan SO —</option>
             </select>
             <input type="text" id="ow-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:180px;" oninput="owFilter()">
+            <button class="op-btn-filter" onclick="opToggleFilter(this)"><span class="material-symbols-outlined">tune</span> Filter</button>
             <div style="position:relative;" id="ow-personil-wrap">
               <input type="text" id="ow-personil-input" placeholder="Cari personil..." style="min-width:130px;"
                 oninput="owPersonilInput()" onkeydown="owPersonilKeydown(event)" autocomplete="off">
@@ -466,9 +465,9 @@
             <!-- Status chips -->
             <div style="display:flex;gap:5px;flex-wrap:wrap;">
               <div class="pi-chip aktif-Semua" onclick="owSetStatus('Semua',this)" id="ow-chip-Semua">Semua</div>
-              <div class="pi-chip" onclick="owSetStatus('Balance',this)" id="ow-chip-Balance">Balance</div>
-              <div class="pi-chip" onclick="owSetStatus('Plus',this)"    id="ow-chip-Plus">Plus</div>
-              <div class="pi-chip" onclick="owSetStatus('Minus',this)"   id="ow-chip-Minus">Minus</div>
+              <div class="pi-chip" onclick="owSetStatus('Balance',this)" id="ow-chip-Balance">Sesuai</div>
+              <div class="pi-chip" onclick="owSetStatus('Plus',this)"    id="ow-chip-Plus">Lebih</div>
+              <div class="pi-chip" onclick="owSetStatus('Minus',this)"   id="ow-chip-Minus">Kurang</div>
               <div class="pi-chip" onclick="owSetStatus('Belum',this)"   id="ow-chip-Belum">Belum</div>
             </div>
             <!-- Toggle view + Export -->
@@ -494,11 +493,7 @@
               <span>·</span>
               <span style="color:#8a6d1f;font-weight:600;" id="ow-info-sesi"></span>
             </div>
-            <button onclick="owExportCSV()"
-              style="display:flex;align-items:center;gap:5px;padding:4px 12px;background:#f0fdf4;color:#15803d;border:1.5px solid #86efac;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;"
-              onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
-              <span class="material-symbols-outlined" style="font-size:13px;">download</span> Export CSV
-            </button>
+            <button class="op-btn-ekspor" onclick="owEkspor()"><span class="material-symbols-outlined">download</span> Ekspor</button>
           </div>
 
           <!-- Stats -->
@@ -1124,6 +1119,7 @@
   <script src="/js/audio.js"></script>
   <script src="/js/main.js"></script>
   <script src="/js/pindah-gudang.js"></script>
+  <script src="/js/opname-ui.js"></script>
   <script src="/js/opname-web.js"></script>
   <script src="/js/dashboard.js"></script>
   <script src="/js/pengaturan.js"></script>
