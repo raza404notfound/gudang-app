@@ -78,3 +78,18 @@ html.dark .rusak-form { background: var(--bg-page); border-top-color: var(--bord
 .ow-rh-c { color: #64748b; }
 .ow-rh-d { margin-top: 3px; }
 .ow-rh-kosong { text-align: center; color: #94a3b8; padding: 24px 0; }
+
+/* Riwayat Hapus Hitungan — versi ringkas (dikelompokkan per kejadian) */
+.ow-rh-isi { background: #f8fafc; padding-top: 2px; }
+.rh-item { background: #fff; border: 1px solid #eef0f3; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; color: #1f2937; }
+.rh-1 { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; line-height: 1.45; }
+.rh-1 > span { color: #9ca3af; font-size: 11.5px; white-space: nowrap; }
+.rh-2 { font-size: 12px; color: #6b7280; margin-top: 3px; }
+.rh-tag { display: inline-block; font-size: 10.5px; font-weight: 800; border-radius: 5px; padding: 1px 6px; margin-right: 6px; background: #fdf0f1; color: #d1646c; vertical-align: 1px; }
+.rh-tag.sku { background: #f1f5f9; color: #475569; }
+.rh-kali { font-size: 10.5px; color: #8a6d1f; background: #f6f0e1; border-radius: 99px; padding: 1px 7px; margin-left: 6px; font-weight: 700; white-space: nowrap; }
+.rh-list { margin-top: 6px; border-top: 1px dashed #eef0f3; padding-top: 6px; font-size: 12px; }
+.rh-list div { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
+.rh-list code { font-size: 11px; color: #6b7280; }
+html.dark .ow-rh-isi { background: transparent; }
+html.dark .rh-item { background: #1f2430; border-color: #2d3442; color: #e5e7eb; }
