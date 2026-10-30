@@ -509,6 +509,7 @@ function pgRender() {
   pgRenderRingkasAtas();
   pgUpdateBarAntrean();
   pgRenderChipNyasar();
+  pgIsiJumlahStatus(semua);
 
   if (!pgState.sudahDimuat) return;
   if (!semua.length) {
@@ -727,6 +728,47 @@ function pgSetFilter(f, el) {
   if (el) el.classList.add('aktif');
   pgRender();
 }
+// Jumlah per status (ikut filter Tim/Rak/Blok) — tampil di panel kiri laptop
+function pgIsiJumlahStatus(semua) {
+  const n = { semua: 0, belum: 0, sesuai: 0, selisih: 0, ulang: 0 };
+  semua.forEach(k => {
+    if (pgState.tim) { const g = pgState.rak[k]; if (!g || !g.tim[pgState.tim]) return; }
+    if (pgState.rakInduk && pgRakInduk(k) !== pgState.rakInduk) return;
+    if (pgState.blok && k !== pgState.blok) return;
+    n.semua++;
+    const st = pgStatusEfektif(k).status;
+    if (st === 'belum' || st === 'konflik' || st === 'sebagian') n.belum++;
+    else if (n[st] != null) n[st]++;
+  });
+  document.querySelectorAll('.pg-status-baris .pg-chip[data-f]').forEach(c => {
+    const f = c.dataset.f;
+    if (n[f] == null) return;
+    let el = c.querySelector('.pg-n');
+    if (!el) { el = document.createElement('small'); el.className = 'pg-n'; c.appendChild(el); }
+    el.textContent = pgAngka(n[f]);
+  });
+}
+function pgResetFilter() {
+  pgState.tim = ''; pgState.rakInduk = ''; pgState.blok = '';
+  const c = document.getElementById('pg-cari'); if (c) c.value = '';
+  pgState.cari = '';
+  pgRenderChipFilter();
+  pgSetFilter('semua', document.querySelector('.pg-status-baris .pg-chip[data-f="semua"]'));
+}
+// Laptop (≥1100px): tombol Live/Panduan/Sheet/Muat ulang/Upload pindah ke kanan atas; HP tetap di tempat lama
+(function pgPindahAksi() {
+  const mq = window.matchMedia('(min-width: 1100px)');
+  function pindah() {
+    const aksi = document.querySelector('#page-stok-opname .pg-aksi');
+    const kanan = document.getElementById('pg-kanan-atas');
+    const atas = document.querySelector('#page-stok-opname .pg-toolbar-atas');
+    if (!aksi || !kanan || !atas) return;
+    const tujuan = mq.matches ? kanan : atas;
+    if (aksi.parentNode !== tujuan) tujuan.appendChild(aksi);
+  }
+  if (mq.addEventListener) mq.addEventListener('change', pindah); else mq.addListener(pindah);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', pindah); else pindah();
+})();
 function pgCari(v) { pgState.cari = v || ''; if (pgState.sudahDimuat) pgRender(); }
 
 // ============================================================
