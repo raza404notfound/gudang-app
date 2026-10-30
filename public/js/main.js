@@ -2287,13 +2287,9 @@ let allTrackedData = [];
       const mulai   = (soHalamanAkt - 1) * SO_PER_HALAMAN;
       const slice   = soDataFilter.slice(mulai, mulai + SO_PER_HALAMAN);
 
-      if (piViewMode === 'grid') {
-        container.className = 'pi-grid';
-        container.innerHTML = slice.map(r => piRenderCard(r)).join('');
-      } else {
-        container.className = 'pi-list';
-        container.innerHTML = slice.map(r => piRenderListItem(r)).join('');
-      }
+      // Satu tampilan: tabel di laptop, kartu di HP (lihat opname-ui.js)
+      container.className = 'op-wrap';
+      container.innerHTML = opDaftarHtml(slice, { id: 'so', status: r => soNormStatus(r.status) });
 
       if (maxHal > 1) {
         pager.style.display = '';
@@ -2482,13 +2478,13 @@ let allTrackedData = [];
       document.getElementById('so-n-plus').textContent    = h.Plus;
       document.getElementById('so-n-minus').textContent   = h.Minus;
       document.getElementById('so-n-belum').textContent   = h.Belum;
-      document.getElementById('so-stats').style.display   = '';
+      opIsiChip('pi', h);
     }
 
     function soUpdateInfoBar() {
       document.getElementById('so-info-total').textContent  = soSemuaData.length;
       document.getElementById('so-info-tampil').textContent = soDataFilter.length;
-      document.getElementById('so-info-sesi').textContent   = soSesiAktif;
+      document.getElementById('so-info-sesi').textContent   = soSesiAktif + ' · ' + opTimLabel(soDataFilter).pendek;
       document.getElementById('so-info-bar').style.display  = '';
     }
 
@@ -2521,6 +2517,21 @@ let allTrackedData = [];
     // URL Apps Script untuk export SO ke Google Sheets
     // Ganti dengan URL Web App setelah deploy
     const SO_SHEET_GAS_URL = 'https://script.google.com/macros/s/AKfycbx7zBJK1p1OEZGtjWaV9zVc76COolQ3QcwUicsENjnw1i7ET5Ljd6i7zgcrGKHVRQmjcg/exec';
+
+    // Ekspor .xlsx (panel Unduh / Bagikan ke WA). Logika data Opname Sheet tidak diubah.
+    function soEkspor() {
+      const label = { Semua: 'Semua', Minus: 'Kurang', Plus: 'Lebih', Balance: 'Sesuai', Belum: 'Belum' };
+      const sel = document.getElementById('so-sesi-select');
+      const bulanLabel = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text : soSesiAktif;
+      opBukaEkspor({
+        sumber: 'Opname Sheet', sesi: soSesiAktif, bulanLabel,
+        rows: soDataFilter.slice(), status: r => soNormStatus(r.status),
+        filterStatus: label[soStatusAkt] || soStatusAkt, filterRak: document.getElementById('so-rak-filter').value || '',
+        filterPersonil: soPersonilAktif || '', cari: document.getElementById('so-cari').value || '',
+        sesudah: () => opKirimSheet(soSesiAktif ? soSesiAktif.replace(/_/g, ' ') : 'SO', `Ekspor Opname Sheet | Sesi: ${soSesiAktif || '-'} | Filter: ${soStatusAkt}`,
+          soDataFilter.map(r => [r.sku || '', r.namaProduk || '', r.qtySistem != null ? Number(r.qtySistem) : '', (r.selisih === '' || r.selisih == null) ? '' : Number(r.selisih)]))
+      });
+    }
 
     async function soExportCSV() {
       if (!soDataFilter.length) return showToast('Tidak ada data untuk diekspor.', 'error');
