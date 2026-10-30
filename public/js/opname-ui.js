@@ -73,7 +73,7 @@ function opMenu(e, id, i) {
   const r = opBaris[id][i];
   if (!r) return;
   const item = (ikon, teks, aksi, kls = '') => `<button class="${kls}" onclick="opTutupMenu();${aksi}"><span class="material-symbols-outlined">${ikon}</span>${teks}</button>`;
-  const su = ((typeof currentUserRole !== 'undefined' && currentUserRole) || sessionStorage.getItem('sessionRole') || '') === 'superuser';
+  const su = ((typeof currentUserRole !== 'undefined' && currentUserRole) || localStorage.getItem('sessionRole') || '') === 'superuser';
   const isi = id === 'ow' && r.sku === 'TAMBAHAN'
     ? item('history', 'Lihat riwayat', `opRiwayatOw(opBaris.ow[${i}])`) +
       item('edit', 'Edit barang tambahan', `owEditTambahan(opBaris.ow[${i}])`) +
@@ -245,7 +245,7 @@ function opDataEkspor(info) {
   const tglJam = `${sekarang.getUTCDate()} ${OP_BULAN[sekarang.getUTCMonth()].slice(0, 3)} ${sekarang.getUTCFullYear()} ${pad(sekarang.getUTCHours())}:${pad(sekarang.getUTCMinutes())} WIB`;
   const tgl = `${sekarang.getUTCDate()} ${OP_BULAN[sekarang.getUTCMonth()].slice(0, 3)} ${sekarang.getUTCFullYear()}`;
   const tim = opTimLabel(rows);
-  const oleh = (typeof namaTampil === 'function' ? namaTampil(sessionStorage.getItem('sessionUser') || '') : '') || sessionStorage.getItem('sessionUser') || '';
+  const oleh = (typeof namaTampil === 'function' ? namaTampil(localStorage.getItem('sessionUser') || '') : '') || localStorage.getItem('sessionUser') || '';
   const meta = [
     [`EKSPOR STOK OPNAME — ${info.sumber.toUpperCase()}`],
     ['Bulan / Sesi SO', info.bulanLabel + (info.sesi && info.sesi !== info.bulanLabel ? `  (${info.sesi})` : '')],
