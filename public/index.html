@@ -310,25 +310,25 @@
         <div class="pi-sticky">
           <div class="pi-toolbar">
             <span class="op-lbl op-o1">Bulan SO</span>
-            <select class="op-o2" id="so-sesi-select" onchange="soGantiSesi()" style="min-width:155px;">
+            <select class="op-o2 op-pilih" data-judul="Pilih bulan SO" id="so-sesi-select" onchange="soGantiSesi()" style="min-width:155px;">
               <option value="">— Pilih Bulan SO —</option>
             </select>
             <span class="op-lbl op-o3">Cari produk</span>
             <input class="op-o4" type="text" id="so-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:180px;" oninput="soFilter()">
             <button class="op-btn-filter" onclick="opToggleFilter(this)"><span class="material-symbols-outlined">tune</span> Filter</button>
             <span class="op-lbl op-o11">Personil</span>
-            <div class="op-o12" style="position:relative;" id="so-personil-wrap">
+            <select class="op-o12 op-pilih op-lipat" id="so-personil" data-hapus data-cari data-cari-teks="Cari personil…" data-judul="Pilih personil" onchange="soPilihPersonil(this.value)"><option value="">Semua personil</option></select>
+            <div class="op-personil-lama" style="position:relative;" id="so-personil-wrap">
               <input type="text" id="so-personil-input" placeholder="Cari personil..." style="min-width:130px;"
                 oninput="soPersonilInput()" onkeydown="soPersonilKeydown(event)" autocomplete="off">
               <div id="so-personil-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:200px;max-width:300px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:999;max-height:220px;overflow-y:auto;"></div>
             </div>
-            <div class="op-pchips op-o13" id="so-personil-chips"></div>
-            <span class="op-lbl op-o9">Rak</span>
-            <input class="op-o10" type="text" id="so-rak-filter" placeholder="Filter Rak..." style="min-width:100px;" oninput="soFilter()">
+                        <span class="op-lbl op-o9">Rak</span>
+            <select class="op-o10 op-pilih op-lipat" id="so-rak-filter" data-hapus data-cari data-cari-teks="Cari nama rak…" data-judul="Pilih rak" onchange="soFilter()"><option value="">Semua rak</option></select>
             <span class="op-lbl op-o7">Tim</span>
-            <select class="op-o8 op-tim" id="so-tim" onchange="soFilter()"><option value="">Semua Tim</option></select>
+            <select class="op-o8 op-pilih op-lipat" id="so-tim" data-hapus data-judul="Pilih tim" onchange="soFilter()"><option value="">Semua tim</option></select>
             <span class="op-lbl op-o14">Urutkan</span>
-            <select class="op-o15" id="pi-sort-select" onchange="soFilter()" style="min-width:160px;">
+            <select class="op-o15 op-pilih op-lipat" data-judul="Urutkan" id="pi-sort-select" onchange="soFilter()" style="min-width:160px;">
               <option value="rak" selected>Urut Rak (sesuai CSV)</option>
               <option value="qty-desc">Qty ↓ Terbesar</option>
               <option value="qty-asc">Qty ↑ Terkecil</option>
@@ -460,25 +460,25 @@
         <div class="pi-sticky">
           <div class="pi-toolbar">
             <span class="op-lbl op-o1">Bulan SO</span>
-            <select class="op-o2" id="ow-sesi-select" onchange="owGantiSesi()" style="min-width:155px;">
+            <select class="op-o2 op-pilih" data-judul="Pilih bulan SO" id="ow-sesi-select" onchange="owGantiSesi()" style="min-width:155px;">
               <option value="">— Pilih Bulan SO —</option>
             </select>
             <span class="op-lbl op-o3">Cari produk</span>
             <input class="op-o4" type="text" id="ow-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:180px;" oninput="owFilter()">
             <button class="op-btn-filter" onclick="opToggleFilter(this)"><span class="material-symbols-outlined">tune</span> Filter</button>
             <span class="op-lbl op-o11">Personil</span>
-            <div class="op-o12" style="position:relative;" id="ow-personil-wrap">
+            <select class="op-o12 op-pilih op-lipat" id="ow-personil" data-hapus data-cari data-cari-teks="Cari personil…" data-judul="Pilih personil" onchange="owPilihPersonil(this.value)"><option value="">Semua personil</option></select>
+            <div class="op-personil-lama" style="position:relative;" id="ow-personil-wrap">
               <input type="text" id="ow-personil-input" placeholder="Cari personil..." style="min-width:130px;"
                 oninput="owPersonilInput()" onkeydown="owPersonilKeydown(event)" autocomplete="off">
               <div id="ow-personil-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:200px;max-width:300px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:999;max-height:220px;overflow-y:auto;"></div>
             </div>
-            <div class="op-pchips op-o13" id="ow-personil-chips"></div>
-            <span class="op-lbl op-o9">Rak</span>
-            <input class="op-o10" type="text" id="ow-rak-filter" placeholder="Filter Rak..." style="min-width:100px;" oninput="owFilter()">
+                        <span class="op-lbl op-o9">Rak</span>
+            <select class="op-o10 op-pilih op-lipat" id="ow-rak-filter" data-hapus data-cari data-cari-teks="Cari nama rak…" data-judul="Pilih rak" onchange="owFilter()"><option value="">Semua rak</option></select>
             <span class="op-lbl op-o7">Tim</span>
-            <select class="op-o8 op-tim" id="ow-tim" onchange="owFilter()"><option value="">Semua Tim</option></select>
+            <select class="op-o8 op-pilih op-lipat" id="ow-tim" data-hapus data-judul="Pilih tim" onchange="owFilter()"><option value="">Semua tim</option></select>
             <span class="op-lbl op-o14">Urutkan</span>
-            <select class="op-o15" id="ow-sort-select" onchange="owFilter()" style="min-width:160px;">
+            <select class="op-o15 op-pilih op-lipat" data-judul="Urutkan" id="ow-sort-select" onchange="owFilter()" style="min-width:160px;">
               <option value="rak" selected>Urut Rak (sesuai CSV)</option>
               <option value="qty-desc">Qty ↓ Terbesar</option>
               <option value="qty-asc">Qty ↑ Terkecil</option>
@@ -495,6 +495,10 @@
               <div class="pi-chip" onclick="owSetStatus('Minus',this)"   id="ow-chip-Minus">Kurang</div>
               <div class="pi-chip" onclick="owSetStatus('Belum',this)"   id="ow-chip-Belum">Belum</div>
             </div>
+            <button type="button" class="pg-kirim-tim op-kirim-tim op-o16" id="ow-kirim-tim" style="display:none;" onclick="owBukaKirimTim()">
+              <span class="pg-kt-1"><span class="material-symbols-outlined">upload</span> Kirim ke Sheet Tim 00</span>
+              <small id="ow-kirim-tim-info">halaman baru di sheet kedua</small>
+            </button>
             <button type="button" class="op-reset op-o16" onclick="owResetFilter()"><span class="material-symbols-outlined">restart_alt</span> Reset filter</button>
             <!-- Toggle view + Export -->
             <div class="op-o17" style="display:flex;gap:6px;margin-left:auto;">
@@ -905,10 +909,6 @@
             <div class="pg-filter-baris pg-lipat-filter" id="pg-chip-tim"></div>
             <div class="pg-filter-baris pg-lipat-filter" id="pg-chip-rak"></div>
             <div class="pg-filter-baris pg-lipat-filter" id="pg-chip-blok" style="display:none;"></div>
-            <button type="button" class="pg-kirim-tim" id="pg-kirim-tim" style="display:none;" onclick="pgBukaKirimTim()">
-              <span class="pg-kt-1"><span class="material-symbols-outlined">upload</span> Kirim ke Sheet Tim 00</span>
-              <small id="pg-kirim-tim-info">ke sheet kedua · halaman baru</small>
-            </button>
             <button type="button" class="op-reset pg-reset" onclick="pgResetFilter()"><span class="material-symbols-outlined">restart_alt</span> Reset filter</button>
           </div>
           <div class="pg-mini pg-ringkas-hp" id="pg-mini">
