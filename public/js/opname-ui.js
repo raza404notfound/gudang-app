@@ -164,6 +164,27 @@ function opToggleFilter(btn) {
   const tb = btn.closest('.pi-toolbar');
   if (tb) tb.classList.toggle('op-filter-buka');
 }
+// Pilihan Tim diambil dari data bulan yang sedang dibuka (pilihan lama dipertahankan bila masih ada)
+function opIsiTim(selId, rows) {
+  const sel = document.getElementById(selId);
+  if (!sel) return;
+  const tim = [...new Set(rows.map(r => String(r.tim || '').trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+  const pilih = sel.value;
+  sel.innerHTML = '<option value="">Semua Tim</option>' + tim.map(t => `<option value="${opEsc(t)}">Tim ${opEsc(t)}</option>`).join('');
+  sel.value = tim.includes(pilih) ? pilih : '';
+}
+function opCocokTim(selId, r) {
+  const v = (document.getElementById(selId) || {}).value || '';
+  return !v || String(r.tim || '').trim() === v;
+}
+// Chip personil di panel kiri (laptop). Klik lagi chip yang aktif = batal.
+function opIsiPersonilChip(boxId, list, aktif, fnPilih) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  box.innerHTML = list.map(n =>
+    `<button type="button" class="op-pchip${n === aktif ? ' aktif' : ''}" data-n="${opEsc(n)}" onclick="${fnPilih}(this.dataset.n)">${opEsc(n)}</button>`).join('');
+}
 
 // ---------- Ekspor .xlsx ----------
 let opExcelJs = null;
