@@ -2224,6 +2224,7 @@ let allTrackedData = [];
         if (!seen[key]) { seen[key] = true; soPersonilList.push(raw); }
       });
       soPersonilList.sort((a,b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+      opIsiTim('so-tim', soSemuaData);
       soHitungStats();
       soFilter();
     }
@@ -2245,6 +2246,7 @@ let allTrackedData = [];
         document.getElementById('pi-chip-Semua').classList.add('aktif-Semua');
         document.getElementById('so-cari').value = '';
         document.getElementById('so-rak-filter').value = '';
+        document.getElementById('so-tim').value = '';
         document.getElementById('so-personil-input').value = '';
         document.getElementById('so-personil-input').style.borderColor = '';
         document.getElementById('so-personil-dropdown').style.display = 'none';
@@ -2281,6 +2283,7 @@ let allTrackedData = [];
         if (soStatusAkt !== 'Semua' && normSt !== soStatusAkt) return false;
         if (rak       && !String(r.rak).toLowerCase().includes(rak)) return false;
         if (personilKw && !String(r.personil||'').toLowerCase().includes(personilKw)) return false;
+        if (!opCocokTim('so-tim', r)) return false;
         if (cari      && !(r.sku+' '+r.namaProduk).toLowerCase().includes(cari)) return false;
         return true;
       });
@@ -2304,6 +2307,18 @@ let allTrackedData = [];
       soHalamanAkt = 1;
       soRenderTabel();
       soUpdateInfoBar();
+      opIsiPersonilChip('so-personil-chips', soPersonilList, soPersonilAktif, 'soPersonilChip');
+    }
+    function soPersonilChip(nama) {
+      if (nama === soPersonilAktif) { document.getElementById('so-personil-input').value = ''; soPersonilInput(); }
+      else soPersonilPilih(nama);
+    }
+    function soResetFilter() {
+      ['so-cari', 'so-rak-filter', 'so-personil-input', 'so-tim'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      document.getElementById('so-personil-input').style.borderColor = '';
+      document.getElementById('pi-sort-select').value = 'rak';
+      soPersonilAktif = '';
+      piSetStatus('Semua', document.getElementById('pi-chip-Semua'));
     }
 
     function soRenderTabel() {
