@@ -125,7 +125,7 @@ async function dbMuat(diam = false, paksa = false) {
   if (!diam && !adaLokal) dbPesan('memuat', dbState.gudang === 'semua' ? 'Memuat data 5 gudang...' : 'Memuat data gudang...');
   try {
     const res = await fetch(`/api/dashboard/gudang?gudang=${dbState.gudang}&dari=${dari}&sampai=${sampai}${paksa ? '&force=true' : ''}`, {
-      headers: { 'x-session-token': sessionStorage.getItem('sessionToken') || '' }
+      headers: { 'x-session-token': localStorage.getItem('sessionToken') || '' }
     });
     const data = await res.json().catch(() => ({ success: false, message: 'Respons server tidak valid.' }));
     if (!data.success) throw new Error(data.message || 'Gagal memuat.');
