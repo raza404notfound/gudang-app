@@ -168,11 +168,39 @@ function opToggleFilter(btn) {
 function opIsiTim(selId, rows) {
   const sel = document.getElementById(selId);
   if (!sel) return;
-  const tim = [...new Set(rows.map(r => String(r.tim || '').trim()).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+  const n = {};
+  rows.forEach(r => { const t = String(r.tim || '').trim(); if (t) n[t] = (n[t] || 0) + 1; });
+  const tim = Object.keys(n).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+  opIsiPilihan(sel, `<option value="" data-meta="${rows.length} SKU">Semua tim</option>` +
+    tim.map(t => `<option value="${opEsc(t)}" data-meta="${n[t]} SKU">Tim ${opEsc(t)}</option>`).join(''), tim);
+}
+// Isi <select> hanya bila daftarnya berubah; pilihan lama dipertahankan bila masih ada
+function opIsiPilihan(sel, html, nilaiAda) {
   const pilih = sel.value;
-  sel.innerHTML = '<option value="">Semua Tim</option>' + tim.map(t => `<option value="${opEsc(t)}">Tim ${opEsc(t)}</option>`).join('');
-  sel.value = tim.includes(pilih) ? pilih : '';
+  if (sel._html !== html) { sel.innerHTML = html; sel._html = html; }
+  sel.value = nilaiAda.includes(pilih) ? pilih : '';
+}
+// Rak: "0001A · 2 SKU / 5.610 PCS" (ikut filter Tim)
+function opIsiRak(selId, rows) {
+  const sel = document.getElementById(selId);
+  if (!sel) return;
+  const g = {};
+  rows.forEach(r => { const k = String(r.rak || '').trim(); if (!k) return; const x = g[k] = g[k] || { n: 0, pcs: 0 }; x.n++; x.pcs += Number(r.qtySistem) || 0; });
+  const rak = Object.keys(g).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+  const angka = v => Number(v).toLocaleString('id-ID');
+  opIsiPilihan(sel, `<option value="" data-meta="${angka(rows.length)} SKU">Semua rak</option>` +
+    rak.map(k => `<option value="${opEsc(k)}" data-meta="${g[k].n} SKU / ${angka(g[k].pcs)} PCS">${opEsc(k)}</option>`).join(''), rak);
+}
+// Personil: nama tampilan + jumlah SKU yang dihitung (ikut filter Tim)
+function opIsiPersonil(selId, list, rows, aktif) {
+  const sel = document.getElementById(selId);
+  if (!sel) return;
+  const n = {};
+  list.forEach(p => { const k = p.toLowerCase(); n[p] = rows.filter(r => String(r.personil || '').toLowerCase().includes(k)).length; });
+  const ada = list.filter(p => n[p] > 0 || p === aktif);
+  opIsiPilihan(sel, '<option value="">Semua personil</option>' +
+    ada.map(p => `<option value="${opEsc(p)}" data-meta="${n[p]} SKU">${opEsc(opNama(p))}</option>`).join(''), ada);
+  if (aktif && sel.value !== aktif && ada.includes(aktif)) sel.value = aktif;
 }
 function opCocokTim(selId, r) {
   const v = (document.getElementById(selId) || {}).value || '';
@@ -366,3 +394,124 @@ function opRusakAmbil(pre) {
   if (salah) return null;
   return { qty, keterangan: `${jenis} – ${catatan}`, jenis };
 }
+
+
+// =====================================================================
+// DROPDOWN SERAGAM — menggantikan tampilan <select> bawaan browser.
+// <select> asli tetap ada (tersembunyi) sebagai sumber nilai, jadi onchange & .value lama tetap jalan.
+//   class="op-pilih"   → otomatis diganti saat halaman dimuat
+//   data-cari          → ada kolom cari di daftar
+//   data-hapus         → pilihan aktif berwarna krem + tombol ✕ (kembali ke "Semua")
+//   data-judul="..."   → judul daftar di HP
+//   option[data-meta]  → teks kecil di kanan (mis. "2 SKU / 160 PCS")
+// =====================================================================
+const opNilaiAsli = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+function opDD(sel) {
+  if (!sel) return null;
+  if (sel._dd) return sel._dd;
+  const dd = document.createElement('div');
+  dd.className = 'op-dd ' + [...sel.classList].filter(c => c !== 'op-pilih').join(' ');
+  dd.id = sel.id ? sel.id + '-dd' : '';
+  dd.innerHTML = '<button type="button" class="op-dd-btn"><span class="op-dd-label"></span><span class="op-dd-meta"></span>' +
+    '<span class="op-dd-x" title="Hapus pilihan">✕</span><span class="op-dd-panah"></span></button>';
+  sel.classList.add('op-dd-asli');
+  sel.after(dd);
+  sel._dd = dd;
+  Object.defineProperty(sel, 'value', { configurable: true,
+    get() { return opNilaiAsli.get.call(this); },
+    set(v) { opNilaiAsli.set.call(this, v); opDDLabel(this); } });
+  new MutationObserver(() => opDDLabel(sel)).observe(sel, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
+  dd.querySelector('.op-dd-btn').addEventListener('click', e => {
+    if (sel.disabled) return;
+    if (e.target.closest('.op-dd-x')) { e.stopPropagation(); opDDPilih(sel, ''); return; }
+    if (opDDAktif && opDDAktif.sel === sel) opDDTutup(); else opDDBuka(sel);
+  });
+  opDDLabel(sel);
+  return dd;
+}
+function opDDLabel(sel) {
+  const dd = sel._dd;
+  if (!dd) return;
+  const o = sel.options[sel.selectedIndex];
+  dd.querySelector('.op-dd-label').textContent = o ? o.textContent : '';
+  dd.querySelector('.op-dd-meta').textContent = o && o.value !== '' ? (o.dataset.meta || '') : '';
+  const terisi = sel.hasAttribute('data-hapus') && opNilaiAsli.get.call(sel) !== '';
+  dd.classList.toggle('terisi', terisi);
+  dd.classList.toggle('mati', sel.disabled);
+}
+let opDDAktif = null;
+function opDDTutup() {
+  if (!opDDAktif) return;
+  opDDAktif.el.remove();
+  if (opDDAktif.latar) opDDAktif.latar.remove();
+  if (opDDAktif.sel._dd) opDDAktif.sel._dd.classList.remove('buka');
+  opDDAktif = null;
+}
+function opDDPilih(sel, v) {
+  opDDTutup();
+  if (opNilaiAsli.get.call(sel) === v) return;
+  sel.value = v;
+  sel.dispatchEvent(new Event('change', { bubbles: true }));
+}
+function opDDBuka(sel) {
+  opDDTutup();
+  const dd = sel._dd, btn = dd.querySelector('.op-dd-btn');
+  const hp = window.matchMedia('(max-width: 760px)').matches;
+  const pakaiKosong = sel.hasAttribute('data-hapus');
+  const opsi = [...sel.options].filter(o => o.value !== '' || pakaiKosong);
+  const nilai = opNilaiAsli.get.call(sel);
+  const el = document.createElement('div');
+  el.className = 'op-dd-pop' + (hp ? ' op-dd-sheet' : '');
+  el.innerHTML = (hp ? `<div class="op-dd-grab"></div><div class="op-dd-judul">${opEsc(sel.dataset.judul || '')}</div>` : '') +
+    (sel.hasAttribute('data-cari') ? `<div class="op-dd-cari"><input type="text" placeholder="${opEsc(sel.dataset.cariTeks || 'Cari…')}" autocomplete="off"></div>` : '') +
+    `<div class="op-dd-list">${opsi.map((o, i) => `<button type="button" class="op-dd-it${o.value === nilai ? ' aktif' : ''}" data-i="${i}">
+      <span>${opEsc(o.textContent)}</span><small>${opEsc(o.dataset.meta || '')}</small></button>`).join('')}
+      <div class="op-dd-kosong" style="display:none">Tidak ditemukan</div></div>`;
+  let latar = null;
+  if (hp) {
+    latar = document.createElement('div');
+    latar.className = 'op-dd-latar';
+    latar.onclick = opDDTutup;
+    document.body.appendChild(latar);
+  }
+  document.body.appendChild(el);
+  if (!hp) {
+    const r = btn.getBoundingClientRect();
+    const lebar = Math.max(r.width, 230);
+    const bawah = window.innerHeight - r.bottom - 12, atas = r.top - 12;
+    const naik = bawah < 240 && atas > bawah;
+    el.style.width = lebar + 'px';
+    el.style.left = Math.min(r.left, window.innerWidth - lebar - 8) + 'px';
+    el.style.maxHeight = Math.min(360, naik ? atas : bawah) + 'px';
+    if (naik) el.style.bottom = (window.innerHeight - r.top + 4) + 'px'; else el.style.top = (r.bottom + 4) + 'px';
+  }
+  dd.classList.add('buka');
+  opDDAktif = { sel, el, latar };
+  el.querySelectorAll('.op-dd-it').forEach(b => b.onclick = () => opDDPilih(sel, opsi[+b.dataset.i].value));
+  const aktif = el.querySelector('.op-dd-it.aktif');
+  if (aktif) aktif.scrollIntoView({ block: 'nearest' });
+  const cari = el.querySelector('.op-dd-cari input');
+  if (cari) {
+    cari.oninput = () => {
+      const q = cari.value.trim().toLowerCase();
+      let ada = 0;
+      el.querySelectorAll('.op-dd-it').forEach(b => { const ok = !q || b.textContent.toLowerCase().includes(q); b.style.display = ok ? '' : 'none'; if (ok) ada++; });
+      el.querySelector('.op-dd-kosong').style.display = ada ? 'none' : '';
+    };
+    cari.onkeydown = e => {
+      if (e.key === 'Enter') { const b = [...el.querySelectorAll('.op-dd-it')].find(x => x.style.display !== 'none'); if (b) b.click(); }
+      if (e.key === 'Escape') opDDTutup();
+    };
+    if (!hp) setTimeout(() => cari.focus(), 0);
+  }
+}
+document.addEventListener('mousedown', e => {
+  if (!opDDAktif || window.matchMedia('(max-width: 760px)').matches) return;
+  if (opDDAktif.el.contains(e.target) || (opDDAktif.sel._dd && opDDAktif.sel._dd.contains(e.target))) return;
+  opDDTutup();
+}, true);
+document.addEventListener('scroll', e => { if (opDDAktif && !opDDAktif.el.contains(e.target) && !window.matchMedia('(max-width: 760px)').matches) opDDTutup(); }, true);
+window.addEventListener('resize', () => { if (opDDAktif && !window.matchMedia('(max-width: 760px)').matches) opDDTutup(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') opDDTutup(); });
+function opDDSemua(akar) { (akar || document).querySelectorAll('select.op-pilih').forEach(opDD); }
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => opDDSemua()); else opDDSemua();
