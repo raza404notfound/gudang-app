@@ -202,23 +202,17 @@ function opMuatExcelJs() {
 }
 
 // info: { sumber, sesi, bulanLabel, rows, status: r=>norm, filterStatus, filterRak, filterPersonil, cari }
-async function opBuatXlsx(info) {
-  const ExcelJS = await opMuatExcelJs();
-  const wb = new ExcelJS.Workbook();
-  wb.creator = 'PDC TOOLS';
-  const ws = wb.addWorksheet('Opname', { views: [{ state: 'frozen', ySplit: 15 }], properties: { outlineLevelCol: 1 } });
-  const lebar = [26, 38, 10, 10, 9, 13, 11, 22, 8, 16, 17, 30];
-  ws.columns = lebar.map((w, i) => ({ width: w, outlineLevel: i >= 6 ? 1 : 0, hidden: i >= 6 }));
-
+// Isi ekspor (dipakai file .xlsx DAN kirim ke sheet Tim 00 supaya formatnya sama persis)
+function opDataEkspor(info) {
   const rows = info.rows;
   const hit = { Minus: 0, Plus: 0, Balance: 0, Belum: 0 };
   rows.forEach(r => { const n = info.status(r); hit[n] = (hit[n] || 0) + 1; });
   const sekarang = new Date(Date.now() + 7 * 3600 * 1000);
   const pad = n => String(n).padStart(2, '0');
   const tglJam = `${sekarang.getUTCDate()} ${OP_BULAN[sekarang.getUTCMonth()].slice(0, 3)} ${sekarang.getUTCFullYear()} ${pad(sekarang.getUTCHours())}:${pad(sekarang.getUTCMinutes())} WIB`;
+  const tgl = `${sekarang.getUTCDate()} ${OP_BULAN[sekarang.getUTCMonth()].slice(0, 3)} ${sekarang.getUTCFullYear()}`;
   const tim = opTimLabel(rows);
   const oleh = (typeof namaTampil === 'function' ? namaTampil(sessionStorage.getItem('sessionUser') || '') : '') || sessionStorage.getItem('sessionUser') || '';
-
   const meta = [
     [`EKSPOR STOK OPNAME — ${info.sumber.toUpperCase()}`],
     ['Bulan / Sesi SO', info.bulanLabel + (info.sesi && info.sesi !== info.bulanLabel ? `  (${info.sesi})` : '')],
@@ -235,27 +229,44 @@ async function opBuatXlsx(info) {
     ['Belum dihitung', hit.Belum],
     []
   ];
-  meta.forEach(m => ws.addRow(m));
+  const header = ['SKU (ID Produk)', 'Nama Produk', 'Qty Web', 'Qty Real', 'Selisih', 'Status', 'Kode Rak', 'Lokasi', 'Tim', 'Personil', 'Waktu Hitung', 'Export CSV'];
+  const baris = rows.map(r => {
+    const n = info.status(r);
+    const real = r.totalReal === '' || r.totalReal === undefined || r.totalReal === null ? '' : Number(r.totalReal);
+    const sel = r.selisih === '' || r.selisih === undefined || r.selisih === null ? '' : Number(r.selisih);
+    return { n, isi: [String(r.sku || ''), String(r.namaProduk || ''), Number(r.qtySistem) || 0, real, sel,
+      (OP_STATUS[n] || OP_STATUS.Belum).label, String(r.rak || ''), String(r.lokasi || ''), String(r.tim || ''),
+      r.personil ? String(opNama(r.personil)) : '', String(r.waktu || ''), String(r.export || '')] };
+  });
+  return { meta, header, baris, hit, tim, tgl, lebar: [26, 38, 10, 10, 9, 13, 11, 22, 8, 16, 17, 30] };
+}
+const OP_WARNA = { Minus: 'FFD1646C', Plus: 'FF2F6FD6', Balance: 'FF2E8B57', Belum: 'FF64748B' };
+
+async function opBuatXlsx(info) {
+  const ExcelJS = await opMuatExcelJs();
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'PDC TOOLS';
+  const ws = wb.addWorksheet('Opname', { views: [{ state: 'frozen', ySplit: 15 }], properties: { outlineLevelCol: 1 } });
+  const d = opDataEkspor(info);
+  const rows = info.rows, hit = d.hit, tim = d.tim;
+  ws.columns = d.lebar.map((w, i) => ({ width: w, outlineLevel: i >= 6 ? 1 : 0, hidden: i >= 6 }));
+  d.meta.forEach(m => ws.addRow(m));
   ws.getCell('A1').font = { bold: true, size: 13 };
   ws.getCell('A8').font = { bold: true };
   ws.getCell('B3').font = { bold: true };
   ws.getCell('B3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF7D6' } };
   for (let i = 2; i <= 13; i++) ws.getCell('A' + i).font = { color: { argb: 'FF4B5563' } };
 
-  const kepala = ws.addRow(['SKU (ID Produk)', 'Nama Produk', 'Qty Web', 'Qty Real', 'Selisih', 'Status', 'Kode Rak', 'Lokasi', 'Tim', 'Personil', 'Waktu Hitung', 'Export CSV']);
+  const kepala = ws.addRow(d.header);
   kepala.eachCell(c => {
     c.font = { bold: true, color: { argb: 'FFE9C46A' } };
     c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
     c.alignment = { vertical: 'middle' };
   });
-  const warna = { Minus: 'FFD1646C', Plus: 'FF2F6FD6', Balance: 'FF2E8B57', Belum: 'FF64748B' };
-  rows.forEach(r => {
-    const n = info.status(r);
-    const real = r.totalReal === '' || r.totalReal === undefined || r.totalReal === null ? '' : Number(r.totalReal);
-    const sel = r.selisih === '' || r.selisih === undefined || r.selisih === null ? '' : Number(r.selisih);
-    const baris = ws.addRow([String(r.sku || ''), String(r.namaProduk || ''), Number(r.qtySistem) || 0, real, sel,
-      (OP_STATUS[n] || OP_STATUS.Belum).label, String(r.rak || ''), String(r.lokasi || ''), String(r.tim || ''),
-      r.personil ? String(opNama(r.personil)) : '', String(r.waktu || ''), String(r.export || '')]);
+  const warna = OP_WARNA;
+  d.baris.forEach(({ n, isi }) => {
+    const sel = isi[4];
+    const baris = ws.addRow(isi);
     [1, 7, 8, 9].forEach(k => { baris.getCell(k).numFmt = '@'; });   // teks: tidak berubah jadi 1.00E+01 / Tim 0
     baris.getCell(6).font = { bold: true, color: { argb: warna[n] || warna.Belum } };
     if (sel !== '' && sel !== 0) baris.getCell(5).font = { color: { argb: sel < 0 ? warna.Minus : warna.Plus } };
@@ -263,7 +274,7 @@ async function opBuatXlsx(info) {
   ws.autoFilter = { from: { row: 15, column: 1 }, to: { row: 15 + rows.length, column: 12 } };
 
   const buf = await wb.xlsx.writeBuffer();
-  const tgl = `${sekarang.getUTCDate()} ${OP_BULAN[sekarang.getUTCMonth()].slice(0, 3)} ${sekarang.getUTCFullYear()}`;
+  const tgl = d.tgl;
   const nama = `Ekspor Opname ${info.bulanLabel} - ${tim.pendek} - ${tgl}${info.sumber === 'Opname Sheet' ? ' (Sheet)' : ''}.xlsx`.replace(/[\\/:*?"<>|]/g, '-');
   return { blob: new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nama, hit, tim };
 }
@@ -319,4 +330,39 @@ function opKirimSheet(sheetName, badgeText, rows) {
   if (typeof SO_SHEET_GAS_URL === 'undefined') return;
   fetch(SO_SHEET_GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify({ action: 'exportSO', sheetName, badgeText, rows }) }).catch(() => {});
+}
+
+// ---------- Modal "Tambahkan Kerusakan" (tanpa foto supaya cepat) ----------
+function opRusakSiapkan(pre, info) {
+  ['jenis', 'qty', 'ket'].forEach(k => { const el = document.getElementById(`${pre}-rusak-${k}`); if (el) el.value = ''; });
+  document.getElementById(`${pre}-rusak-msg`).textContent = '';
+  const kv = (l, v, mono) => `<div class="rk-kv"><span>${l}</span><b${mono ? ' class="rk-mono"' : ''}>${opEsc(v === '' || v == null ? '—' : v)}</b></div>`;
+  document.getElementById(`${pre}-rusak-modal-body`).innerHTML =
+    kv('Nama produk', info.nama) + kv('SKU', info.sku, true) + kv('Rak', info.rak, true) +
+    kv('Qty Web', info.qty === '' || info.qty == null ? '' : Number(info.qty).toLocaleString('id-ID') + ' pcs', true);
+  document.getElementById(`${pre}-rusak-riw`).innerHTML = '<span class="rk-muat">Memuat riwayat rusak…</span>';
+  document.getElementById(`${pre}-rusak-modal`).style.display = 'flex';
+}
+// rows: [{ jumlahRusak, oleh, dicatatPada, keterangan, sesi }] terbaru di depan
+function opRusakRiwayat(pre, rows, gagal) {
+  const el = document.getElementById(`${pre}-rusak-riw`);
+  if (!el) return;
+  if (gagal) { el.innerHTML = '<span class="rk-muat">Riwayat rusak gagal dimuat.</span>'; return; }
+  if (!rows || !rows.length) { el.innerHTML = '<span class="rk-muat">Belum pernah dilaporkan rusak.</span>'; return; }
+  const t = rows[0];
+  const tgl = s => { const m = String(s || '').match(/(\d{4})-(\d{2})-(\d{2})/); return m ? `${+m[3]} ${OP_BULAN[+m[2] - 1].slice(0, 3)}` : String(s || ''); };
+  el.innerHTML = `<div class="rk-riw-atas"><span>Pernah rusak: <b>${rows.length}×</b> · terakhir ${opEsc(t.jumlahRusak)} pcs (${opEsc(tgl(t.dicatatPada))})</span>
+      <button type="button" onclick="this.closest('.rk-riw').classList.toggle('buka')"><span class="rk-t1">Lihat ▾</span><span class="rk-t2">Tutup ▴</span></button></div>
+    <div class="rk-riw-list">${rows.map(r => `<div><span><b>${opEsc(r.jumlahRusak)} pcs</b> · ${opEsc(opNama(r.oleh || '—'))}${r.keterangan ? ' · ' + opEsc(r.keterangan) : ''}</span><i>${opEsc(r.dicatatPada || '')}</i></div>`).join('')}</div>`;
+}
+// Ambil isian form. Jenis + catatan digabung ke Keterangan (kolom sheet tidak berubah)
+function opRusakAmbil(pre) {
+  const jenis = document.getElementById(`${pre}-rusak-jenis`).value;
+  const qty = parseInt(document.getElementById(`${pre}-rusak-qty`).value, 10);
+  const catatan = document.getElementById(`${pre}-rusak-ket`).value.trim();
+  const msg = document.getElementById(`${pre}-rusak-msg`);
+  const salah = !jenis ? 'Pilih jenis kerusakan.' : !(qty >= 1) ? 'Jumlah kerusakan wajib diisi (min. 1 pcs).' : !catatan ? 'Catatan wajib diisi.' : '';
+  msg.style.color = '#d1646c'; msg.textContent = salah;
+  if (salah) return null;
+  return { qty, keterangan: `${jenis} – ${catatan}`, jenis };
 }
