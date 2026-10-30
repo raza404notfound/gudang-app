@@ -36,7 +36,7 @@ function owNamaBulan(sesi) {
   return m ? `${OW_NAMA_BULAN[Number(m[2]) - 1]} ${m[1]}` : sesi;
 }
 async function owApi(url, opsi = {}) {
-  const res = await fetch(url, { ...opsi, headers: { 'Content-Type': 'application/json', 'x-session-token': sessionStorage.getItem('sessionToken') || '' } });
+  const res = await fetch(url, { ...opsi, headers: { 'Content-Type': 'application/json', 'x-session-token': localStorage.getItem('sessionToken') || '' } });
   if (res.status === 401) throw new Error('Sesi habis. Silakan login ulang.');
   const data = await res.json().catch(() => ({ success: false, message: 'Respons server tidak valid.' }));
   if (!data.success) throw new Error(data.message || 'Permintaan gagal.');
@@ -111,7 +111,7 @@ function owPersonilTutupDd(e) {
 
 // ---------- Muat data ----------
 async function owInit() {
-  const role = (typeof currentUserRole !== 'undefined' && currentUserRole) || sessionStorage.getItem('sessionRole') || '';
+  const role = (typeof currentUserRole !== 'undefined' && currentUserRole) || localStorage.getItem('sessionRole') || '';
   const btnRh = document.getElementById('ow-btn-riwayat-hapus');
   if (btnRh) btnRh.style.display = role === 'superuser' ? '' : 'none';
   if (owSudahInit) { owSegarDiam(); return; }
@@ -701,7 +701,7 @@ function owRenderRiwayatHapus() {
 const OW_TIM_KHUSUS = '00';
 let owKtData = null;
 function owSuperuser() {
-  return ((typeof currentUserRole !== 'undefined' && currentUserRole) || sessionStorage.getItem('sessionRole') || '') === 'superuser';
+  return ((typeof currentUserRole !== 'undefined' && currentUserRole) || localStorage.getItem('sessionRole') || '') === 'superuser';
 }
 function owTampilKirimTim() {
   const b = document.getElementById('ow-kirim-tim');
