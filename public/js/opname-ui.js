@@ -23,6 +23,10 @@ function opStatusTeks(norm, selisih) {
   const n = Number(selisih);
   return { teks: `${n > 0 ? '+' : ''}${n} ${st.label}`, kls: st.kls };
 }
+function opBandingRak(a, b) {
+  const k = (x, y) => String(x || '').localeCompare(String(y || ''), 'id', { numeric: true, sensitivity: 'base' });
+  return k(a.rak, b.rak) || k(a.lokasi, b.lokasi) || k(a.namaProduk, b.namaProduk);
+}
 function opNama(u) { return typeof namaTampil === 'function' ? namaTampil(u) : u; }
 
 // ---------- Daftar produk ----------
