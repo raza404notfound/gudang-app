@@ -17,7 +17,7 @@ function prEsc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&am
 function prAngka(n) { return Number(n || 0).toLocaleString('id-ID'); }
 function prToast(m, t = 'info') { if (typeof showToast === 'function') showToast(prEsc(m), t); else alert(m); }
 async function prApi(url, opsi = {}) {
-  const res = await fetch(url, { ...opsi, headers: { 'Content-Type': 'application/json', 'x-session-token': sessionStorage.getItem('sessionToken') || '' } });
+  const res = await fetch(url, { ...opsi, headers: { 'Content-Type': 'application/json', 'x-session-token': localStorage.getItem('sessionToken') || '' } });
   const d = await res.json().catch(() => ({ success: false, message: 'Respons server tidak valid.' }));
   if (!d.success) throw new Error(d.message || 'Permintaan gagal.');
   return d;
