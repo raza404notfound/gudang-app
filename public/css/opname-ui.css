@@ -89,13 +89,12 @@
   /* filter: rak, personil, urutan dilipat ke tombol Filter */
   #page-opname-web .pi-toolbar, #page-pusat-inventory .pi-toolbar { flex-wrap: wrap; }
   .op-btn-filter { display: inline-flex; }
-  #ow-personil-wrap, #ow-rak-filter, #ow-sort-select, #so-personil-wrap, #so-rak-filter, #pi-sort-select, #ow-tim, #so-tim { display: none !important; }
-  .op-filter-buka #ow-tim, .op-filter-buka #so-tim { display: block !important; flex: 1 1 45%; }
+  .pi-toolbar .op-dd.op-lipat { display: none !important; }
+  .pi-toolbar .op-kirim-tim { display: none !important; }
+  .op-filter-buka .op-dd.op-lipat { display: block !important; flex: 1 1 45%; min-width: 0; }
   .op-filter-buka .op-reset { display: inline-flex !important; }
-  .op-filter-buka #ow-personil-wrap, .op-filter-buka #so-personil-wrap { display: block !important; flex: 1 1 45%; }
-  .op-filter-buka #ow-rak-filter, .op-filter-buka #so-rak-filter, .op-filter-buka #ow-sort-select, .op-filter-buka #pi-sort-select { display: block !important; flex: 1 1 45%; }
-  .op-filter-buka #ow-personil-input, .op-filter-buka #so-personil-input { width: 100%; }
-  #ow-sesi-select, #so-sesi-select { min-width: 0 !important; flex: 0 0 auto; max-width: 42%; }
+  .op-filter-buka .op-kirim-tim:not([style*="none"]) { display: flex !important; flex: 1 1 100%; }
+  #ow-sesi-select-dd, #so-sesi-select-dd { min-width: 0 !important; flex: 0 0 auto; max-width: 42%; width: 140px; }
   #ow-cari, #so-cari { min-width: 0 !important; flex: 1 1 0; }
   .op-filter-buka .op-btn-filter { background: #1f2937; color: #e9c46a; }
 }
@@ -274,3 +273,57 @@ html.dark .rk-kotak { background: #1f2430; }
 html.dark .rk-kv b { color: #f3f4f6; }
 html.dark .rk-isi select, html.dark .rk-isi input, html.dark .rk-isi textarea { background: #111827; border-color: #374151; color: #e5e7eb; }
 html.dark .rk-riw-list div { background: #111827; border-color: #2d3442; }
+
+
+/* =====================================================================
+   Dropdown seragam (op-dd) — pengganti <select> bawaan browser
+   ===================================================================== */
+select.op-dd-asli, .op-personil-lama { display: none !important; }
+.op-dd { position: relative; min-width: 150px; }
+.op-dd-btn { display: flex; align-items: center; gap: 6px; width: 100%; height: 36px; padding: 0 10px; border: 1px solid #e2e8f0; border-radius: 8px;
+  background: #fff; font-family: inherit; font-size: 13px; color: #1f2937; cursor: pointer; text-align: left; transition: border-color .15s, box-shadow .15s; }
+.op-dd-btn:hover { border-color: #cbd5e1; }
+.op-dd.buka .op-dd-btn { border-color: #8a6d1f; box-shadow: 0 0 0 3px rgba(233,196,106,.25); }
+.op-dd-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.op-dd-meta { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #9ca3af; }
+.op-dd-x { display: none; color: #9ca3af; font-size: 11px; padding: 2px 3px; border-radius: 4px; }
+.op-dd-x:hover { color: #d1646c; background: #fdf0f1; }
+.op-dd-panah { flex: 0 0 auto; width: 7px; height: 7px; border-right: 1.6px solid #6b7280; border-bottom: 1.6px solid #6b7280; transform: rotate(45deg) translate(-2px, -2px); transition: transform .15s; }
+.op-dd.buka .op-dd-panah { transform: rotate(-135deg) translate(-2px, -2px); }
+.op-dd.terisi .op-dd-btn { background: #f6f0e1; border-color: #ecdfc0; font-weight: 700; }
+.op-dd.terisi .op-dd-meta { color: #7a5a1c; }
+.op-dd.terisi .op-dd-x { display: inline; }
+.op-dd.mati .op-dd-btn { background: #f8fafc; color: #9ca3af; cursor: not-allowed; }
+.op-dd.mati .op-dd-panah { border-color: #cbd5e1; }
+
+.op-dd-pop { position: fixed; z-index: 10070; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 12px 30px rgba(15,23,42,.16);
+  display: flex; flex-direction: column; overflow: hidden; }
+.op-dd-cari { padding: 7px; border-bottom: 1px solid #f1f5f9; flex: 0 0 auto; }
+.op-dd-cari input { width: 100%; box-sizing: border-box; border: 1px solid #e2e8f0; border-radius: 7px; padding: 7px 9px 7px 30px; font-size: 13px; font-family: inherit; outline: none;
+  background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.4'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 10px center; }
+.op-dd-cari input:focus { border-color: #8a6d1f; background-color: #fff; }
+.op-dd-list { overflow-y: auto; flex: 1 1 auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.op-dd-it { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 8px 12px; border: none; border-top: 1px solid #f5f6f8;
+  background: #fff; font-family: inherit; font-size: 13px; color: #1f2937; cursor: pointer; text-align: left; }
+.op-dd-it:first-child { border-top: none; }
+.op-dd-it:hover { background: #f8fafc; }
+.op-dd-it span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.op-dd-it small { flex: 0 0 auto; font-size: 11px; color: #9ca3af; }
+.op-dd-it.aktif { background: #f6f0e1; font-weight: 700; }
+.op-dd-it.aktif small { color: #7a5a1c; }
+.op-dd-kosong { padding: 14px; text-align: center; color: #9ca3af; font-size: 12.5px; }
+/* HP: daftar muncul dari bawah layar */
+.op-dd-latar { position: fixed; inset: 0; z-index: 10069; background: rgba(15,23,42,.45); }
+.op-dd-sheet { left: 0; right: 0; bottom: 0; top: auto; max-height: 72vh; border-radius: 16px 16px 0 0; border: none; padding-bottom: env(safe-area-inset-bottom); }
+.op-dd-grab { width: 40px; height: 4px; border-radius: 2px; background: #d1d5db; margin: 8px auto 4px; flex: 0 0 auto; }
+.op-dd-judul { font-weight: 800; font-size: 14px; padding: 2px 14px 6px; flex: 0 0 auto; }
+.op-dd-sheet .op-dd-cari { padding: 4px 12px 8px; }
+.op-dd-sheet .op-dd-cari input { font-size: 16px; }
+.op-dd-sheet .op-dd-it { padding: 12px 16px; font-size: 14px; }
+@media (min-width: 1100px) {
+  #page-opname-web .pi-toolbar .op-dd, #page-pusat-inventory .pi-toolbar .op-dd { width: 100%; min-width: 0; }
+}
+html.dark .op-dd-btn, html.dark .op-dd-pop, html.dark .op-dd-it { background: #1f2430; border-color: #374151; color: #e5e7eb; }
+html.dark .op-dd-it:hover { background: #111827; }
+html.dark .op-dd.terisi .op-dd-btn, html.dark .op-dd-it.aktif { background: #2a2416; border-color: #5c4a22; color: #f3e3b5; }
+html.dark .op-dd-cari input { background-color: #111827; border-color: #374151; color: #e5e7eb; }
