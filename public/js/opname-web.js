@@ -21,6 +21,7 @@ let owPersonilAktif = '';
 let owPersonilIdx  = -1;
 let owViewMode     = 'grid';
 let owRusakAktif   = null;
+let owHanyaTambahan = false;   // menu khusus: hanya barang TAMBAHAN (tidak ada di web)
 
 if (typeof PAGE_DATA_LOADERS !== 'undefined') {
   PAGE_DATA_LOADERS['opname-web'] = () => owInit();
@@ -185,7 +186,7 @@ function owGantiSesi() {
 }
 
 function owReset() {
-  owSemuaData = []; owDataFilter = []; owHalamanAkt = 1; owStatusAkt = 'Semua'; owPersonilAktif = '';
+  owSemuaData = []; owDataFilter = []; owHalamanAkt = 1; owStatusAkt = 'Semua'; owPersonilAktif = ''; owHanyaTambahan = false;
   document.querySelectorAll('#page-opname-web .pi-chip').forEach(c => c.className = 'pi-chip');
   document.getElementById('ow-chip-Semua').classList.add('aktif-Semua');
   ['ow-cari', 'ow-rak-filter', 'ow-personil-input', 'ow-personil', 'ow-tim'].forEach(id => { document.getElementById(id).value = ''; });
@@ -214,6 +215,7 @@ function owFilter() {
     if (rak && String(r.rak).toLowerCase() !== rak) return false;
     if (personilKw && !String(r.personil || '').toLowerCase().includes(personilKw)) return false;
     if (!opCocokTim('ow-tim', r)) return false;
+    if (owHanyaTambahan && r.sku !== 'TAMBAHAN') return false;
     if (cari && !(r.sku + ' ' + r.namaProduk).toLowerCase().includes(cari)) return false;
     return true;
   });
@@ -233,6 +235,20 @@ function owFilter() {
   owRenderTabel();
   owUpdateInfoBar();
   owTampilKirimTim();
+  owTampilTambahan(lolosTim);
+}
+// ---------- Menu khusus: Barang tambahan ----------
+function owTampilTambahan(rows) {
+  const b = document.getElementById('ow-btn-tambahan');
+  if (!b) return;
+  const n = (rows || owSemuaData).filter(r => r.sku === 'TAMBAHAN').length;
+  document.getElementById('ow-n-tambahan').textContent = n.toLocaleString('id-ID');
+  b.classList.toggle('aktif', owHanyaTambahan);
+  b.classList.toggle('nol', !n);
+}
+function owToggleTambahan() {
+  owHanyaTambahan = !owHanyaTambahan;
+  owFilter();
 }
 function owPilihPersonil(nama) {
   owPersonilAktif = nama || '';
@@ -248,6 +264,7 @@ function owResetFilter() {
   document.getElementById('ow-personil-input').style.borderColor = '';
   document.getElementById('ow-sort-select').value = 'rak';
   owPersonilAktif = '';
+  owHanyaTambahan = false;
   owSetStatus('Semua', document.getElementById('ow-chip-Semua'));
 }
 
@@ -483,7 +500,7 @@ function owHitungStats() {
 function owUpdateInfoBar() {
   document.getElementById('ow-info-total').textContent  = owSemuaData.length;
   document.getElementById('ow-info-tampil').textContent = owDataFilter.length;
-  document.getElementById('ow-info-sesi').textContent   = owSesiAktif + ' · ' + opTimLabel(owDataFilter).pendek;
+  document.getElementById('ow-info-sesi').textContent   = owSesiAktif + ' · ' + (owHanyaTambahan ? 'Barang tambahan' : opTimLabel(owDataFilter).pendek);
   document.getElementById('ow-info-bar').style.display  = '';
 }
 function owTampilLoading(pesan) {
