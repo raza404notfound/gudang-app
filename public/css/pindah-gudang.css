@@ -773,3 +773,11 @@ html.dark #page-stok-opname .pg-status-baris .pg-chip.aktif { background: #2a241
 html.dark .pg-kt-dua span { background: #2a2416; color: #d1d5db; } html.dark .pg-kt-dua b { color: #f3e3b5; }
 html.dark .pg-kt-batal { background: #2d3442; color: #e5e7eb; }
 html.dark #page-stok-opname > .pg-kanan-atas { background: var(--bg-page); box-shadow: 0 1px 0 #2d3442; }
+
+/* v9: Tim / Rak / Blok berupa dropdown */
+#page-stok-opname .pg-lipat-filter { align-items: center; gap: 8px; }
+#page-stok-opname .pg-lipat-filter .op-dd { flex: 1 1 auto; min-width: 0; }
+@media (min-width: 1100px) {
+  #page-stok-opname .pg-toolbar .pg-lipat-filter { flex-direction: column; align-items: stretch; gap: 5px; }
+  #page-stok-opname .pg-lipat-filter .op-dd { width: 100%; }
+}
