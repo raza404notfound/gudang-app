@@ -309,18 +309,26 @@
         <!-- STICKY HEADER -->
         <div class="pi-sticky">
           <div class="pi-toolbar">
-            <select id="so-sesi-select" onchange="soGantiSesi()" style="min-width:155px;">
+            <span class="op-lbl op-o1">Bulan SO</span>
+            <select class="op-o2" id="so-sesi-select" onchange="soGantiSesi()" style="min-width:155px;">
               <option value="">— Pilih Bulan SO —</option>
             </select>
-            <input type="text" id="so-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:180px;" oninput="soFilter()">
+            <span class="op-lbl op-o3">Cari produk</span>
+            <input class="op-o4" type="text" id="so-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:180px;" oninput="soFilter()">
             <button class="op-btn-filter" onclick="opToggleFilter(this)"><span class="material-symbols-outlined">tune</span> Filter</button>
-            <div style="position:relative;" id="so-personil-wrap">
+            <span class="op-lbl op-o11">Personil</span>
+            <div class="op-o12" style="position:relative;" id="so-personil-wrap">
               <input type="text" id="so-personil-input" placeholder="Cari personil..." style="min-width:130px;"
                 oninput="soPersonilInput()" onkeydown="soPersonilKeydown(event)" autocomplete="off">
               <div id="so-personil-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:200px;max-width:300px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:999;max-height:220px;overflow-y:auto;"></div>
             </div>
-            <input type="text" id="so-rak-filter" placeholder="Filter Rak..." style="min-width:100px;" oninput="soFilter()">
-            <select id="pi-sort-select" onchange="soFilter()" style="min-width:160px;">
+            <div class="op-pchips op-o13" id="so-personil-chips"></div>
+            <span class="op-lbl op-o9">Rak</span>
+            <input class="op-o10" type="text" id="so-rak-filter" placeholder="Filter Rak..." style="min-width:100px;" oninput="soFilter()">
+            <span class="op-lbl op-o7">Tim</span>
+            <select class="op-o8 op-tim" id="so-tim" onchange="soFilter()"><option value="">Semua Tim</option></select>
+            <span class="op-lbl op-o14">Urutkan</span>
+            <select class="op-o15" id="pi-sort-select" onchange="soFilter()" style="min-width:160px;">
               <option value="rak" selected>Urut Rak (sesuai CSV)</option>
               <option value="qty-desc">Qty ↓ Terbesar</option>
               <option value="qty-asc">Qty ↑ Terkecil</option>
@@ -329,15 +337,17 @@
               <option value="selisih-desc">Selisih terbesar</option>
             </select>
             <!-- Status chips -->
-            <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            <span class="op-lbl op-o5">Status</span>
+            <div class="op-status op-o6" style="display:flex;gap:5px;flex-wrap:wrap;">
               <div class="pi-chip aktif-Semua" onclick="piSetStatus('Semua',this)" id="pi-chip-Semua">Semua</div>
               <div class="pi-chip" onclick="piSetStatus('Balance',this)" id="pi-chip-Balance">Sesuai</div>
               <div class="pi-chip" onclick="piSetStatus('Plus',this)"    id="pi-chip-Plus">Lebih</div>
               <div class="pi-chip" onclick="piSetStatus('Minus',this)"   id="pi-chip-Minus">Kurang</div>
               <div class="pi-chip" onclick="piSetStatus('Belum',this)"   id="pi-chip-Belum">Belum</div>
             </div>
+            <button type="button" class="op-reset op-o16" onclick="soResetFilter()"><span class="material-symbols-outlined">restart_alt</span> Reset filter</button>
             <!-- Toggle view + Export -->
-            <div style="display:flex;gap:6px;margin-left:auto;">
+            <div class="op-o17" style="display:flex;gap:6px;margin-left:auto;">
               <button class="pi-view-btn aktif" id="pi-btn-grid" onclick="piSetView('grid')" title="Grid view">
                 <span class="material-symbols-outlined">grid_view</span>
               </button>
@@ -347,17 +357,6 @@
             </div>
           </div>
 
-          <!-- Info bar -->
-          <div class="pi-info-bar" id="so-info-bar" style="display:none;">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <span><b id="so-info-total">0</b> produk total</span>
-              <span>·</span>
-              <span>Menampilkan <b id="so-info-tampil">0</b></span>
-              <span>·</span>
-              <span style="color:#8a6d1f;font-weight:600;" id="so-info-sesi"></span>
-            </div>
-            <button class="op-btn-ekspor" onclick="soEkspor()"><span class="material-symbols-outlined">download</span> Ekspor</button>
-          </div>
 
           <!-- Stats -->
           <div class="pi-stats" id="so-stats" style="display:none;">
@@ -366,6 +365,18 @@
             <div class="pi-stat c-minus"> <div class="num" id="so-n-minus">0</div> <div class="lbl">Minus</div></div>
             <div class="pi-stat c-belum"> <div class="num" id="so-n-belum">0</div> <div class="lbl">Belum</div></div>
           </div>
+        </div>
+
+        <!-- Info bar (laptop: di atas tabel, kanan panel filter) -->
+        <div class="pi-info-bar op-info" id="so-info-bar" style="display:none;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span><b id="so-info-total">0</b> produk total</span>
+            <span>·</span>
+            <span>Menampilkan <b id="so-info-tampil">0</b></span>
+            <span>·</span>
+            <span style="color:#8a6d1f;font-weight:600;" id="so-info-sesi"></span>
+          </div>
+          <button class="op-btn-ekspor" onclick="soEkspor()"><span class="material-symbols-outlined">download</span> Ekspor</button>
         </div>
 
         <!-- SCROLL AREA -->
@@ -445,18 +456,26 @@
         <!-- STICKY HEADER (Opname WEB: data dari sheet LAPORAN BARANG) -->
         <div class="pi-sticky">
           <div class="pi-toolbar">
-            <select id="ow-sesi-select" onchange="owGantiSesi()" style="min-width:155px;">
+            <span class="op-lbl op-o1">Bulan SO</span>
+            <select class="op-o2" id="ow-sesi-select" onchange="owGantiSesi()" style="min-width:155px;">
               <option value="">— Pilih Bulan SO —</option>
             </select>
-            <input type="text" id="ow-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:180px;" oninput="owFilter()">
+            <span class="op-lbl op-o3">Cari produk</span>
+            <input class="op-o4" type="text" id="ow-cari" placeholder="Cari SKU / Nama Produk..." style="min-width:180px;" oninput="owFilter()">
             <button class="op-btn-filter" onclick="opToggleFilter(this)"><span class="material-symbols-outlined">tune</span> Filter</button>
-            <div style="position:relative;" id="ow-personil-wrap">
+            <span class="op-lbl op-o11">Personil</span>
+            <div class="op-o12" style="position:relative;" id="ow-personil-wrap">
               <input type="text" id="ow-personil-input" placeholder="Cari personil..." style="min-width:130px;"
                 oninput="owPersonilInput()" onkeydown="owPersonilKeydown(event)" autocomplete="off">
               <div id="ow-personil-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:200px;max-width:300px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:999;max-height:220px;overflow-y:auto;"></div>
             </div>
-            <input type="text" id="ow-rak-filter" placeholder="Filter Rak..." style="min-width:100px;" oninput="owFilter()">
-            <select id="ow-sort-select" onchange="owFilter()" style="min-width:160px;">
+            <div class="op-pchips op-o13" id="ow-personil-chips"></div>
+            <span class="op-lbl op-o9">Rak</span>
+            <input class="op-o10" type="text" id="ow-rak-filter" placeholder="Filter Rak..." style="min-width:100px;" oninput="owFilter()">
+            <span class="op-lbl op-o7">Tim</span>
+            <select class="op-o8 op-tim" id="ow-tim" onchange="owFilter()"><option value="">Semua Tim</option></select>
+            <span class="op-lbl op-o14">Urutkan</span>
+            <select class="op-o15" id="ow-sort-select" onchange="owFilter()" style="min-width:160px;">
               <option value="rak" selected>Urut Rak (sesuai CSV)</option>
               <option value="qty-desc">Qty ↓ Terbesar</option>
               <option value="qty-asc">Qty ↑ Terkecil</option>
@@ -465,15 +484,17 @@
               <option value="selisih-desc">Selisih terbesar</option>
             </select>
             <!-- Status chips -->
-            <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            <span class="op-lbl op-o5">Status</span>
+            <div class="op-status op-o6" style="display:flex;gap:5px;flex-wrap:wrap;">
               <div class="pi-chip aktif-Semua" onclick="owSetStatus('Semua',this)" id="ow-chip-Semua">Semua</div>
               <div class="pi-chip" onclick="owSetStatus('Balance',this)" id="ow-chip-Balance">Sesuai</div>
               <div class="pi-chip" onclick="owSetStatus('Plus',this)"    id="ow-chip-Plus">Lebih</div>
               <div class="pi-chip" onclick="owSetStatus('Minus',this)"   id="ow-chip-Minus">Kurang</div>
               <div class="pi-chip" onclick="owSetStatus('Belum',this)"   id="ow-chip-Belum">Belum</div>
             </div>
+            <button type="button" class="op-reset op-o16" onclick="owResetFilter()"><span class="material-symbols-outlined">restart_alt</span> Reset filter</button>
             <!-- Toggle view + Export -->
-            <div style="display:flex;gap:6px;margin-left:auto;">
+            <div class="op-o17" style="display:flex;gap:6px;margin-left:auto;">
               <button class="pi-view-btn aktif" id="ow-btn-grid" onclick="owSetView('grid')" title="Grid view">
                 <span class="material-symbols-outlined">grid_view</span>
               </button>
@@ -481,22 +502,11 @@
                 <span class="material-symbols-outlined">view_list</span>
               </button>
               <button class="pi-view-btn" id="ow-btn-riwayat-hapus" style="display:none;" onclick="owBukaRiwayatHapus()" title="Riwayat Hapus Hitungan (superuser)">
-                <span class="material-symbols-outlined">history</span>
+                <span class="material-symbols-outlined">history</span><span class="op-teks-lp">Riwayat hapus hitungan</span>
               </button>
             </div>
           </div>
 
-          <!-- Info bar -->
-          <div class="pi-info-bar" id="ow-info-bar" style="display:none;">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <span><b id="ow-info-total">0</b> produk total</span>
-              <span>·</span>
-              <span>Menampilkan <b id="ow-info-tampil">0</b></span>
-              <span>·</span>
-              <span style="color:#8a6d1f;font-weight:600;" id="ow-info-sesi"></span>
-            </div>
-            <button class="op-btn-ekspor" onclick="owEkspor()"><span class="material-symbols-outlined">download</span> Ekspor</button>
-          </div>
 
           <!-- Stats -->
           <div class="pi-stats" id="ow-stats" style="display:none;">
@@ -505,6 +515,18 @@
             <div class="pi-stat c-minus"> <div class="num" id="ow-n-minus">0</div> <div class="lbl">Minus</div></div>
             <div class="pi-stat c-belum"> <div class="num" id="ow-n-belum">0</div> <div class="lbl">Belum</div></div>
           </div>
+        </div>
+
+        <!-- Info bar (laptop: di atas tabel, kanan panel filter) -->
+        <div class="pi-info-bar op-info" id="ow-info-bar" style="display:none;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span><b id="ow-info-total">0</b> produk total</span>
+            <span>·</span>
+            <span>Menampilkan <b id="ow-info-tampil">0</b></span>
+            <span>·</span>
+            <span style="color:#8a6d1f;font-weight:600;" id="ow-info-sesi"></span>
+          </div>
+          <button class="op-btn-ekspor" onclick="owEkspor()"><span class="material-symbols-outlined">download</span> Ekspor</button>
         </div>
 
         <!-- SCROLL AREA -->
@@ -863,10 +885,10 @@
               <span class="pg-chip-label">Status</span>
               <div class="pg-chip-geser pg-chips">
                 <div class="pg-chip aktif" data-f="semua" onclick="pgSetFilter('semua', this)">Semua</div>
-                <div class="pg-chip" onclick="pgSetFilter('belum', this)">Belum</div>
-                <div class="pg-chip" onclick="pgSetFilter('sesuai', this)">Sesuai</div>
-                <div class="pg-chip" onclick="pgSetFilter('selisih', this)">Selisih</div>
-                <div class="pg-chip" onclick="pgSetFilter('ulang', this)">Cek Ulang</div>
+                <div class="pg-chip" data-f="belum" onclick="pgSetFilter('belum', this)">Belum</div>
+                <div class="pg-chip" data-f="sesuai" onclick="pgSetFilter('sesuai', this)">Sesuai</div>
+                <div class="pg-chip" data-f="selisih" onclick="pgSetFilter('selisih', this)">Selisih</div>
+                <div class="pg-chip" data-f="ulang" onclick="pgSetFilter('ulang', this)">Cek Ulang</div>
                 <div class="pg-chip pg-chip-nyasar" id="pg-chip-nyasar" style="display:none;" onclick="pgSetFilter('nyasar', this)"></div>
               </div>
             </div>
@@ -877,6 +899,7 @@
             <div class="pg-filter-baris pg-lipat-filter" id="pg-chip-tim"></div>
             <div class="pg-filter-baris pg-lipat-filter" id="pg-chip-rak"></div>
             <div class="pg-filter-baris pg-lipat-filter" id="pg-chip-blok" style="display:none;"></div>
+            <button type="button" class="op-reset pg-reset" onclick="pgResetFilter()"><span class="material-symbols-outlined">restart_alt</span> Reset filter</button>
           </div>
           <div class="pg-mini pg-ringkas-hp" id="pg-mini">
             <div id="pg-mini-teks"></div>
@@ -916,6 +939,8 @@
           </div>
         </div>
 
+        <!-- laptop: tombol aksi pindah ke kanan atas (lihat pgPindahAksi) -->
+        <div class="pg-kanan-atas" id="pg-kanan-atas"></div>
         <div class="pg-grid" id="pg-grid">
           <div class="pg-state-box"><span class="material-symbols-outlined">swap_horiz</span><p>Memuat...</p></div>
         </div>
